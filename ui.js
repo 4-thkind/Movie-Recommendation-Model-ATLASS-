@@ -152,9 +152,33 @@ function buildCard(movieId) {
       </div>
     </div>
   `;
-  
+
+  // ── Bug 3 fix: attach placeholder listeners immediately so buttons are
+  //    never silently non-functional while TMDB is still loading ──────────
+  let resolvedDetails = null;
+
+  const cardAddBtn  = wrap.querySelector('.card-add');
+  const openBtn     = wrap.querySelector('[data-open]');
+  const addBtn      = wrap.querySelector('[data-add]');
+
+  const handleOpen = (e) => {
+    if (e) e.stopPropagation();
+    if (resolvedDetails) openModal(resolvedDetails);
+  };
+  const handleAdd = (e, triggerEl) => {
+    if (e) e.stopPropagation();
+    if (resolvedDetails) addToWatchlist(resolvedDetails, triggerEl);
+  };
+
+  wrap.addEventListener('click', () => handleOpen(null));
+  cardAddBtn.addEventListener('click', e => handleAdd(e, cardAddBtn));
+  addBtn.addEventListener('click', e => handleAdd(e, addBtn));
+  openBtn.addEventListener('click', e => handleOpen(e));
+
   fetchTMDBDetails(movieId).then(details => {
     if (!details) return;
+    resolvedDetails = details; // upgrade the closure so all handlers use real data
+
     const img = wrap.querySelector('.lazy-poster');
     if (img) {
       img.src = details.poster;
@@ -168,27 +192,6 @@ function buildCard(movieId) {
     if (synEl) {
       synEl.textContent = details.synopsis;
     }
-    
-    // Clicking anywhere on the card opens the details modal
-    wrap.addEventListener('click', () => {
-      openModal(details);
-    });
-
-    // Watchlist add buttons stop propagation so they don't open the modal
-    wrap.querySelector('.card-add').addEventListener('click', e => {
-      e.stopPropagation();
-      addToWatchlist(details, wrap.querySelector('.card-add'));
-    });
-    wrap.querySelector('[data-add]').addEventListener('click', e => {
-      e.stopPropagation();
-      addToWatchlist(details, wrap.querySelector('[data-add]'));
-    });
-
-    // Allow the Details button to explicitly trigger it and stop propagation
-    wrap.querySelector('[data-open]').addEventListener('click', e => {
-      e.stopPropagation();
-      openModal(details);
-    });
   });
   
   return wrap;
@@ -335,7 +338,11 @@ function removeFromWatchlist(id) {
 }
 
 function updateWLCount() {
-  document.getElementById('wl-count').textContent = watchlist.length;
+  const badge = document.getElementById('wl-count');
+  const count = watchlist.length;
+  badge.textContent = count;
+  // Bug 6 fix: hide badge when empty so "0" never shows in the nav
+  badge.style.display = count > 0 ? 'flex' : 'none';
 }
 
 function updateWatchlistUI() {
@@ -708,6 +715,8 @@ function saveSettings() {
   tmdbCache = {};
   buildTrending();
   renderRows();
+  // Bug 4 fix: also refresh the hero so it picks up the new API key
+  if (typeof initHero === 'function') initHero();
 }
 
 function updateDatabaseStatus(type, status) {
@@ -839,8 +848,8 @@ function updateHeroUI(movie) {
     whyTag.innerHTML = `<i class="fa-solid fa-brain" style="font-size:10px;color:var(--vl)"></i> ${reasons.slice(0, 3).join(' · ')}`;
   }
   
-  // Set button actions
-  const playBtn = heroSection.querySelector('.btn-primary');
+  // Set button actions (use IDs added by Bug 5 fix)
+  const playBtn = document.getElementById('hero-play-btn');
   if (playBtn) {
     playBtn.onclick = () => {
       openModal(movie);
@@ -853,12 +862,12 @@ function updateHeroUI(movie) {
     };
   }
   
-  const infoBtn = heroSection.querySelector('.btn-secondary');
+  const infoBtn = document.getElementById('hero-info-btn');
   if (infoBtn) {
     infoBtn.onclick = () => openModal(movie);
   }
   
-  const wlBtn = heroSection.querySelector('.btn-icon');
+  const wlBtn = document.getElementById('hero-wl-btn');
   if (wlBtn) {
     const updateWLIcon = () => {
       const isAdded = watchlist.some(m => m.id === movie.id);

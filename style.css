@@ -115,7 +115,8 @@ body::before{
 .watchlist-badge{
   background:var(--y);color:#000;font-size:10px;font-weight:900;
   width:17px;height:17px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
+  display:none; /* Bug 6 fix: hidden by default; shown via JS when count > 0 */
+  align-items:center;justify-content:center;
   transition:transform .35s var(--spring);
 }
 .watchlist-badge.bump{transform:scale(1.55)}
@@ -814,4 +815,14 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 }
 .user-stars i.active{
   color:var(--y);
+}
+
+/* ─── CORS BANNER LAYOUT COMPENSATION (Bug 7 fix) ─── */
+/* When the CORS banner is visible, push the fixed hero content down
+   so it doesn't scroll behind the banner (44px ≈ banner height) */
+body.has-cors-banner #hero {
+  padding-top: 44px;
+}
+body.has-cors-banner main {
+  padding-top: 44px;
 }

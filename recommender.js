@@ -173,8 +173,7 @@ async function loadMovieLensDatabase() {
     movieLensData.loaded = true;
     updateDatabaseStatus('ratings', 'Loaded');
     
-    // Initialise recommendations and render
-    initializeRecommender();
+    // Render rows (calls initializeRecommender internally) then build trending + hero
     renderRows();
     buildTrending();
     if (typeof initHero === 'function') initHero();
@@ -236,7 +235,8 @@ function cosineSimilarity(ratingsA, ratingsB) {
   }
   
   if (shared === 0 || normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(dotProduct) === 0 ? 1 : (Math.sqrt(normA) * Math.sqrt(normB)));
+  // Denominator zero-case already handled above; simplify formula directly
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 /* ─── MATCH SCORE CALCULATION ─── */

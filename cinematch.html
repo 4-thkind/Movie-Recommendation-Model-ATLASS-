@@ -45,6 +45,16 @@
   <i class="fa-solid fa-triangle-exclamation" style="margin-right:8px"></i>
   CineMatch is running via file://. Browser security policies block loading MovieLens CSVs. Please run a local web server (e.g. `python -m http.server` or Live Server).
 </div>
+<script>
+  // Bug 7 fix: toggle body class when CORS banner is shown so layout compensates
+  (function() {
+    const banner = document.getElementById('cors-warning-banner');
+    const observer = new MutationObserver(() => {
+      document.body.classList.toggle('has-cors-banner', banner.style.display !== 'none');
+    });
+    observer.observe(banner, { attributes: true, attributeFilter: ['style'] });
+  })();
+</script>
 
 <!-- ═══ HERO ═══ -->
 <section id="hero">
@@ -68,13 +78,13 @@
       Epic Sci-Fi · Narrative Depth · Denis Villeneuve
     </div>
     <div class="hero-btns">
-      <button class="btn-primary" onclick="openModal(MOVIES[0])">
+      <button class="btn-primary" id="hero-play-btn">
         <i class="fa-solid fa-play" style="font-size:11px"></i> Play Trailer
       </button>
-      <button class="btn-secondary" onclick="openModal(MOVIES[0])">
+      <button class="btn-secondary" id="hero-info-btn">
         <i class="fa-solid fa-circle-info"></i> More Info
       </button>
-      <button class="btn-icon" title="Add to watchlist" onclick="addToWatchlist(MOVIES[0],this)">
+      <button class="btn-icon" id="hero-wl-btn" title="Add to watchlist">
         <i class="fa-solid fa-plus"></i>
       </button>
     </div>
