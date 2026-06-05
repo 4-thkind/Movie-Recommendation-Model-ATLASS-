@@ -1369,56 +1369,6 @@ function highlightStars(rating) {
   });
 }
 
-/* ─── CAST POPUP CONTROLS ─── */
-function showCastPopup(castMember, element) {
-  let castPopup = document.getElementById('cast-popup');
-  if (!castPopup) {
-    castPopup = document.createElement('div');
-    castPopup.id = 'cast-popup';
-    document.body.appendChild(castPopup);
-  }
-  
-  const poster = castMember.img || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80";
-  const name = castMember.name || "Unknown Actor";
-  const character = castMember.character || "Cast Member";
-  const label = castMember.label || "Role Played";
-  
-  castPopup.innerHTML = `
-    <div class="cast-pop-left">
-      <img src="${poster}" alt="${name}"/>
-      <div class="cast-pop-name">${name}</div>
-    </div>
-    <div class="cast-pop-right">
-      <div class="cast-pop-label">${label}</div>
-      <div class="cast-pop-character">${character}</div>
-    </div>
-  `;
-  
-  const rect = element.getBoundingClientRect();
-  const popupWidth = 230;
-  const popupHeight = 110;
-  let targetTop = rect.top + window.scrollY - popupHeight - 10;
-  let targetLeft = rect.left + window.scrollX + (rect.width / 2) - (popupWidth / 2);
-  
-  if (targetLeft < 10) targetLeft = 10;
-  if (targetLeft + popupWidth > window.innerWidth - 10) {
-    targetLeft = window.innerWidth - popupWidth - 10;
-  }
-  if (targetTop < window.scrollY + 10) {
-    targetTop = rect.bottom + window.scrollY + 10;
-  }
-  
-  castPopup.style.top = `${targetTop}px`;
-  castPopup.style.left = `${targetLeft}px`;
-  castPopup.classList.add('on');
-}
-
-function hideCastPopup() {
-  const castPopup = document.getElementById('cast-popup');
-  if (castPopup) {
-    castPopup.classList.remove('on');
-  }
-}
 
 /* ─── MODAL CONTROLS ─── */
 function openModal(movie) {
@@ -1452,24 +1402,7 @@ function openModal(movie) {
       </div>
     `).join('');
     
-    document.querySelectorAll('#m-director .m-director-person').forEach(el => {
-      const idx = parseInt(el.dataset.directorIndex);
-      const directorMember = directorList[idx];
-      if (directorMember) {
-        const popupData = {
-          name: directorMember.name,
-          character: "Creator",
-          img: directorMember.img,
-          label: "Created By"
-        };
-        el.addEventListener('mouseenter', () => showCastPopup(popupData, el));
-        el.addEventListener('mouseleave', () => hideCastPopup());
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showCastPopup(popupData, el);
-        });
-      }
-    });
+
 
     // Render Cast
     const castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
@@ -1484,18 +1417,7 @@ function openModal(movie) {
       </div>
     `).join('');
     
-    document.querySelectorAll('#m-cast .m-cast-person').forEach(el => {
-      const idx = parseInt(el.dataset.castIndex);
-      const castMember = castList[idx];
-      if (castMember) {
-        el.addEventListener('mouseenter', () => showCastPopup(castMember, el));
-        el.addEventListener('mouseleave', () => hideCastPopup());
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showCastPopup(castMember, el);
-        });
-      }
-    });
+
     
     document.getElementById('m-similar').innerHTML = '';
     
@@ -1541,24 +1463,7 @@ function openModal(movie) {
       </div>
     `).join('');
     
-    document.querySelectorAll('#m-director .m-director-person').forEach(el => {
-      const idx = parseInt(el.dataset.directorIndex);
-      const directorMember = directorList[idx];
-      if (directorMember) {
-        const popupData = {
-          name: directorMember.name,
-          character: "Director",
-          img: directorMember.img,
-          label: "Director"
-        };
-        el.addEventListener('mouseenter', () => showCastPopup(popupData, el));
-        el.addEventListener('mouseleave', () => hideCastPopup());
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showCastPopup(popupData, el);
-        });
-      }
-    });
+
 
     // Render Cast
     const castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
@@ -1573,18 +1478,7 @@ function openModal(movie) {
       </div>
     `).join('');
 
-    document.querySelectorAll('#m-cast .m-cast-person').forEach(el => {
-      const idx = parseInt(el.dataset.castIndex);
-      const castMember = castList[idx];
-      if (castMember) {
-        el.addEventListener('mouseenter', () => showCastPopup(castMember, el));
-        el.addEventListener('mouseleave', () => hideCastPopup());
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showCastPopup(castMember, el);
-        });
-      }
-    });
+
 
     if (movieLensData.loaded) {
       const list = Object.values(movieLensData.movies)
@@ -2020,11 +1914,4 @@ async function initHero() {
   }
 }
 
-document.addEventListener('click', (e) => {
-  const castPopup = document.getElementById('cast-popup');
-  if (castPopup && castPopup.classList.contains('on')) {
-    if (!castPopup.contains(e.target) && !e.target.closest('.m-cast-person') && !e.target.closest('.m-director-person')) {
-      hideCastPopup();
-    }
-  }
-});
+
