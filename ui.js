@@ -31,7 +31,8 @@ async function fetchTMDBDetails(movieId) {
         backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85",
         platforms: ["Streaming"],
         reasons: ["Popular Choice"],
-        cast: [{name: "Cast N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}]
+        cast: [{name: "Cast N/A", character: "Cast Member", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}],
+        director: [{name: "Director N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}]
       };
     }
     const movie = movieLensData.movies[movieId];
@@ -60,7 +61,13 @@ async function fetchTMDBDetails(movieId) {
       backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85",
       platforms: ["Netflix", "Prime Video", "Apple TV+"].slice(0, 1 + (isVirtual ? parseInt(tmdbId) % 3 : movieId % 3)),
       reasons: isVirtual ? [type === 'tv' ? 'TV Show' : 'Movie'] : genresList.split('·').slice(0, 3).map(g => g.trim()),
-      cast: [{name: "Director", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}]
+      cast: [
+        { name: "Lead Actor", character: "Main Character", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" },
+        { name: "Supporting Cast", character: "Sidekick", img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&q=80" }
+      ],
+      director: [
+        { name: "Director N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }
+      ]
     };
     tmdbCache[movieId] = fallbackMock;
     return fallbackMock;
@@ -94,6 +101,10 @@ async function fetchTMDBDetails(movieId) {
         name: c.name,
         character: c.character || 'Cast Member',
         img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
+      })) : [],
+      director: data.credits && data.credits.crew ? data.credits.crew.filter(c => c.job === 'Director').map(d => ({
+        name: d.name,
+        img: d.profile_path ? `https://image.tmdb.org/t/p/w185${d.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
       })) : []
     };
     
@@ -1370,6 +1381,7 @@ function showCastPopup(castMember, element) {
   const poster = castMember.img || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80";
   const name = castMember.name || "Unknown Actor";
   const character = castMember.character || "Cast Member";
+  const label = castMember.label || "Role Played";
   
   castPopup.innerHTML = `
     <div class="cast-pop-left">
@@ -1377,14 +1389,14 @@ function showCastPopup(castMember, element) {
       <div class="cast-pop-name">${name}</div>
     </div>
     <div class="cast-pop-right">
-      <div class="cast-pop-label">Role Played</div>
+      <div class="cast-pop-label">${label}</div>
       <div class="cast-pop-character">${character}</div>
     </div>
   `;
   
   const rect = element.getBoundingClientRect();
-  const popupWidth = 310;
-  const popupHeight = 150;
+  const popupWidth = 230;
+  const popupHeight = 110;
   let targetTop = rect.top + window.scrollY - popupHeight - 10;
   let targetLeft = rect.left + window.scrollX + (rect.width / 2) - (popupWidth / 2);
   
@@ -1429,6 +1441,37 @@ function openModal(movie) {
     document.getElementById('m-platforms').innerHTML = `<span class="plat-badge"><i class="fa-solid fa-circle-play" style="font-size:9px;color:var(--y)"></i>Streaming</span>`;
     document.getElementById('m-reasons').innerHTML = `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>Trending</span>`;
     
+    // Render Director
+    const directorList = (movie.director && movie.director.length > 0) ? movie.director : [
+      { name: "Creator", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }
+    ];
+    document.getElementById('m-director').innerHTML = directorList.map((d, idx) => `
+      <div class="m-director-person" data-director-index="${idx}">
+        <img src="${d.img}" alt="${d.name}"/>
+        <span>${d.name}</span>
+      </div>
+    `).join('');
+    
+    document.querySelectorAll('#m-director .m-director-person').forEach(el => {
+      const idx = parseInt(el.dataset.directorIndex);
+      const directorMember = directorList[idx];
+      if (directorMember) {
+        const popupData = {
+          name: directorMember.name,
+          character: "Creator",
+          img: directorMember.img,
+          label: "Created By"
+        };
+        el.addEventListener('mouseenter', () => showCastPopup(popupData, el));
+        el.addEventListener('mouseleave', () => hideCastPopup());
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showCastPopup(popupData, el);
+        });
+      }
+    });
+
+    // Render Cast
     const castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
       { name: "Lead Actor", character: "Main Character", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" },
       { name: "Supporting Cast", character: "Sidekick", img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&q=80" }
@@ -1487,6 +1530,37 @@ function openModal(movie) {
       `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>${r}</span>`
     ).join('');
 
+    // Render Director
+    const directorList = (movie.director && movie.director.length > 0) ? movie.director : [
+      { name: "Director N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }
+    ];
+    document.getElementById('m-director').innerHTML = directorList.map((d, idx) => `
+      <div class="m-director-person" data-director-index="${idx}">
+        <img src="${d.img}" alt="${d.name}"/>
+        <span>${d.name}</span>
+      </div>
+    `).join('');
+    
+    document.querySelectorAll('#m-director .m-director-person').forEach(el => {
+      const idx = parseInt(el.dataset.directorIndex);
+      const directorMember = directorList[idx];
+      if (directorMember) {
+        const popupData = {
+          name: directorMember.name,
+          character: "Director",
+          img: directorMember.img,
+          label: "Director"
+        };
+        el.addEventListener('mouseenter', () => showCastPopup(popupData, el));
+        el.addEventListener('mouseleave', () => hideCastPopup());
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showCastPopup(popupData, el);
+        });
+      }
+    });
+
+    // Render Cast
     const castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
       { name: "Lead Actor", character: "Protagonist", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" },
       { name: "Supporting Cast", character: "Co-Star", img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&q=80" }
@@ -1949,7 +2023,7 @@ async function initHero() {
 document.addEventListener('click', (e) => {
   const castPopup = document.getElementById('cast-popup');
   if (castPopup && castPopup.classList.contains('on')) {
-    if (!castPopup.contains(e.target) && !e.target.closest('.m-cast-person')) {
+    if (!castPopup.contains(e.target) && !e.target.closest('.m-cast-person') && !e.target.closest('.m-director-person')) {
       hideCastPopup();
     }
   }

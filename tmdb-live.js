@@ -48,6 +48,10 @@ async function fetchTMDBDetails(tmdbId) {
         character: c.character || 'Cast Member',
         img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
       })) : [],
+      director: data.credits && data.credits.crew ? data.credits.crew.filter(c => c.job === 'Director').map(d => ({
+        name: d.name,
+        img: d.profile_path ? `https://image.tmdb.org/t/p/w185${d.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
+      })) : [],
       cert: cert
     };
     
@@ -319,7 +323,11 @@ function renderPlatCards(platId, type) {
                     name: c.name,
                     character: c.character || 'Cast Member',
                     img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
-                  })) : []
+                  })) : [],
+                  director: tvData.created_by && tvData.created_by.length > 0 ? tvData.created_by.map(c => ({
+                    name: c.name,
+                    img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
+                  })) : [{ name: "Creator", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }]
                 };
                 if (currentPopupMovie && currentPopupMovie.id === item.id) showPopup(resolvedDetails, card);
               });
