@@ -388,13 +388,14 @@ function surpriseMe() {
 
 // Override Realtime Search & See All Buttons
 window.addEventListener('DOMContentLoaded', () => {
-  // 1. See All Buttons - Make them scroll the closest row
+  // 1. See All Buttons - Make them toggle a grid matrix
   document.querySelectorAll('.sec-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      const rowWrap = e.target.closest('section').querySelector('.row-scroll, .plat-row');
+      const rowWrap = e.target.closest('section').querySelector('.row-scroll, .plat-row, .trend-row');
       if (rowWrap) {
-        rowWrap.scrollBy({ left: 800, behavior: 'smooth' });
+        const isExpanded = rowWrap.classList.toggle('grid-expanded');
+        e.target.innerHTML = isExpanded ? 'Collapse <i class="fa-solid fa-chevron-up"></i>' : 'See All <i class="fa-solid fa-chevron-right"></i>';
       }
     });
   });

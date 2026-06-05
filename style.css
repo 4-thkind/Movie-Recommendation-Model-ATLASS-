@@ -758,3 +758,20 @@ body.has-cors-banner #hero {
 body.has-cors-banner main {
   padding-top: 44px;
 }
+
+/* Expanded Grid for See All */
+.grid-expanded {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 16px !important;
+  overflow: visible !important;
+  padding-bottom: 24px !important;
+}
+.grid-expanded .movie-card, .grid-expanded .plat-card, .grid-expanded .trend-card {
+  flex: none !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+.row-wrap:has(.grid-expanded) .arr, .plat-wrap:has(.grid-expanded) .plat-arr {
+  display: none !important;
+}
