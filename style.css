@@ -790,3 +790,53 @@ body.has-cors-banner main {
     gap: 16px !important;
   }
 }
+
+/* ─── SEARCH ACTIVE CLEAR LAYOUT ─── */
+body.search-active #hero,
+body.search-active main > section:not(#search-section) {
+  display: none !important;
+}
+
+/* ─── GRID MODE STYLING (SEE ALL) ─── */
+.grid-active .row-scroll, .grid-active .trend-row, .grid-active .plat-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 20px !important;
+  overflow-x: visible !important;
+  flex-wrap: wrap !important;
+  padding: 10px 0 !important;
+}
+.grid-active .arr, .grid-active .trend-arr, .grid-active .plat-arr,
+.grid-active .plat-arr.L, .grid-active .plat-arr.R,
+.grid-active .plat-wrap .plat-arr {
+  display: none !important;
+}
+.grid-active .movie-card, .grid-active .trend-card, .grid-active .plat-card {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+}
+.grid-active .card-thumb {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 2 / 3 !important;
+}
+.grid-active .trend-card img {
+  height: auto !important;
+  aspect-ratio: 175 / 248 !important;
+}
+.grid-active .plat-card img {
+  height: auto !important;
+  aspect-ratio: 190 / 268 !important;
+}
+
+@media(max-width:992px){
+  .grid-active .row-scroll, .grid-active .trend-row, .grid-active .plat-row {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media(max-width:576px){
+  .grid-active .row-scroll, .grid-active .trend-row, .grid-active .plat-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}

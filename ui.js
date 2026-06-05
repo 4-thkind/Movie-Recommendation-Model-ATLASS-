@@ -1702,6 +1702,7 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 function clearSearch() {
   document.getElementById('search-input').value = '';
   document.getElementById('search-section').style.display = 'none';
+  document.body.classList.remove('search-active');
 }
 
 document.getElementById('search-input').addEventListener('input', function () {
@@ -1712,8 +1713,11 @@ document.getElementById('search-input').addEventListener('input', function () {
   
   if (!q) {
     if (searchSec) searchSec.style.display = 'none';
+    document.body.classList.remove('search-active');
     return;
   }
+  
+  document.body.classList.add('search-active');
   
   if (!searchResults) return;
   

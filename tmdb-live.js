@@ -402,13 +402,21 @@ function surpriseMe() {
 
 // Override Realtime Search & See All Buttons
 window.addEventListener('DOMContentLoaded', () => {
-  // 1. See All Buttons - Make them scroll the closest row
-  document.querySelectorAll('.sec-link').forEach(link => {
+  // 1. See All Buttons - Toggle grid view
+  document.querySelectorAll('.see-all').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      const rowWrap = e.target.closest('section').querySelector('.row-scroll, .plat-row');
-      if (rowWrap) {
-        rowWrap.scrollBy({ left: 800, behavior: 'smooth' });
+      const section = e.target.closest('section');
+      if (section) {
+        const isGrid = section.classList.toggle('grid-active');
+        if (isGrid) {
+          e.target.innerHTML = `Show less <i class="fa-solid fa-chevron-up" style="font-size:10px"></i>`;
+        } else {
+          const isFullChart = e.target.textContent.trim().toLowerCase().includes('chart') || section.id === 'trending-section';
+          e.target.innerHTML = isFullChart 
+            ? `Full chart <i class="fa-solid fa-chevron-right" style="font-size:10px"></i>`
+            : `See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i>`;
+        }
       }
     });
   });
@@ -430,8 +438,11 @@ window.addEventListener('DOMContentLoaded', () => {
       
       if (!q) {
         if (searchSec) searchSec.style.display = 'none';
+        document.body.classList.remove('search-active');
         return;
       }
+      
+      document.body.classList.add('search-active');
       
       debounceTimer = setTimeout(() => {
         if (!searchResults) return;
