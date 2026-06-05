@@ -2,50 +2,64 @@
 async function fetchTMDBDetails(movieId) {
   if (tmdbCache[movieId]) return tmdbCache[movieId];
   
-  // If database is not loaded, map from fallbacks if matching id
-  if (!movieLensData.loaded) {
-    const fallback = MOVIES.find(m => m.id === movieId);
-    if (fallback) return fallback;
-    return {
-      id: movieId,
-      title: `MovieLens #${movieId}`,
-      year: "N/A",
-      match: 85,
-      rating: "7.5",
-      runtime: "2h 0m",
-      genre: "Drama",
-      synopsis: "Detailed information requires the MovieLens database to be loaded.",
-      poster: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80",
-      backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85",
-      platforms: ["Streaming"],
-      reasons: ["Popular Choice"],
-      cast: [{name: "Cast N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}]
-    };
+  const isVirtual = typeof movieId === 'string' && movieId.startsWith('tmdb-');
+  let type = 'movie';
+  let tmdbId = null;
+  let cleanTitle = "Loading...";
+  let year = "N/A";
+  let genresList = "Drama";
+
+  if (isVirtual) {
+    const parts = movieId.split('-');
+    type = parts[1]; // 'movie' or 'tv'
+    tmdbId = parts[2];
+  } else {
+    // If database is not loaded, map from fallbacks if matching id
+    if (!movieLensData.loaded) {
+      const fallback = MOVIES.find(m => m.id === movieId);
+      if (fallback) return fallback;
+      return {
+        id: movieId,
+        title: `MovieLens #${movieId}`,
+        year: "N/A",
+        match: 85,
+        rating: "7.5",
+        runtime: "2h 0m",
+        genre: "Drama",
+        synopsis: "Detailed information requires the MovieLens database to be loaded.",
+        poster: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80",
+        backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85",
+        platforms: ["Streaming"],
+        reasons: ["Popular Choice"],
+        cast: [{name: "Cast N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}]
+      };
+    }
+    const movie = movieLensData.movies[movieId];
+    if (!movie) return null;
+    tmdbId = movie.tmdbId;
+    cleanTitle = movie.title.replace(/\s\(\d{4}\)$/, '');
+    year = movie.title.match(/\((\d{4})\)$/)?.[1] || 'N/A';
+    genresList = movie.genres.replace(/\|/g, ' · ');
   }
   
-  const movie = movieLensData.movies[movieId];
-  if (!movie) return null;
-  
-  const cleanTitle = movie.title.replace(/\s\(\d{4}\)$/, '');
-  const year = movie.title.match(/\((\d{4})\)$/)?.[1] || 'N/A';
-  const genresList = movie.genres.replace(/\|/g, ' · ');
-  
   const apiKey = localStorage.getItem('tmdb_api_key');
-  if (!apiKey || !movie.tmdbId) {
+  if (!apiKey || !tmdbId) {
     // Return custom placeholder with real MovieLens values
     const fallbackMock = {
       id: movieId,
-      title: cleanTitle,
-      year: year,
-      match: calculateMatchScore(movieId),
-      rating: (6.5 + ((movieId * 3) % 25) / 10).toFixed(1),
-      runtime: `${1 + ((movieId * 2) % 2)}h ${10 + ((movieId * 11) % 45)}m`,
-      genre: genresList,
-      synopsis: `Synopsis for ${cleanTitle}. Connect CineMatch with your TMDb API Key (gear icon in the top right) to fetch rich metadata, real posters, trailers, and cast profiles from TMDb!`,
+      title: isVirtual ? `TMDb ${type === 'tv' ? 'TV' : 'Movie'} #${tmdbId}` : cleanTitle,
+      year: isVirtual ? "N/A" : year,
+      match: calculateMatchScore(isVirtual ? tmdbId : movieId),
+      rating: isVirtual ? "7.0" : (6.5 + ((movieId * 3) % 25) / 10).toFixed(1),
+      runtime: isVirtual ? "N/A" : `${1 + ((movieId * 2) % 2)}h ${10 + ((movieId * 11) % 45)}m`,
+      genre: isVirtual ? (type === 'tv' ? 'TV Show' : 'Movie') : genresList,
+      synopsis: isVirtual
+        ? `Virtual title. Connect CineMatch with your TMDb API Key (gear icon in the top right) to fetch rich metadata for this title.`
+        : `Synopsis for ${cleanTitle}. Connect CineMatch with your TMDb API Key (gear icon in the top right) to fetch rich metadata, real posters, trailers, and cast profiles from TMDb!`,
       poster: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80",
       backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85",
-      platforms: ["Netflix", "Prime Video", "Apple TV+"].slice(0, 1 + (movieId % 3)),
-      reasons: genresList.split('·').slice(0, 3).map(g => g.trim()),
+      platforms: ["Netflix", "Prime Video", "Apple TV+"].slice(0, 1 + (isVirtual ? parseInt(tmdbId) % 3 : movieId % 3)),
+      reasons: isVirtual ? [type === 'tv' ? 'TV Show' : 'Movie'] : genresList.split('·').slice(0, 3).map(g => g.trim()),
       cast: [{name: "Director", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}]
     };
     tmdbCache[movieId] = fallbackMock;
@@ -53,25 +67,32 @@ async function fetchTMDBDetails(movieId) {
   }
   
   try {
-    const res = await fetch(`https://api.themoviedb.org/3/movie/${movie.tmdbId}?api_key=${apiKey}&append_to_response=credits,videos`);
+    const res = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${apiKey}&append_to_response=credits,videos`);
     if (!res.ok) throw new Error("TMDB network error");
     const data = await res.json();
     
     const mapped = {
       id: movieId,
-      title: data.title,
-      year: data.release_date ? data.release_date.split('-')[0] : year,
-      match: calculateMatchScore(movieId),
+      title: type === 'tv' ? data.name : data.title,
+      year: type === 'tv'
+        ? (data.first_air_date ? data.first_air_date.split('-')[0] : 'N/A')
+        : (data.release_date ? data.release_date.split('-')[0] : year),
+      match: calculateMatchScore(isVirtual ? tmdbId : movieId),
       rating: data.vote_average ? data.vote_average.toFixed(1) : '7.0',
-      runtime: data.runtime ? `${Math.floor(data.runtime/60)}h ${data.runtime%60}m` : 'N/A',
-      genre: data.genres ? data.genres.map(g => g.name).join(' · ') : genresList,
+      runtime: type === 'tv'
+        ? (data.episode_run_time && data.episode_run_time.length > 0 ? `${data.episode_run_time[0]}m` : 'N/A')
+        : (data.runtime ? `${Math.floor(data.runtime/60)}h ${data.runtime%60}m` : 'N/A'),
+      genre: data.genres ? data.genres.map(g => g.name).join(' · ') : (type === 'tv' ? 'TV Show' : genresList),
       synopsis: data.overview || 'No synopsis available.',
       poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80',
       backdrop: data.backdrop_path ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}` : 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85',
-      platforms: ["Max", "Netflix", "Prime Video", "Apple TV+"].slice(0, 1 + (data.id % 3)),
-      reasons: data.genres ? data.genres.map(g => g.name).slice(0, 3) : ['Highly Rated'],
-      cast: data.credits && data.credits.cast ? data.credits.cast.slice(0, 3).map(c => ({
+      platforms: type === 'tv'
+        ? ["Netflix", "Prime Video", "Apple TV+", "Disney+"].slice(0, 1 + (data.id % 4))
+        : ["Max", "Netflix", "Prime Video", "Apple TV+"].slice(0, 1 + (data.id % 3)),
+      reasons: data.genres ? data.genres.map(g => g.name).slice(0, 3) : (type === 'tv' ? ['TV Series'] : ['Highly Rated']),
+      cast: data.credits && data.credits.cast ? data.credits.cast.slice(0, 5).map(c => ({
         name: c.name,
+        character: c.character || 'Cast Member',
         img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
       })) : []
     };
@@ -276,9 +297,15 @@ function buildCard(movieId) {
   let cleanTitle = "Loading...";
   let year = "";
   let genresList = "";
+  
+  const isVirtual = typeof movieId === 'string' && movieId.startsWith('tmdb-');
   let match = calculateMatchScore(movieId);
   
-  if (movieLensData.loaded) {
+  if (isVirtual) {
+    cleanTitle = "Loading...";
+    year = "";
+    genresList = "";
+  } else if (movieLensData.loaded) {
     const movie = movieLensData.movies[movieId];
     if (movie) {
       cleanTitle = movie.title.replace(/\s\(\d{4}\)$/, '');
@@ -312,21 +339,6 @@ function buildCard(movieId) {
     if (resolvedDetails) {
       openModal(resolvedDetails);
     } else {
-      const fallbackMock = {
-        id: movieId,
-        title: cleanTitle,
-        year: year,
-        match: match,
-        rating: "...",
-        runtime: "N/A",
-        genre: genresList,
-        synopsis: "Loading details from TMDb...",
-        poster: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80",
-        backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85",
-        platforms: ["Streaming"],
-        reasons: ["Popular Choice"],
-        cast: []
-      };
       openModal(fallbackMock);
     }
   };
@@ -365,6 +377,7 @@ function buildCard(movieId) {
     const img = wrap.querySelector('.lazy-poster');
     if (img) {
       img.src = details.poster;
+      img.alt = details.title;
       img.style.opacity = 1;
     }
     
@@ -385,17 +398,22 @@ function buildTrending() {
   const trendingIds = [1, 296, 318, 356, 593, 260, 2571, 480];
   
   const apiKey = localStorage.getItem('tmdb_api_key');
-  if (apiKey && movieLensData.loaded) {
-    fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${apiKey}`)
+  if (apiKey) {
+    fetch(`https://api.themoviedb.org/3/trending/all/day?api_key=${apiKey}`)
       .then(res => res.json())
       .then(data => {
         if (!data.results || data.results.length === 0) throw new Error("No trending results");
         const items = [];
-        data.results.slice(0, 8).forEach(tmdbMovie => {
-          const mlMovie = Object.values(movieLensData.movies).find(m => m.tmdbId == tmdbMovie.id);
-          if (mlMovie) {
-            items.push(mlMovie.movieId);
+        data.results.slice(0, 8).forEach(item => {
+          const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
+          let cardId = `tmdb-${mediaType}-${item.id}`;
+          if (mediaType === 'movie' && movieLensData.loaded) {
+            const mlMovie = Object.values(movieLensData.movies).find(m => m.tmdbId == item.id);
+            if (mlMovie) {
+              cardId = mlMovie.movieId;
+            }
           }
+          items.push(cardId);
         });
         if (items.length > 0) {
           renderTrendingGrid(items);
@@ -418,28 +436,34 @@ function renderTrendingGrid(ids) {
   grid.innerHTML = '';
   
   ids.forEach((movieId, i) => {
-    let cleanTitle = `MovieLens #${movieId}`;
-    let genresList = 'Drama';
-    let year = '';
+    const isVirtual = typeof movieId === 'string' && movieId.startsWith('tmdb-');
+    let cleanTitle = "Loading...";
+    let genresList = "Drama";
+    let year = "";
     
-    if (movieLensData.loaded) {
-      const movie = movieLensData.movies[movieId];
-      if (movie) {
-        cleanTitle = movie.title.replace(/\s\(\d{4}\)$/, '');
-        year = movie.title.match(/\((\d{4})\)$/)?.[1] || '';
-        genresList = movie.genres.replace(/\|/g, ' · ');
-      }
-    } else {
-      const fallback = MOVIES.find(m => m.id === movieId);
-      if (fallback) {
-        cleanTitle = fallback.title;
-        year = fallback.year;
-        genresList = fallback.genre;
+    if (!isVirtual) {
+      if (movieLensData.loaded) {
+        const movie = movieLensData.movies[movieId];
+        if (movie) {
+          cleanTitle = movie.title.replace(/\s\(\d{4}\)$/, '');
+          year = movie.title.match(/\((\d{4})\)$/)?.[1] || '';
+          genresList = movie.genres.replace(/\|/g, ' · ');
+        }
+      } else {
+        const fallback = MOVIES.find(m => m.id === movieId);
+        if (fallback) {
+          cleanTitle = fallback.title;
+          year = fallback.year;
+          genresList = fallback.genre;
+        }
       }
     }
     
     const card = document.createElement('div');
     card.className = 'trend-card';
+    card.dataset.id = movieId;
+    
+    const alreadyIn = watchlist.some(m => m.id === movieId || String(m.id) === String(movieId));
     card.innerHTML = `
       <img class="lazy-poster" src="https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80" alt="${cleanTitle}" style="opacity: 0.35; transition: opacity 0.5s var(--smooth)"/>
       <div class="trend-num">${i + 1}</div>
@@ -449,11 +473,11 @@ function renderTrendingGrid(ids) {
         <div class="trend-title">${cleanTitle}</div>
         <div class="trend-meta">
           <span class="trend-rating"><i class="fa-solid fa-star" style="font-size:9px"></i> ...</span>
-          <span style="color:var(--t3)">·</span><span>${year}</span>
+          <span style="color:var(--t3)">·</span><span class="trend-year">${year}</span>
         </div>
         <div class="trend-btns">
           <button class="trend-btn play"><i class="fa-solid fa-circle-info" style="font-size:9px"></i> Details</button>
-          <button class="trend-btn add"><i class="fa-solid fa-plus" style="font-size:9px"></i> Add</button>
+          <button class="trend-btn add${alreadyIn ? ' added' : ''}"><i class="fa-solid fa-plus" style="font-size:9px"></i> Add</button>
         </div>
       </div>
     `;
@@ -464,17 +488,40 @@ function renderTrendingGrid(ids) {
     
     const handleOpen = (e) => {
       if (e) e.stopPropagation();
-      if (resolvedDetails) openModal(resolvedDetails);
+      if (resolvedDetails) {
+        openModal(resolvedDetails);
+      } else {
+        openModal(fallbackMock);
+      }
     };
-    const handleAdd = (e, triggerEl) => {
+    const handleAdd = (e) => {
       if (e) e.stopPropagation();
-      if (resolvedDetails) addToWatchlist(resolvedDetails, triggerEl);
+      toggleWatchlist(resolvedDetails || fallbackMock);
     };
     
     card.addEventListener('click', () => handleOpen(null));
     playBtn.addEventListener('click', e => handleOpen(e));
-    addBtn.addEventListener('click', e => handleAdd(e, addBtn));
+    addBtn.addEventListener('click', e => handleAdd(e));
     card.querySelector('img').addEventListener('click', (e) => { e.stopPropagation(); handleOpen(null); });
+    
+    const fallbackMock = {
+      id: movieId,
+      title: cleanTitle,
+      year: year,
+      match: calculateMatchScore(movieId),
+      rating: "...",
+      runtime: "N/A",
+      genre: genresList,
+      synopsis: "Loading details from TMDb...",
+      poster: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80",
+      backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=1200&q=85",
+      platforms: ["Streaming"],
+      reasons: ["Popular Choice"],
+      cast: []
+    };
+    
+    card.addEventListener('mouseenter', () => schedulePopup(resolvedDetails || fallbackMock, card));
+    card.addEventListener('mouseleave', () => cancelPopup());
     
     fetchTMDBDetails(movieId).then(details => {
       if (!details) return;
@@ -482,11 +529,28 @@ function renderTrendingGrid(ids) {
       const img = card.querySelector('.lazy-poster');
       if (img) {
         img.src = details.poster;
+        img.alt = details.title;
         img.style.opacity = 1;
+      }
+      const titleEl = card.querySelector('.trend-title');
+      if (titleEl) {
+        titleEl.textContent = details.title;
+      }
+      const yearEl = card.querySelector('.trend-year');
+      if (yearEl) {
+        yearEl.textContent = details.year;
       }
       const ratingEl = card.querySelector('.trend-rating');
       if (ratingEl) {
         ratingEl.innerHTML = `<i class="fa-solid fa-star" style="font-size:9px"></i> ${details.rating}`;
+      }
+      
+      const isAdded = watchlist.some(m => m.id === movieId || String(m.id) === String(movieId));
+      if (addBtn) {
+        addBtn.classList.toggle('added', isAdded);
+        addBtn.innerHTML = isAdded 
+          ? '<i class="fa-solid fa-check" style="font-size:9px"></i> In List'
+          : '<i class="fa-solid fa-plus" style="font-size:9px"></i> Add';
       }
     });
     grid.appendChild(card);
@@ -532,12 +596,12 @@ const PLATFORMS_DATA = [
     movieLensIds: [109487, 164179, 2571, 79132, 58559, 1], // Interstellar, Arrival, Matrix, Inception, Dark Knight, Toy Story
     movies: [MOVIES[6], MOVIES[7], MOVIES[8], MOVIES[11], MOVIES[3], MOVIES[1]],
     series: [
-      {id: 101, title: "Stranger Things", year: "2016–2025", type: "series", genre: "Sci-Fi · Horror", rating: "8.7", poster: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&q=80"},
-      {id: 102, title: "The Crown", year: "2016–2023", type: "series", genre: "Drama · History", rating: "8.1", poster: "https://images.unsplash.com/photo-1580130732478-4e339fb33746?w=400&q=80"},
-      {id: 103, title: "Squid Game", year: "2021–", type: "series", genre: "Thriller · Drama", rating: "8.0", poster: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&q=80"},
-      {id: 104, title: "Wednesday", year: "2022–", type: "series", genre: "Comedy · Horror", rating: "7.1", poster: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=400&q=80"},
-      {id: 105, title: "Ozark", year: "2017–2022", type: "series", genre: "Crime · Drama", rating: "8.4", poster: "https://images.unsplash.com/photo-1518399681705-1c1a55e5e883?w=400&q=80"},
-      {id: 106, title: "Black Mirror", year: "2011–", type: "series", genre: "Sci-Fi · Thriller", rating: "8.2", poster: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=400&q=80"},
+      {id: "tmdb-tv-66732", title: "Stranger Things", year: "2016–2025", type: "series", genre: "Sci-Fi · Horror", rating: "8.7", poster: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&q=80"},
+      {id: "tmdb-tv-65494", title: "The Crown", year: "2016–2023", type: "series", genre: "Drama · History", rating: "8.1", poster: "https://images.unsplash.com/photo-1580130732478-4e339fb33746?w=400&q=80"},
+      {id: "tmdb-tv-93405", title: "Squid Game", year: "2021–", type: "series", genre: "Thriller · Drama", rating: "8.0", poster: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&q=80"},
+      {id: "tmdb-tv-119051", title: "Wednesday", year: "2022–", type: "series", genre: "Comedy · Horror", rating: "7.1", poster: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=400&q=80"},
+      {id: "tmdb-tv-69050", title: "Ozark", year: "2017–2022", type: "series", genre: "Crime · Drama", rating: "8.4", poster: "https://images.unsplash.com/photo-1518399681705-1c1a55e5e883?w=400&q=80"},
+      {id: "tmdb-tv-1412", title: "Black Mirror", year: "2011–", type: "series", genre: "Sci-Fi · Thriller", rating: "8.2", poster: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=400&q=80"},
     ]
   },
   {
@@ -545,11 +609,11 @@ const PLATFORMS_DATA = [
     movieLensIds: [480, 296, 2959, 356, 593, 1704], // Jurassic Park, Pulp Fiction, Fight Club, Forrest Gump, Silence of the Lambs, Good Will Hunting
     movies: [MOVIES[1], MOVIES[5], MOVIES[11], MOVIES[3], MOVIES[4], MOVIES[9]],
     series: [
-      {id: 201, title: "The Boys", year: "2019–", type: "series", genre: "Action · Satire", rating: "8.7", poster: "https://images.unsplash.com/photo-1635863138275-d9b33299680b?w=400&q=80"},
-      {id: 202, title: "Rings of Power", year: "2022–", type: "series", genre: "Fantasy · Adventure", rating: "6.9", poster: "https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=400&q=80"},
-      {id: 203, title: "Fleabag", year: "2016–2019", type: "series", genre: "Comedy · Drama", rating: "8.7", poster: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80"},
-      {id: 204, title: "Reacher", year: "2022–", type: "series", genre: "Action · Thriller", rating: "8.0", poster: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=400&q=80"},
-      {id: 205, title: "Mr. Robot", year: "2015–2019", type: "series", genre: "Thriller · Drama", rating: "8.5", poster: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80"},
+      {id: "tmdb-tv-76479", title: "The Boys", year: "2019–", type: "series", genre: "Action · Satire", rating: "8.7", poster: "https://images.unsplash.com/photo-1635863138275-d9b33299680b?w=400&q=80"},
+      {id: "tmdb-tv-84773", title: "Rings of Power", year: "2022–", type: "series", genre: "Fantasy · Adventure", rating: "6.9", poster: "https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=400&q=80"},
+      {id: "tmdb-tv-67070", title: "Fleabag", year: "2016–2019", type: "series", genre: "Comedy · Drama", rating: "8.7", poster: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80"},
+      {id: "tmdb-tv-119060", title: "Reacher", year: "2022–", type: "series", genre: "Action · Thriller", rating: "8.0", poster: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=400&q=80"},
+      {id: "tmdb-tv-62560", title: "Mr. Robot", year: "2015–2019", type: "series", genre: "Thriller · Drama", rating: "8.5", poster: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80"},
     ]
   },
   {
@@ -557,10 +621,10 @@ const PLATFORMS_DATA = [
     movieLensIds: [924, 260, 4993, 7361, 50, 1198], // 2001, Star Wars IV, Lord of the Rings, Eternal Sunshine, Usual Suspects, Raiders of the Lost Ark
     movies: [MOVIES[4], MOVIES[0], MOVIES[5], MOVIES[2], MOVIES[10]],
     series: [
-      {id: 301, title: "Severance", year: "2022–", type: "series", genre: "Sci-Fi · Mystery", rating: "8.7", poster: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80"},
-      {id: 302, title: "Ted Lasso", year: "2020–", type: "series", genre: "Comedy · Sports", rating: "8.8", poster: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&q=80"},
-      {id: 303, title: "The Morning Show", year: "2019–", type: "series", genre: "Drama", rating: "7.9", poster: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&q=80"},
-      {id: 304, title: "Slow Horses", year: "2022–", type: "series", genre: "Thriller · Spy", rating: "8.1", poster: "https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?w=400&q=80"},
+      {id: "tmdb-tv-95396", title: "Severance", year: "2022–", type: "series", genre: "Sci-Fi · Mystery", rating: "8.7", poster: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80"},
+      {id: "tmdb-tv-97546", title: "Ted Lasso", year: "2020–", type: "series", genre: "Comedy · Sports", rating: "8.8", poster: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&q=80"},
+      {id: "tmdb-tv-74204", title: "The Morning Show", year: "2019–", type: "series", genre: "Drama", rating: "7.9", poster: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&q=80"},
+      {id: "tmdb-tv-153496", title: "Slow Horses", year: "2022–", type: "series", genre: "Thriller · Spy", rating: "8.1", poster: "https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?w=400&q=80"},
     ]
   },
   {
@@ -568,10 +632,10 @@ const PLATFORMS_DATA = [
     movieLensIds: [364, 588, 595, 6377, 4896, 2], // Lion King, Aladdin, Beauty and the Beast, Finding Nemo, Monsters Inc., Jumanji
     movies: [MOVIES[3], MOVIES[0], MOVIES[7], MOVIES[11], MOVIES[1]],
     series: [
-      {id: 401, title: "Andor", year: "2022–", type: "series", genre: "Sci-Fi · Drama", rating: "8.4", poster: "https://images.unsplash.com/photo-1534809027769-b00d750a6bac?w=400&q=80"},
-      {id: 402, title: "The Mandalorian", year: "2019–", type: "series", genre: "Sci-Fi · Western", rating: "8.7", poster: "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=400&q=80"},
-      {id: 403, title: "Loki", year: "2021–", type: "series", genre: "Superhero · Comedy", rating: "8.2", poster: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&q=80"},
-      {id: 404, title: "What If...?", year: "2021–", type: "series", genre: "Animated · Sci-Fi", rating: "7.4", poster: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&q=80"},
+      {id: "tmdb-tv-83865", title: "Andor", year: "2022–", type: "series", genre: "Sci-Fi · Drama", rating: "8.4", poster: "https://images.unsplash.com/photo-1534809027769-b00d750a6bac?w=400&q=80"},
+      {id: "tmdb-tv-82856", title: "The Mandalorian", year: "2019–", type: "series", genre: "Sci-Fi · Western", rating: "8.7", poster: "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=400&q=80"},
+      {id: "tmdb-tv-84958", title: "Loki", year: "2021–", type: "series", genre: "Superhero · Comedy", rating: "8.2", poster: "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&q=80"},
+      {id: "tmdb-tv-91363", title: "What If...?", year: "2021–", type: "series", genre: "Animated · Sci-Fi", rating: "7.4", poster: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=400&q=80"},
     ]
   },
   {
@@ -579,11 +643,11 @@ const PLATFORMS_DATA = [
     movieLensIds: [318, 858, 58559, 912, 919, 50, 1198], // Shawshank, Godfather, Dark Knight, Casablanca, Citizen Kane, Usual Suspects, Raiders of the Lost Ark
     movies: [MOVIES[0], MOVIES[2], MOVIES[7], MOVIES[10], MOVIES[8], MOVIES[9]],
     series: [
-      {id: 501, title: "The Last of Us", year: "2023–", type: "series", genre: "Drama · Horror", rating: "8.8", poster: "https://images.unsplash.com/photo-1520209268518-aec60b8bb5ca?w=400&q=80"},
-      {id: 502, title: "House of the Dragon", year: "2022–", type: "series", genre: "Fantasy · Drama", rating: "8.5", poster: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&q=80"},
-      {id: 503, title: "Succession", year: "2018–2023", type: "series", genre: "Drama · Comedy", rating: "8.9", poster: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80"},
-      {id: 504, title: "True Detective", year: "2014–", type: "series", genre: "Crime · Mystery", rating: "8.9", poster: "https://images.unsplash.com/photo-1542261777448-23d2a9e529b2?w=400&q=80"},
-      {id: 505, title: "Euphoria", year: "2019–", type: "series", genre: "Drama", rating: "7.9", poster: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80"},
+      {id: "tmdb-tv-100088", title: "The Last of Us", year: "2023–", type: "series", genre: "Drama · Horror", rating: "8.8", poster: "https://images.unsplash.com/photo-1520209268518-aec60b8bb5ca?w=400&q=80"},
+      {id: "tmdb-tv-94997", title: "House of the Dragon", year: "2022–", type: "series", genre: "Fantasy · Drama", rating: "8.5", poster: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&q=80"},
+      {id: "tmdb-tv-76331", title: "Succession", year: "2018–2023", type: "series", genre: "Drama · Comedy", rating: "8.9", poster: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80"},
+      {id: "tmdb-tv-46648", title: "True Detective", year: "2014–", type: "series", genre: "Crime · Mystery", rating: "8.9", poster: "https://images.unsplash.com/photo-1542261777448-23d2a9e529b2?w=400&q=80"},
+      {id: "tmdb-tv-85552", title: "Euphoria", year: "2019–", type: "series", genre: "Drama", rating: "7.9", poster: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80"},
     ]
   },
   {
@@ -591,9 +655,9 @@ const PLATFORMS_DATA = [
     movieLensIds: [1208, 904, 908, 4973, 5618, 924], // Apocalypse Now, Rear Window, Vertigo, Amelie, Spirited Away, 2001
     movies: [MOVIES[5], MOVIES[9], MOVIES[10], MOVIES[2], MOVIES[6], MOVIES[3]],
     series: [
-      {id: 601, title: "Pachinko", year: "2022–", type: "series", genre: "Drama · History", rating: "8.4", poster: "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=400&q=80"},
-      {id: 602, title: "Irma Vep", year: "2022", type: "series", genre: "Drama · Comedy", rating: "7.7", poster: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=400&q=80"},
-      {id: 603, title: "The Affair", year: "2014–2019", type: "series", genre: "Drama · Romance", rating: "7.7", poster: "https://images.unsplash.com/photo-1518399681705-1c1a55e5e883?w=400&q=80"},
+      {id: "tmdb-tv-110034", title: "Pachinko", year: "2022–", type: "series", genre: "Drama · History", rating: "8.4", poster: "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=400&q=80"},
+      {id: "tmdb-tv-154948", title: "Irma Vep", year: "2022", type: "series", genre: "Drama · Comedy", rating: "7.7", poster: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=400&q=80"},
+      {id: "tmdb-tv-61175", title: "The Affair", year: "2014–2019", type: "series", genre: "Drama · Romance", rating: "7.7", poster: "https://images.unsplash.com/photo-1518399681705-1c1a55e5e883?w=400&q=80"},
     ]
   }
 ];
@@ -645,28 +709,99 @@ function renderPlatCards(platId, type) {
       const card = document.createElement('div');
       card.className = 'plat-card';
       card.dataset.id = item.id;
+      
+      const isVirtual = typeof item.id === 'string' && item.id.startsWith('tmdb-');
+      const cleanTitle = isVirtual ? "Loading..." : item.title;
+      const year = isVirtual ? "" : item.year;
+      const genre = isVirtual ? "TV Show" : item.genre;
+      const rating = isVirtual ? "..." : item.rating;
+      const poster = isVirtual ? "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80" : item.poster;
+      
+      const alreadyIn = watchlist.some(m => m.id === item.id || String(m.id) === String(item.id));
       card.innerHTML = `
-        <img src="${item.poster}" alt="${item.title}" loading="lazy"/>
+        <img class="lazy-poster" src="${poster}" alt="${cleanTitle}" style="opacity: ${isVirtual ? '0.35' : '1'}; transition: opacity 0.5s var(--smooth)"/>
         <div class="plat-card-overlay"></div>
         <div class="plat-card-badge badge-series">Series</div>
         <div class="plat-card-info">
-          <div class="plat-card-title">${item.title}</div>
-          <div class="plat-card-meta">${item.year} · ${item.genre} · ★ ${item.rating}</div>
+          <div class="plat-card-title">${cleanTitle}</div>
+          <div class="plat-card-meta"><span class="plat-card-meta-text">${year} · ${genre} · ★ ${rating}</span></div>
           <div class="plat-card-actions">
             <button class="pca-btn play"><i class="fa-solid fa-circle-info" style="font-size:9px"></i> Details</button>
-            <button class="pca-btn add"><i class="fa-solid fa-plus" style="font-size:9px"></i> Add</button>
+            <button class="pca-btn add${alreadyIn ? ' added' : ''}"><i class="fa-solid fa-plus" style="font-size:9px"></i> Add</button>
           </div>
         </div>`;
       
-      const handlePlay = (e) => { e.stopPropagation(); openModal(item); };
+      let resolvedDetails = null;
+      const playBtn = card.querySelector('.pca-btn.play');
+      const addBtn = card.querySelector('.pca-btn.add');
+      
+      const handlePlay = (e) => {
+        if (e) e.stopPropagation();
+        if (resolvedDetails) {
+          openModal(resolvedDetails);
+        } else {
+          openModal(fallbackMock);
+        }
+      };
       const handleAdd = (e) => {
-        e.stopPropagation();
-        toggleWatchlist(item);
+        if (e) e.stopPropagation();
+        toggleWatchlist(resolvedDetails || fallbackMock);
       };
       
       card.addEventListener('click', handlePlay);
-      card.querySelector('.pca-btn.play').addEventListener('click', handlePlay);
-      card.querySelector('.pca-btn.add').addEventListener('click', handleAdd);
+      playBtn.addEventListener('click', handlePlay);
+      addBtn.addEventListener('click', handleAdd);
+      
+      const fallbackMock = {
+        id: item.id,
+        title: item.title || cleanTitle,
+        year: item.year || year,
+        match: calculateMatchScore(item.id),
+        rating: item.rating || rating,
+        runtime: "N/A",
+        genre: item.genre || genre,
+        synopsis: "Loading details from TMDb...",
+        poster: poster,
+        backdrop: "https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80",
+        platforms: [plat.name],
+        reasons: ["Popular Choice"],
+        cast: []
+      };
+      
+      card.addEventListener('mouseenter', () => schedulePopup(resolvedDetails || fallbackMock, card));
+      card.addEventListener('mouseleave', () => cancelPopup());
+      
+      fetchTMDBDetails(item.id).then(details => {
+        if (!details) return;
+        resolvedDetails = details;
+        
+        const img = card.querySelector('.lazy-poster');
+        if (img) {
+          img.src = details.poster;
+          img.alt = details.title;
+          img.style.opacity = 1;
+        }
+        const titleEl = card.querySelector('.plat-card-title');
+        if (titleEl) {
+          titleEl.textContent = details.title;
+        }
+        const metaTextEl = card.querySelector('.plat-card-meta-text');
+        if (metaTextEl) {
+          metaTextEl.textContent = `${details.year} · ${details.genre} · ★ ${details.rating}`;
+        }
+        
+        const isAdded = watchlist.some(m => m.id === item.id || String(m.id) === String(item.id));
+        if (addBtn) {
+          addBtn.classList.toggle('added', isAdded);
+          addBtn.innerHTML = isAdded 
+            ? '<i class="fa-solid fa-check" style="font-size:9px"></i> In List' 
+            : '<i class="fa-solid fa-plus" style="font-size:9px"></i> Add';
+        }
+        
+        if (currentPopupMovie && currentPopupMovie.id === item.id) {
+          showPopup(details, card);
+        }
+      });
       
       row.appendChild(card);
     });
@@ -819,7 +954,7 @@ function scrollPlat(platId, dir) {
 let roulettePromptDismissed = false;
 
 function toggleWatchlist(movie) {
-  const index = watchlist.findIndex(m => m.id === movie.id);
+  const index = watchlist.findIndex(m => String(m.id) === String(movie.id));
   if (index !== -1) {
     watchlist.splice(index, 1);
   } else {
@@ -838,7 +973,7 @@ function toggleWatchlist(movie) {
 }
 
 function addToWatchlist(movie, triggerEl) {
-  if (watchlist.find(m => m.id === movie.id)) return;
+  if (watchlist.find(m => String(m.id) === String(movie.id))) return;
   watchlist.push(movie);
   
   // Persist to localStorage
@@ -857,7 +992,7 @@ function addToWatchlist(movie, triggerEl) {
 }
 
 function removeFromWatchlist(id) {
-  watchlist = watchlist.filter(m => m.id !== id);
+  watchlist = watchlist.filter(m => String(m.id) !== String(id));
   localStorage.setItem('user_watchlist', JSON.stringify(watchlist));
   updateWatchlistUI();
   updateWLCount();
@@ -868,9 +1003,10 @@ function removeFromWatchlist(id) {
 function syncWatchlistButtons() {
   // 1. Sync all .card-quick-add buttons on the page
   document.querySelectorAll('.card-quick-add').forEach(btn => {
-    const mid = parseInt(btn.dataset.id || btn.getAttribute('data-id'));
-    if (!isNaN(mid)) {
-      const isAdded = watchlist.some(m => m.id === mid);
+    const rawId = btn.dataset.id || btn.getAttribute('data-id');
+    if (rawId) {
+      const mid = rawId.startsWith('tmdb-') ? rawId : parseInt(rawId);
+      const isAdded = watchlist.some(m => String(m.id) === String(mid));
       btn.classList.toggle('added', isAdded);
       btn.innerHTML = isAdded 
         ? '<i class="fa-solid fa-check" style="font-size:9px"></i>' 
@@ -881,10 +1017,28 @@ function syncWatchlistButtons() {
 
   // 2. Sync all .pca-btn.add buttons on platform cards (.plat-card)
   document.querySelectorAll('.plat-card').forEach(card => {
-    const mid = parseInt(card.dataset.id || card.getAttribute('data-id'));
-    if (!isNaN(mid)) {
-      const isAdded = watchlist.some(m => m.id === mid);
+    const rawId = card.dataset.id || card.getAttribute('data-id');
+    if (rawId) {
+      const mid = rawId.startsWith('tmdb-') ? rawId : parseInt(rawId);
+      const isAdded = watchlist.some(m => String(m.id) === String(mid));
       const btn = card.querySelector('.pca-btn.add');
+      if (btn) {
+        btn.classList.toggle('added', isAdded);
+        btn.innerHTML = isAdded 
+          ? '<i class="fa-solid fa-check" style="font-size:9px"></i> In List' 
+          : '<i class="fa-solid fa-plus" style="font-size:9px"></i> Add';
+        btn.title = isAdded ? 'Remove from Watchlist' : 'Add to Watchlist';
+      }
+    }
+  });
+
+  // 2b. Sync all .trend-btn.add buttons on trending cards (.trend-card)
+  document.querySelectorAll('.trend-card').forEach(card => {
+    const rawId = card.dataset.id || card.getAttribute('data-id');
+    if (rawId) {
+      const mid = rawId.startsWith('tmdb-') ? rawId : parseInt(rawId);
+      const isAdded = watchlist.some(m => String(m.id) === String(mid));
+      const btn = card.querySelector('.trend-btn.add');
       if (btn) {
         btn.classList.toggle('added', isAdded);
         btn.innerHTML = isAdded 
@@ -898,7 +1052,7 @@ function syncWatchlistButtons() {
   // 3. Sync floating preview popup button (#pp-add)
   const ppAdd = document.getElementById('pp-add');
   if (ppAdd && currentPopupMovie) {
-    const isAdded = watchlist.some(m => m.id === currentPopupMovie.id);
+    const isAdded = watchlist.some(m => String(m.id) === String(currentPopupMovie.id));
     ppAdd.classList.toggle('added', isAdded);
     ppAdd.innerHTML = isAdded 
       ? '<i class="fa-solid fa-check" style="font-size:10px"></i>' 
@@ -909,7 +1063,7 @@ function syncWatchlistButtons() {
   // 4. Sync details modal button (#m-add-wl-new)
   const wlBtnNew = document.getElementById('m-add-wl-new');
   if (wlBtnNew && currentModalMovie) {
-    const isAdded = watchlist.some(m => m.id === currentModalMovie.id);
+    const isAdded = watchlist.some(m => String(m.id) === String(currentModalMovie.id));
     wlBtnNew.classList.toggle('added', isAdded);
     wlBtnNew.innerHTML = isAdded 
       ? '<i class="fa-solid fa-check" style="font-size:10px;margin-right:6px"></i>In Watchlist' 
@@ -920,7 +1074,7 @@ function syncWatchlistButtons() {
   // 5. Sync hero section watchlist button (#hero-wl-btn)
   const heroWlBtn = document.getElementById('hero-wl-btn');
   if (heroWlBtn && currentHeroMovie) {
-    const isAdded = watchlist.some(m => m.id === currentHeroMovie.id);
+    const isAdded = watchlist.some(m => String(m.id) === String(currentHeroMovie.id));
     heroWlBtn.classList.toggle('added', isAdded);
     heroWlBtn.innerHTML = isAdded ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-plus"></i>';
     heroWlBtn.title = isAdded ? 'Remove from Watchlist' : 'Add to Watchlist';
@@ -929,7 +1083,7 @@ function syncWatchlistButtons() {
   // 6. Sync surprise pick watchlist button (#s-add-btn)
   const sAddBtn = document.getElementById('s-add-btn');
   if (sAddBtn && currentSurpriseMovie) {
-    const isAdded = watchlist.some(m => m.id === currentSurpriseMovie.id);
+    const isAdded = watchlist.some(m => String(m.id) === String(currentSurpriseMovie.id));
     sAddBtn.classList.toggle('added', isAdded);
     sAddBtn.innerHTML = isAdded 
       ? '<i class="fa-solid fa-check" style="font-size:11px;margin-right:6px"></i>In Watchlist' 
@@ -1204,6 +1358,56 @@ function highlightStars(rating) {
   });
 }
 
+/* ─── CAST POPUP CONTROLS ─── */
+function showCastPopup(castMember, element) {
+  let castPopup = document.getElementById('cast-popup');
+  if (!castPopup) {
+    castPopup = document.createElement('div');
+    castPopup.id = 'cast-popup';
+    document.body.appendChild(castPopup);
+  }
+  
+  const poster = castMember.img || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80";
+  const name = castMember.name || "Unknown Actor";
+  const character = castMember.character || "Cast Member";
+  
+  castPopup.innerHTML = `
+    <div class="cast-pop-left">
+      <img src="${poster}" alt="${name}"/>
+      <div class="cast-pop-name">${name}</div>
+    </div>
+    <div class="cast-pop-right">
+      <div class="cast-pop-label">Role Played</div>
+      <div class="cast-pop-character">${character}</div>
+    </div>
+  `;
+  
+  const rect = element.getBoundingClientRect();
+  const popupWidth = 310;
+  const popupHeight = 150;
+  let targetTop = rect.top + window.scrollY - popupHeight - 10;
+  let targetLeft = rect.left + window.scrollX + (rect.width / 2) - (popupWidth / 2);
+  
+  if (targetLeft < 10) targetLeft = 10;
+  if (targetLeft + popupWidth > window.innerWidth - 10) {
+    targetLeft = window.innerWidth - popupWidth - 10;
+  }
+  if (targetTop < window.scrollY + 10) {
+    targetTop = rect.bottom + window.scrollY + 10;
+  }
+  
+  castPopup.style.top = `${targetTop}px`;
+  castPopup.style.left = `${targetLeft}px`;
+  castPopup.classList.add('on');
+}
+
+function hideCastPopup() {
+  const castPopup = document.getElementById('cast-popup');
+  if (castPopup) {
+    castPopup.classList.remove('on');
+  }
+}
+
 /* ─── MODAL CONTROLS ─── */
 function openModal(movie) {
   currentModalMovie = movie;
@@ -1224,11 +1428,31 @@ function openModal(movie) {
     
     document.getElementById('m-platforms').innerHTML = `<span class="plat-badge"><i class="fa-solid fa-circle-play" style="font-size:9px;color:var(--y)"></i>Streaming</span>`;
     document.getElementById('m-reasons').innerHTML = `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>Trending</span>`;
-    document.getElementById('m-cast').innerHTML = `
-      <div class="m-cast-person">
-        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" alt="Actor"/>
-        <span>Lead Actor</span>
-      </div>`;
+    
+    const castList = [
+      { name: "Lead Actor", character: "Main Character", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" },
+      { name: "Supporting Cast", character: "Sidekick", img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&q=80" }
+    ];
+    
+    document.getElementById('m-cast').innerHTML = castList.map((c, idx) => `
+      <div class="m-cast-person" data-cast-index="${idx}">
+        <img src="${c.img}" alt="${c.name}"/>
+        <span>${c.name}</span>
+      </div>
+    `).join('');
+    
+    document.querySelectorAll('#m-cast .m-cast-person').forEach(el => {
+      const idx = parseInt(el.dataset.castIndex);
+      const castMember = castList[idx];
+      if (castMember) {
+        el.addEventListener('mouseenter', () => showCastPopup(castMember, el));
+        el.addEventListener('mouseleave', () => hideCastPopup());
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showCastPopup(castMember, el);
+        });
+      }
+    });
     
     document.getElementById('m-similar').innerHTML = '';
     
@@ -1263,12 +1487,30 @@ function openModal(movie) {
       `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>${r}</span>`
     ).join('');
 
-    document.getElementById('m-cast').innerHTML = movie.cast.map(c => `
-      <div class="m-cast-person">
+    const castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
+      { name: "Lead Actor", character: "Protagonist", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" },
+      { name: "Supporting Cast", character: "Co-Star", img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&q=80" }
+    ];
+    
+    document.getElementById('m-cast').innerHTML = castList.map((c, idx) => `
+      <div class="m-cast-person" data-cast-index="${idx}">
         <img src="${c.img}" alt="${c.name}"/>
         <span>${c.name}</span>
       </div>
     `).join('');
+
+    document.querySelectorAll('#m-cast .m-cast-person').forEach(el => {
+      const idx = parseInt(el.dataset.castIndex);
+      const castMember = castList[idx];
+      if (castMember) {
+        el.addEventListener('mouseenter', () => showCastPopup(castMember, el));
+        el.addEventListener('mouseleave', () => hideCastPopup());
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showCastPopup(castMember, el);
+        });
+      }
+    });
 
     if (movieLensData.loaded) {
       const list = Object.values(movieLensData.movies)
@@ -1506,6 +1748,53 @@ document.getElementById('search-input').addEventListener('input', function () {
   }
   
   if (!searchResults) return;
+  
+  const apiKey = localStorage.getItem('tmdb_api_key');
+  if (apiKey) {
+    if (countEl) countEl.textContent = "Searching...";
+    
+    const moviePromise = fetch(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .catch(() => ({ results: [] }));
+      
+    const tvPromise = fetch(`https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .catch(() => ({ results: [] }));
+      
+    Promise.all([moviePromise, tvPromise]).then(([movieData, tvData]) => {
+      // Prevent race conditions: check if the search input value has changed
+      if (document.getElementById('search-input').value.trim().toLowerCase() !== q) return;
+      
+      searchResults.innerHTML = '';
+      
+      const movies = (movieData.results || []).map(item => ({ ...item, mediaType: 'movie' }));
+      const tvs = (tvData.results || []).map(item => ({ ...item, mediaType: 'tv' }));
+      
+      let combined = [...movies, ...tvs]
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+        .slice(0, 15);
+        
+      if (countEl) countEl.textContent = `${combined.length} found`;
+      
+      if (combined.length === 0) {
+        searchResults.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No results found matching that query.</div>';
+      } else {
+        combined.forEach(item => {
+          let cardId = `tmdb-${item.mediaType}-${item.id}`;
+          if (item.mediaType === 'movie' && movieLensData.loaded) {
+            const mlMovie = Object.values(movieLensData.movies).find(m => m.tmdbId == item.id);
+            if (mlMovie) {
+              cardId = mlMovie.movieId;
+            }
+          }
+          searchResults.appendChild(buildCard(cardId));
+        });
+      }
+      if (searchSec) searchSec.style.display = 'block';
+    });
+    return;
+  }
+  
   searchResults.innerHTML = '';
   
   if (!movieLensData.loaded) {
@@ -1656,3 +1945,12 @@ async function initHero() {
     updateHeroUI(heroMovie);
   }
 }
+
+document.addEventListener('click', (e) => {
+  const castPopup = document.getElementById('cast-popup');
+  if (castPopup && castPopup.classList.contains('on')) {
+    if (!castPopup.contains(e.target) && !e.target.closest('.m-cast-person')) {
+      hideCastPopup();
+    }
+  }
+});

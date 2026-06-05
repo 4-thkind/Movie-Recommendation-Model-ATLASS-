@@ -758,3 +758,71 @@ body.has-cors-banner #hero {
 body.has-cors-banner main {
   padding-top: 44px;
 }
+
+/* ─── CAST HOVER/CLICK POPUP ─── */
+#cast-popup {
+  position: absolute;
+  z-index: 2100;
+  background: rgba(15, 15, 28, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  padding: 16px;
+  width: 310px;
+  display: flex;
+  gap: 16px;
+  opacity: 0;
+  transform: scale(0.9) translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.3s var(--smooth), transform 0.3s var(--spring);
+}
+#cast-popup.on {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+.cast-pop-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 110px;
+  flex-shrink: 0;
+}
+.cast-pop-left img {
+  width: 100px;
+  height: 100px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid rgba(124, 58, 237, 0.3);
+}
+.cast-pop-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t1);
+  text-align: center;
+  line-height: 1.3;
+}
+.cast-pop-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+}
+.cast-pop-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--t3);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.cast-pop-character {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--y);
+  font-family: 'Syne', sans-serif;
+  line-height: 1.3;
+}
