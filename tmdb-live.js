@@ -45,6 +45,7 @@ async function fetchTMDBDetails(tmdbId) {
       reasons: data.genres ? data.genres.map(g => g.name).slice(0, 3) : ['Highly Rated'],
       cast: data.credits && data.credits.cast ? data.credits.cast.slice(0, 5).map(c => ({
         name: c.name,
+        character: c.character || 'Cast Member',
         img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
       })) : [],
       cert: cert
@@ -302,7 +303,7 @@ function renderPlatCards(platId, type) {
             });
           } else {
             // Map TV show details
-            fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}`)
+            fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&append_to_response=credits`)
               .then(res => res.json())
               .then(tvData => {
                 resolvedDetails = {
@@ -313,7 +314,12 @@ function renderPlatCards(platId, type) {
                   synopsis: tvData.overview,
                   poster: tvData.poster_path ? `https://image.tmdb.org/t/p/w500${tvData.poster_path}` : '',
                   backdrop: tvData.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvData.backdrop_path}` : '',
-                  platforms: [plat.name], reasons: ['Popular Series']
+                  platforms: [plat.name], reasons: ['Popular Series'],
+                  cast: tvData.credits && tvData.credits.cast ? tvData.credits.cast.slice(0, 5).map(c => ({
+                    name: c.name,
+                    character: c.character || 'Cast Member',
+                    img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
+                  })) : []
                 };
                 if (currentPopupMovie && currentPopupMovie.id === item.id) showPopup(resolvedDetails, card);
               });
