@@ -278,7 +278,7 @@ function showPopup(movie, cardEl) {
   // Clamp horizontally
   left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
 
-  popup.style.left = left + 'px';
+  popup.style.left = (left + window.scrollX) + 'px';
   popup.style.top  = (top + window.scrollY) + 'px'; // Account for page scroll
   popup.classList.remove('hiding');
   popup.classList.add('visible');

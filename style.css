@@ -214,7 +214,7 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 
 /* ── SHARED FLOATING POPUP ── */
 #card-popup{
-  position:fixed;z-index:9000;
+  position:absolute;z-index:9000;
   width:268px;
   background:var(--b3);border:1px solid rgba(255,255,255,.11);
   border-radius:12px;overflow:hidden;
