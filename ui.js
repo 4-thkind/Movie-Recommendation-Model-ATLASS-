@@ -1437,9 +1437,33 @@ function openModal(movie) {
   hidePopup();
   
   const isSeries = movie.type === 'series';
+  const backdropEl = document.getElementById('m-backdrop');
+  const posterEl = document.getElementById('m-poster');
+  const hasValidBackdrop = movie.backdrop && movie.backdrop !== movie.poster && !movie.backdrop.includes('unsplash.com');
   
-  document.getElementById('m-backdrop').src = movie.backdrop || movie.poster;
-  
+  if (hasValidBackdrop) {
+    backdropEl.src = movie.backdrop;
+    backdropEl.style.filter = 'none';
+    backdropEl.style.transform = 'none';
+    if (posterEl) posterEl.style.display = 'none';
+  } else {
+    backdropEl.src = movie.poster;
+    backdropEl.style.filter = 'blur(15px) brightness(0.4)';
+    backdropEl.style.transform = 'scale(1.1)';
+    if (posterEl) {
+      posterEl.src = movie.poster;
+      posterEl.style.display = 'block';
+      posterEl.style.position = 'absolute';
+      posterEl.style.top = '20px';
+      posterEl.style.right = '40px';
+      posterEl.style.height = '270px';
+      posterEl.style.width = '180px';
+      posterEl.style.objectFit = 'cover';
+      posterEl.style.borderRadius = '10px';
+      posterEl.style.boxShadow = '0 10px 40px rgba(0,0,0,0.6)';
+      posterEl.style.zIndex = '4';
+    }
+  }
   if (isSeries) {
     document.getElementById('m-chip').innerHTML = `<i class="fa-solid fa-tv" style="font-size:10px"></i> Popular Series`;
     document.getElementById('m-title').textContent = movie.title;
