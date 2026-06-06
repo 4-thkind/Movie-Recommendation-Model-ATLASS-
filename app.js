@@ -1,43 +1,31 @@
-/* ─── GLOBAL APPLICATION STATE ─── */
-let tmdbCache = {};
-let watchlist = [];
-let currentModalMovie = null;
-let currentHeroMovie = null;
-let currentSurpriseMovie = null;
-let spinLock = false;
-let activePlatform = 'netflix';
-let activeType = 'movies';
-
+import { state, loadWatchlistFromStorage } from './state.js';
+import { loadMovieLensDatabase } from './recommender.js';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal } from './ui.js';
 
 /* ─── INIT ─── */
 window.addEventListener('DOMContentLoaded', () => {
   // Load watchlist from localStorage
-  const savedWL = localStorage.getItem('user_watchlist');
-  if (savedWL) {
-    try {
-      watchlist = JSON.parse(savedWL);
-    } catch(e) {
-      watchlist = [];
-    }
-  } else {
-    watchlist = [];
-  }
+  loadWatchlistFromStorage();
 
+  // Initialize TMDB API key if not present in localStorage
   if (!localStorage.getItem('tmdb_api_key')) {
     localStorage.setItem('tmdb_api_key', '572a69a7b33b22b3aaa05c9c9351fbab');
   }
 
+  // Load database (MovieLens CSV or TMDB Live setup)
   loadMovieLensDatabase();
 
   // Initialize UI components
-  if (typeof buildPlatforms === 'function') buildPlatforms();
-  if (typeof updateWatchlistUI === 'function') updateWatchlistUI();
-  if (typeof updateWLCount === 'function') updateWLCount();
-  if (typeof initScrollspy === 'function') initScrollspy();
+  buildPlatforms();
+  updateWatchlistUI();
+  updateWLCount();
+  initScrollspy();
+  initSeeAllButtons();
+  initScrollReveal();
 
-  if (!movieLensData.loaded) {
+  if (!state.movieLensData.loaded) {
     renderRows();
     buildTrending();
-    if (typeof initHero === 'function') initHero();
+    initHero();
   }
 });

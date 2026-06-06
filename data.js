@@ -1,5 +1,5 @@
 /* ─── FALLBACK DATA ─── */
-const MOVIES = [
+export const MOVIES = [
   {id:1,title:"Dune: Part Two",year:"2024",match:98,rating:"8.8",runtime:"2h 46m",genre:"Sci-Fi · Adventure",tmdbId:968051,
    synopsis:"Paul Atreides unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family. Facing a choice between love and the fate of the universe.",
    poster:"https://image.tmdb.org/t/p/w500/1pdfPmHdICmhBjTza55xevA49hZ.jpg",
