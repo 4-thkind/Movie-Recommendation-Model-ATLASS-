@@ -219,79 +219,101 @@ const popup = document.getElementById('card-popup');
 let hideTimer = null;
 let popupTimer = null;
 let currentPopupMovie = null;
+let lastHoveredCard = null;
 
 function schedulePopup(movie, cardEl) {
   clearTimeout(popupTimer);
   clearTimeout(hideTimer);
-  popupTimer = setTimeout(() => showPopup(movie, cardEl), 280);
+  if (lastHoveredCard && lastHoveredCard !== cardEl) {
+    hidePopup();
+  }
+  popupTimer = setTimeout(() => showPopup(movie, cardEl), 50);
 }
 
 function cancelPopup() {
   clearTimeout(popupTimer);
-  hideTimer = setTimeout(() => hidePopup(), 120);
+  hideTimer = setTimeout(() => hidePopup(), 0);
 }
 
 function showPopup(movie, cardEl) {
-  if (!popup) return;
+  if (!movie || !cardEl) return;
   currentPopupMovie = movie;
-  
-  // Populate
-  document.getElementById('pp-img').src = movie.backdrop || movie.poster;
-  document.getElementById('pp-match').textContent = movie.match + '% Match';
-  document.getElementById('pp-rating').textContent = movie.rating || '...';
-  document.getElementById('pp-cert').textContent = movie.cert || 'PG-13';
-  document.getElementById('pp-title').textContent = movie.title;
-  
-  // Genres
-  const genres = (movie.genre || "").split('·').map(g => g.trim());
-  document.getElementById('pp-genres').innerHTML = genres.map((g, i) =>
-    i < genres.length - 1 ? `<span>${g}</span><span class="pg-dot"></span>` : `<span>${g}</span>`
-  ).join('');
-  
-  // Add btn state
-  const addBtn = document.getElementById('pp-add');
-  const inList = watchlist.find(m => m.id === movie.id);
-  addBtn.classList.toggle('added', !!inList);
-  addBtn.innerHTML = inList
-    ? '<i class="fa-solid fa-check" style="font-size:10px"></i>'
-    : '<i class="fa-solid fa-plus" style="font-size:10px"></i>';
+  lastHoveredCard = cardEl;
 
-  // Wire buttons
-  document.getElementById('pp-play').onclick = () => openModal(movie);
-  document.getElementById('pp-info').onclick = () => openModal(movie);
-  document.getElementById('pp-add').onclick = (e) => {
+  // Build/update in-card overlay
+  const thumb = cardEl.querySelector('.card-thumb') || cardEl;
+  let overlay = thumb.querySelector('.card-details');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'card-details';
+    Object.assign(overlay.style, {
+      position:'absolute', inset:'0', zIndex:'5', pointerEvents:'none',
+      display:'flex', flexDirection:'column', justifyContent:'flex-end',
+      padding:'12px', boxSizing:'border-box', color:'white',
+      textShadow:'0 0 5px rgba(0,0,0,0.8)',
+      background:'linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.5) 40%,transparent 100%)',
+      borderRadius:'8px', opacity:'0', transition:'opacity .15s var(--smooth)'
+    });
+    thumb.style.position = 'relative';
+    thumb.appendChild(overlay);
+  }
+  setTimeout(() => { if (overlay) overlay.style.opacity = '1'; }, 20);
+
+  const match = movie.match || 90;
+  const rating = movie.rating || '';
+  const genre = (movie.genre || '').split('·').slice(0,2).join('·');
+  overlay.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:3px">${match}% Match${rating ? ` <span style="color:var(--y);margin-left:5px">${rating}★</span>` : ''}</div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:3px;font-family:'Syne',sans-serif">${movie.title || ''}</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.65);margin-bottom:7px">${genre}</div>
+    <div style="display:flex;gap:6px">
+      <button class="ov-play" style="pointer-events:auto;background:var(--y);color:#000;border:none;border-radius:50%;width:27px;height:27px;cursor:pointer"><i class="fa-solid fa-play" style="font-size:9px;margin-left:1px"></i></button>
+      <button class="ov-add" style="pointer-events:auto;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:50%;width:27px;height:27px;cursor:pointer"><i class="fa-solid fa-plus" style="font-size:9px"></i></button>
+    </div>`;
+  overlay.querySelector('.ov-play').onclick = (e) => { e.stopPropagation(); openModal(movie); };
+  overlay.querySelector('.ov-add').onclick = (e) => {
     e.stopPropagation();
     addToWatchlist(movie, e.currentTarget);
-    e.currentTarget.classList.add('added');
-    e.currentTarget.innerHTML = '<i class="fa-solid fa-check" style="font-size:10px"></i>';
+    e.currentTarget.innerHTML = '<i class="fa-solid fa-check" style="font-size:9px"></i>';
   };
 
-  // Position — center above or below card, clamp to viewport
-  const rect = cardEl.getBoundingClientRect();
-  const pw = 268, ph = 320;
-  let left = rect.left + rect.width / 2 - pw / 2;
-  let top  = rect.top - ph - 8;
-
-  // Flip below if not enough room above
-  if (top < 70) top = rect.bottom + 8;
-
-  // Clamp horizontally
-  left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-
-  popup.style.left = (left + window.scrollX) + 'px';
-  popup.style.top  = (top + window.scrollY) + 'px'; // Account for page scroll
-  popup.classList.remove('hiding');
-  popup.classList.add('visible');
+  // Only swap image if there's a real TMDB backdrop (not the unsplash fallback)
+  const FALLBACK = 'unsplash.com';
+  const thumbImg = cardEl.querySelector('img.lazy-poster');
+  const backdropUrl = movie.backdrop;
+  if (thumbImg && backdropUrl && !backdropUrl.includes(FALLBACK)) {
+    if (!thumbImg.dataset.originalSrc) thumbImg.dataset.originalSrc = thumbImg.src;
+    thumbImg.style.transition = 'opacity .12s var(--smooth)';
+    thumbImg.style.opacity = '0';
+    setTimeout(() => {
+      thumbImg.src = backdropUrl;
+      thumbImg.style.objectFit = 'cover';
+      thumbImg.style.objectPosition = 'top center';
+      thumbImg.style.opacity = '1';
+    }, 120);
+  }
 }
 
 function hidePopup() {
-  if (!popup) return;
   clearTimeout(popupTimer);
-  popup.classList.add('hiding');
-  setTimeout(() => {
-    popup.classList.remove('visible', 'hiding');
-    currentPopupMovie = null;
-  }, 220);
+  if (lastHoveredCard) {
+    const thumbImg = lastHoveredCard.querySelector('img.lazy-poster');
+    if (thumbImg && thumbImg.dataset.originalSrc) {
+      thumbImg.style.opacity = '0';
+      setTimeout(() => {
+        thumbImg.src = thumbImg.dataset.originalSrc;
+        thumbImg.style.objectPosition = 'center'; // Restore normal position
+        delete thumbImg.dataset.originalSrc;
+        thumbImg.style.opacity = '1';
+      }, 100);
+    }
+    const overlay = lastHoveredCard.querySelector('.card-details');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 100);
+    }
+    lastHoveredCard = null;
+  }
 }
 
 if (popup) {
@@ -406,7 +428,7 @@ function buildTrending() {
   if (!grid) return;
   grid.innerHTML = '';
   
-  const trendingIds = [1, 296, 318, 356, 593, 260, 2571, 480];
+  const trendingIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 296, 318, 356, 593, 260, 2571, 480, 858];
   
   const apiKey = localStorage.getItem('tmdb_api_key');
   if (apiKey) {
@@ -415,7 +437,7 @@ function buildTrending() {
       .then(data => {
         if (!data.results || data.results.length === 0) throw new Error("No trending results");
         const items = [];
-        data.results.slice(0, 8).forEach(item => {
+        data.results.slice(0, 20).forEach(item => {
           const mediaType = item.media_type || (item.title ? 'movie' : 'tv');
           let cardId = `tmdb-${mediaType}-${item.id}`;
           if (mediaType === 'movie' && movieLensData.loaded) {
@@ -590,14 +612,53 @@ function renderRows() {
   }
 }
 
+function addRandomCards(el, dir, isTrend) {
+  if (!movieLensData.loaded) return;
+  const ids = Object.keys(movieLensData.movies);
+  const frag = document.createDocumentFragment();
+  const cardWidth = isTrend ? 185 : 172; // width + gap
+  for (let i = 0; i < 6; i++) {
+    const randId = ids[Math.floor(Math.random() * ids.length)];
+    if (isTrend) {
+      // Build dummy trending card (index doesn't strictly matter for infinite scroll)
+      const movie = movieLensData.movies[randId];
+      if (movie) {
+        const card = document.createElement('div');
+        card.className = 'trend-card';
+        card.innerHTML = `<img class="lazy-poster" src="https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80" alt="${movie.title}">
+          <div class="trend-num" style="bottom:-8px;left:-8px;font-size:70px">${Math.floor(Math.random()*90)+10}</div>`;
+        card.onclick = () => openModal({id: randId});
+        frag.appendChild(card);
+      }
+    } else {
+      frag.appendChild(buildCard(randId));
+    }
+  }
+  
+  if (dir > 0) {
+    el.appendChild(frag);
+  } else {
+    // If we are prepending, we must shift the scroll position seamlessly
+    const oldScroll = el.scrollLeft;
+    el.insertBefore(frag, el.firstChild);
+    el.scrollLeft = oldScroll + (6 * cardWidth);
+  }
+}
+
 function scrollRow(id, dir) {
   const el = document.getElementById(id);
-  if (el) el.scrollBy({ left: dir * 540, behavior: 'smooth' });
+  if (el) {
+    if (movieLensData.loaded) addRandomCards(el, dir, false);
+    el.scrollBy({ left: dir * 540, behavior: 'smooth' });
+  }
 }
 
 function scrollTrend(dir) {
   const el = document.getElementById('trend-row');
-  if (el) el.scrollBy({ left: dir * 580, behavior: 'smooth' });
+  if (el) {
+    if (movieLensData.loaded) addRandomCards(el, dir, true);
+    el.scrollBy({ left: dir * 580, behavior: 'smooth' });
+  }
 }
 
 /* ─── PLATFORMS DATA ─── */
@@ -1704,6 +1765,16 @@ function clearSearch() {
   document.getElementById('search-section').style.display = 'none';
   document.body.classList.remove('search-active');
 }
+
+// Logo click: go home, clear search, and refresh hero movie
+document.querySelectorAll('.logo, .footer-logo').forEach(logo => {
+  logo.addEventListener('click', (e) => {
+    e.preventDefault();
+    clearSearch();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    initHero();
+  });
+});
 
 document.getElementById('search-input').addEventListener('input', function () {
   const q = this.value.toLowerCase().trim();
