@@ -308,7 +308,24 @@ function renderPlatCards(platId, type) {
               </div>
             </div>`;
           
-          let resolvedDetails = null;
+          let resolvedDetails = {
+            id: item.id,
+            type: type === 'series' ? 'series' : 'movie',
+            title: cleanTitle,
+            year: year,
+            match: 90,
+            rating: rating,
+            runtime: type === 'series' ? 'Series' : 'N/A',
+            genre: 'Drama',
+            synopsis: item.overview || 'Loading details from TMDb...',
+            poster: poster,
+            backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : poster,
+            platforms: [plat.name],
+            reasons: [type === 'series' ? 'Popular Series' : 'Popular Choice'],
+            cast: [],
+            director: []
+          };
+
           if (type === 'movie') {
             fetchTMDBDetails(item.id).then(details => {
               if(!details) return;
@@ -318,16 +335,17 @@ function renderPlatCards(platId, type) {
           } else {
             // Map TV show details
             fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&append_to_response=credits`)
-              .then(res => res.json())
+              .then(res => { if(!res.ok) throw new Error("TMDB network error"); return res.json(); })
               .then(tvData => {
+                if(!tvData.name) return;
                 resolvedDetails = {
                   id: tvData.id, type: 'series', title: tvData.name,
                   year: tvData.first_air_date ? tvData.first_air_date.split('-')[0] : 'N/A',
                   rating: tvData.vote_average ? tvData.vote_average.toFixed(1) : '7.0',
-                  genre: tvData.genres ? tvData.genres.map(g=>g.name).join(' · ') : 'Drama',
-                  synopsis: tvData.overview,
-                  poster: tvData.poster_path ? `https://image.tmdb.org/t/p/w500${tvData.poster_path}` : '',
-                  backdrop: tvData.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvData.backdrop_path}` : '',
+                  genre: tvData.genres && tvData.genres.length > 0 ? tvData.genres.map(g=>g.name).join(' · ') : 'Drama',
+                  synopsis: tvData.overview || 'No synopsis available.',
+                  poster: tvData.poster_path ? `https://image.tmdb.org/t/p/w500${tvData.poster_path}` : poster,
+                  backdrop: tvData.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvData.backdrop_path}` : (item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : poster),
                   platforms: [plat.name], reasons: ['Popular Series'],
                   cast: tvData.credits && tvData.credits.cast ? tvData.credits.cast.slice(0, 5).map(c => ({
                     name: c.name,
@@ -340,7 +358,8 @@ function renderPlatCards(platId, type) {
                   })) : [{ name: "Creator", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }]
                 };
                 if (currentPopupMovie && currentPopupMovie.id === item.id) showPopup(resolvedDetails, card);
-              });
+              })
+              .catch(e => console.warn("TV details fetch error:", e));
           }
 
           const handleOpen = (e) => { if (e) e.stopPropagation(); if (resolvedDetails) openModal(resolvedDetails); };
