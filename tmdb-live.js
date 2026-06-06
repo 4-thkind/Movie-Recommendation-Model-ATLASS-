@@ -119,53 +119,63 @@ function buildCard(tmdbId, initialData = null) {
   wrap.className = 'movie-card';
   wrap.dataset.id = tmdbId;
   
-  const cleanTitle = initialData ? initialData.title : "Loading...";
-  const poster = initialData && initialData.poster_path ? `https://image.tmdb.org/t/p/w500${initialData.poster_path}` : 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80';
+  const cleanTitle = initialData ? (initialData.title || initialData.name || 'Loading...') : 'Loading...';
+  const poster = initialData && initialData.poster_path
+    ? `https://image.tmdb.org/t/p/w500${initialData.poster_path}`
+    : 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80';
   const match = Math.floor(Math.random() * 15) + 85;
   const alreadyIn = watchlist.some(m => m.id === tmdbId);
   
   wrap.innerHTML = `
     <div class="card-thumb">
-      <img class="lazy-poster" src="${poster}" alt="${cleanTitle}" style="opacity: ${initialData ? '1' : '0.35'}; transition: opacity 0.5s var(--smooth)"/>
+      <img class="lazy-poster" src="${poster}" alt="${cleanTitle}" style="opacity:${initialData ? '1' : '0.35'};transition:opacity 0.5s var(--smooth)"/>
       <div class="m-badge">${match}%</div>
-      <button class="card-quick-add${alreadyIn ? ' added' : ''}" data-id="${tmdbId}" title="${alreadyIn ? 'Remove from Watchlist' : 'Add to Watchlist'}">
+      <button class="card-quick-add${alreadyIn ? ' added' : ''}" data-id="${tmdbId}" title="${alreadyIn ? 'In Watchlist' : 'Add to Watchlist'}">
         ${alreadyIn ? '<i class="fa-solid fa-check" style="font-size:9px"></i>' : '<i class="fa-solid fa-plus" style="font-size:9px"></i>'}
       </button>
     </div>`;
 
-  let resolvedDetails = null;
+  // Build a basic movie object immediately from initialData so clicks work before full fetch
+  let resolvedDetails = initialData ? {
+    id: tmdbId,
+    title: initialData.title || initialData.name || '',
+    year: (initialData.release_date || initialData.first_air_date || '').split('-')[0] || 'N/A',
+    match,
+    rating: initialData.vote_average ? initialData.vote_average.toFixed(1) : '7.0',
+    runtime: 'N/A',
+    genre: '',
+    synopsis: initialData.overview || '',
+    poster,
+    backdrop: initialData.backdrop_path ? `https://image.tmdb.org/t/p/w1280${initialData.backdrop_path}` : poster,
+    platforms: [],
+    reasons: [],
+    cast: [],
+    director: []
+  } : null;
+
   const cardAddBtn = wrap.querySelector('.card-quick-add');
 
-  const handleOpen = (e) => {
-    if (e) e.stopPropagation();
-    if (resolvedDetails) {
-      openModal(resolvedDetails);
-    }
-  };
-
-  const handleAdd = (e) => {
-    if (e) e.stopPropagation();
+  wrap.addEventListener('click', (e) => {
+    if (resolvedDetails) openModal(resolvedDetails);
+  });
+  cardAddBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (resolvedDetails) toggleWatchlist(resolvedDetails);
-  };
+  });
 
-  wrap.addEventListener('click', handleOpen);
-  cardAddBtn.addEventListener('click', handleAdd);
-
+  // Fetch full details and upgrade resolvedDetails + image
   fetchTMDBDetails(tmdbId).then(details => {
     if (!details) return;
     resolvedDetails = details;
     const img = wrap.querySelector('.lazy-poster');
-    if (img && !initialData) {
-      img.src = details.poster;
-      img.style.opacity = 1;
-    }
+    if (img) { img.src = details.poster; img.style.opacity = 1; }
     wrap.addEventListener('mouseenter', () => schedulePopup(details, wrap));
     wrap.addEventListener('mouseleave', () => cancelPopup());
-    if (currentPopupMovie && currentPopupMovie.id === tmdbId) showPopup(details, wrap);
   });
   
   return wrap;
 }
+
 
 // Override buildTrending
 function buildTrending() {
@@ -481,3 +491,74 @@ window.addEventListener('DOMContentLoaded', () => {
     if (el) el.scrollBy({ left: dir * 600, behavior: 'smooth' });
   };
 });
+
+// Override openModal to fix "You May Also Like" with live TMDB similar movies
+(function() {
+  const orig = window.openModal;
+
+  // Animate modal content swap — same spring as initial open
+  function transitionModal(fn) {
+    const modal = document.getElementById('modal');
+    if (!modal) { fn(); return; }
+    // Collapse
+    modal.style.transition = 'transform .22s cubic-bezier(.4,0,1,1), opacity .22s ease';
+    modal.style.transform = 'scale(.9) translateY(18px)';
+    modal.style.opacity = '0.3';
+    setTimeout(() => {
+      fn();
+      // After content swap, scroll modal back to top
+      modal.scrollTop = 0;
+      // Expand back
+      modal.style.transition = 'transform .42s cubic-bezier(.34,1.56,.64,1), opacity .3s ease';
+      modal.style.transform = 'scale(1) translateY(0)';
+      modal.style.opacity = '1';
+    }, 220);
+  }
+
+  window.openModal = function(movie, _fromSimilar) {
+    if (_fromSimilar) {
+      // Animated transition for similar card navigation
+      transitionModal(() => { if (orig) orig(movie); populateSimilar(movie); });
+    } else {
+      if (orig) orig(movie);
+      populateSimilar(movie);
+    }
+  };
+
+  function populateSimilar(movie) {
+    const similarEl = document.getElementById('m-similar');
+    if (!similarEl || !movie || !movie.id) return;
+
+    const tmdbType = movie.type === 'series' ? 'tv' : 'movie';
+    similarEl.innerHTML = '<div style="color:var(--t3);font-size:12px;padding:8px 0">Loading…</div>';
+
+    fetch(`https://api.themoviedb.org/3/${tmdbType}/${movie.id}/recommendations?api_key=${TMDB_API_KEY}`)
+      .then(r => r.json())
+      .then(data => {
+        const results = (data.results || []).slice(0, 8);
+        if (!results.length) { similarEl.innerHTML = ''; return; }
+
+        similarEl.innerHTML = results.map(m => {
+          const poster = m.poster_path ? `https://image.tmdb.org/t/p/w185${m.poster_path}` : '';
+          const title = m.title || m.name || '';
+          return `<div class="mini" data-sim-id="${m.id}" style="cursor:pointer;transition:transform .22s var(--smooth),opacity .22s">
+            ${poster
+              ? `<img src="${poster}" alt="${title}" loading="lazy" style="width:80px;height:118px;object-fit:cover;border-radius:6px;display:block"/>`
+              : `<div style="width:80px;height:118px;background:var(--b3);border-radius:6px"></div>`}
+            <div class="mini-title">${title}</div>
+          </div>`;
+        }).join('');
+
+        // Wire similar card clicks with the animated transition
+        results.forEach(m => {
+          const el = similarEl.querySelector(`[data-sim-id="${m.id}"]`);
+          if (!el) return;
+          el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-3px)'; el.style.opacity = '.85'; });
+          el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.opacity = '1'; });
+          el.onclick = () => fetchTMDBDetails(m.id).then(d => { if (d) window.openModal(d, true); });
+        });
+      })
+      .catch(() => { similarEl.innerHTML = ''; });
+  }
+})();
+
