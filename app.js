@@ -1,6 +1,7 @@
 import { state, loadWatchlistFromStorage } from './state.js';
 import { loadMovieLensDatabase } from './recommender.js';
-import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal } from './ui.js';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll } from './ui.js';
+import { initPillNav } from './PillNav.js';
 
 /* ─── INIT ─── */
 window.addEventListener('DOMContentLoaded', () => {
@@ -22,6 +23,8 @@ window.addEventListener('DOMContentLoaded', () => {
   initScrollspy();
   initSeeAllButtons();
   initScrollReveal();
+  initNavbarScroll();
+  initPillNav();
 
   if (!state.movieLensData.loaded) {
     renderRows();

@@ -17,12 +17,54 @@
     <div class="logo-icon"><i class="fa-solid fa-film"></i></div>
     <span class="logo-text"><em>Cine</em>Match</span>
   </a>
-  <div class="nav-links" id="nav-links">
-    <a href="#hero" data-section="hero" class="active">Home</a>
-    <a href="#trending-section" data-section="trending-section">Trending</a>
-    <a href="#platforms-section" data-section="platforms-section">Platforms</a>
-    <a href="#surprise-section" data-section="surprise-section">Surprise Me</a>
-    <a href="#watchlist-section" data-section="watchlist-section">Watchlist</a>
+  <div class="nav-links pill-nav-items" id="nav-links">
+    <ul class="pill-list" role="menubar">
+      <li role="none">
+        <a role="menuitem" href="#hero" data-section="hero" class="pill active">
+          <span class="hover-circle" aria-hidden="true"></span>
+          <span class="label-stack">
+            <span class="pill-label">Home</span>
+            <span class="pill-label-hover" aria-hidden="true">Home</span>
+          </span>
+        </a>
+      </li>
+      <li role="none">
+        <a role="menuitem" href="#trending-section" data-section="trending-section" class="pill">
+          <span class="hover-circle" aria-hidden="true"></span>
+          <span class="label-stack">
+            <span class="pill-label">Trending</span>
+            <span class="pill-label-hover" aria-hidden="true">Trending</span>
+          </span>
+        </a>
+      </li>
+      <li role="none">
+        <a role="menuitem" href="#platforms-section" data-section="platforms-section" class="pill">
+          <span class="hover-circle" aria-hidden="true"></span>
+          <span class="label-stack">
+            <span class="pill-label">Platforms</span>
+            <span class="pill-label-hover" aria-hidden="true">Platforms</span>
+          </span>
+        </a>
+      </li>
+      <li role="none">
+        <a role="menuitem" href="#surprise-section" data-section="surprise-section" class="pill">
+          <span class="hover-circle" aria-hidden="true"></span>
+          <span class="label-stack">
+            <span class="pill-label">Surprise Me</span>
+            <span class="pill-label-hover" aria-hidden="true">Surprise Me</span>
+          </span>
+        </a>
+      </li>
+      <li role="none">
+        <a role="menuitem" href="#watchlist-section" data-section="watchlist-section" class="pill">
+          <span class="hover-circle" aria-hidden="true"></span>
+          <span class="label-stack">
+            <span class="pill-label">Watchlist</span>
+            <span class="pill-label-hover" aria-hidden="true">Watchlist</span>
+          </span>
+        </a>
+      </li>
+    </ul>
   </div>
   <div class="nav-search">
     <i class="fa-solid fa-magnifying-glass"></i>
@@ -102,7 +144,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title">Top Picks For You <span class="sec-tag tag-yellow">AI</span></div>
+        <div class="sec-title">Top Picks For You</div>
         <p class="sec-sub">Personalized from your taste profile · hover to explore</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -382,6 +424,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 <script type="module" src="app.js?v=6"></script>
 </body>
 </html>

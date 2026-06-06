@@ -101,7 +101,7 @@ export async function fetchTMDBDetails(movieId) {
     const parts = movieId.split('-');
     type = parts[1]; // 'movie' or 'tv'
     tmdbId = parts[2];
-  } else if (TMDB_API_KEY && !state.movieLensData.loaded) {
+  } else if (TMDB_API_KEY && (!state.movieLensData.loaded || Object.keys(state.movieLensData.movies || {}).length === 0)) {
     tmdbId = movieId;
     type = 'movie';
   } else {
@@ -813,8 +813,10 @@ export function switchPlatform(platId) {
 
 export function setType(type) {
   state.activeType = type;
-  document.getElementById('type-movie').classList.toggle('active', type === 'movies');
-  document.getElementById('type-show').classList.toggle('active', type === 'series');
+  const moviePill = document.getElementById('pill-movies') || document.getElementById('type-movie');
+  const seriesPill = document.getElementById('pill-series') || document.getElementById('type-show');
+  if (moviePill) moviePill.classList.toggle('active', type === 'movies');
+  if (seriesPill) seriesPill.classList.toggle('active', type === 'series');
   buildPlatforms();
 }
 
@@ -1130,10 +1132,15 @@ let lastSurprise = -1;
 export function surpriseMe() {
   const orb = document.getElementById('surprise-btn');
   const result = document.getElementById('surprise-result');
-  if (orb) orb.style.transform = 'scale(0.82)';
+  const section = document.getElementById('surprise-section');
+  if (orb) {
+    orb.style.transform = 'scale(0.82)';
+    orb.classList.remove('has-result');
+  }
   setTimeout(() => { if (orb) orb.style.transform = ''; }, 200);
 
   if (result) result.classList.remove('show');
+  if (section) section.classList.remove('has-result');
 
   if (TMDB_API_KEY) {
     const page = Math.floor(Math.random() * 50) + 1;
@@ -1154,6 +1161,8 @@ export function surpriseMe() {
               document.getElementById('s-add-btn').onclick = () => addToWatchlist(movie, document.getElementById('s-add-btn'));
               syncWatchlistButtons();
               if (result) result.classList.add('show');
+              if (orb) orb.classList.add('has-result');
+              if (section) section.classList.add('has-result');
             }, 220);
           });
         }
@@ -1190,6 +1199,8 @@ export function surpriseMe() {
       document.getElementById('s-add-btn').onclick = () => addToWatchlist(movie, document.getElementById('s-add-btn'));
       syncWatchlistButtons();
       if (result) result.classList.add('show');
+      if (orb) orb.classList.add('has-result');
+      if (section) section.classList.add('has-result');
     }, 220);
   });
 }
@@ -1587,6 +1598,26 @@ export function scrollToWatchlist() {
 /* ─── SCROLLSPY ─── */
 export function initScrollspy() {
   const links = document.querySelectorAll('.nav-links a');
+  
+  // Clear search on nav link click if search is active
+  links.forEach(link => {
+    link.addEventListener('click', () => {
+      if (document.body.classList.contains('search-active')) {
+        clearSearch();
+      }
+    });
+  });
+
+  // Clear search on logo click if search is active
+  const logoLink = document.querySelector('.logo');
+  if (logoLink) {
+    logoLink.addEventListener('click', () => {
+      if (document.body.classList.contains('search-active')) {
+        clearSearch();
+      }
+    });
+  }
+
   const observerOptions = {
     root: null,
     rootMargin: '-80px 0px -60% 0px',
@@ -1799,7 +1830,7 @@ export function updateHeroUI(movie) {
 export async function initHero() {
   let heroMovie = null;
   
-  if (TMDB_API_KEY && !state.movieLensData.loaded) {
+  if (TMDB_API_KEY && (!state.movieLensData.loaded || Object.keys(state.movieLensData.movies || {}).length === 0)) {
     try {
       const res = await fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=${TMDB_API_KEY}`);
       const data = await res.json();
@@ -1855,6 +1886,20 @@ export function initSeeAllButtons() {
   });
 }
 
+export function initNavbarScroll() {
+  const nav = document.getElementById('nav');
+  if (!nav) return;
+  const handleScroll = () => {
+    if (window.scrollY > 20) {
+      nav.classList.add('scrolled');
+    } else {
+      nav.classList.remove('scrolled');
+    }
+  };
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  handleScroll();
+}
+
 // Setup intersection observer reveal in modules
 export function initScrollReveal() {
   const io = new IntersectionObserver(entries => {
@@ -1889,3 +1934,106 @@ window.handleOverlay = handleOverlay;
 window.closeModal = closeModal;
 window.openModal = openModal;
 window.surpriseMe = surpriseMe;
+window.setType = setType;
+
+// Keyboard horizontal grid navigation for hovered rows
+let hoveredScrollContainer = null;
+
+document.addEventListener('mouseover', (e) => {
+  let container = e.target.closest('.row-scroll, #trend-row, .plat-row, .mini-row');
+  if (!container) {
+    // If hovering over wrapper or buttons, fall back to finding the inner scroll container
+    const wrap = e.target.closest('.row-wrap, .trend-scroll-wrap, .plat-wrap');
+    if (wrap) {
+      container = wrap.querySelector('.row-scroll, #trend-row, .plat-row');
+    }
+  }
+  if (container !== hoveredScrollContainer) {
+    // Clean up selected card and its hover state when switching rows
+    if (hoveredScrollContainer) {
+      hoveredScrollContainer.querySelectorAll('.selected-card').forEach(c => {
+        c.classList.remove('selected-card');
+        c.dispatchEvent(new MouseEvent('mouseleave'));
+      });
+    }
+    hoveredScrollContainer = container;
+  }
+});
+
+document.addEventListener('mouseleave', () => {
+  if (hoveredScrollContainer) {
+    hoveredScrollContainer.querySelectorAll('.selected-card').forEach(c => {
+      c.classList.remove('selected-card');
+      c.dispatchEvent(new MouseEvent('mouseleave'));
+    });
+  }
+  hoveredScrollContainer = null;
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    if (hoveredScrollContainer) {
+      if (document.activeElement && (
+        document.activeElement.tagName === 'INPUT' || 
+        document.activeElement.tagName === 'TEXTAREA' || 
+        document.activeElement.isContentEditable
+      )) {
+        return;
+      }
+      e.preventDefault();
+
+      const cards = Array.from(hoveredScrollContainer.querySelectorAll('.movie-card, .trend-card, .plat-card, .mini'));
+      if (cards.length === 0) return;
+
+      // Find currently selected card
+      let currentIndex = cards.findIndex(card => card.classList.contains('selected-card'));
+      if (currentIndex === -1) {
+        // Fallback to currently hovered card
+        currentIndex = cards.findIndex(card => card.matches(':hover'));
+      }
+      if (currentIndex === -1) {
+        // Fallback to first card scrolled visible from the left
+        const scrollLeft = hoveredScrollContainer.scrollLeft;
+        currentIndex = cards.findIndex(card => card.offsetLeft >= scrollLeft);
+      }
+      if (currentIndex === -1) {
+        currentIndex = 0;
+      }
+
+      const dir = e.key === 'ArrowLeft' ? -1 : 1;
+      const nextIndex = currentIndex + dir;
+
+      if (nextIndex >= 0 && nextIndex < cards.length) {
+        // Deselect current card
+        if (currentIndex !== -1) {
+          cards[currentIndex].classList.remove('selected-card');
+          cards[currentIndex].dispatchEvent(new MouseEvent('mouseleave'));
+        }
+
+        // Select next card
+        const nextCard = cards[nextIndex];
+        nextCard.classList.add('selected-card');
+        nextCard.dispatchEvent(new MouseEvent('mouseenter'));
+
+        // Center the newly selected card in the viewport of the scroll row
+        const containerWidth = hoveredScrollContainer.clientWidth;
+        const cardWidth = nextCard.offsetWidth;
+        const cardLeft = nextCard.offsetLeft;
+        const targetScrollLeft = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+
+        hoveredScrollContainer.scrollTo({
+          left: targetScrollLeft,
+          behavior: 'smooth'
+        });
+      }
+    }
+  } else if (e.key === 'Enter') {
+    if (hoveredScrollContainer) {
+      const selected = hoveredScrollContainer.querySelector('.selected-card');
+      if (selected) {
+        e.preventDefault();
+        selected.click();
+      }
+    }
+  }
+});
