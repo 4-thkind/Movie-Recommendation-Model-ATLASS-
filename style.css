@@ -162,11 +162,11 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
    Popup is a SHARED FLOATING element positioned by JS
    so it is never clipped by overflow:hidden/auto
 ══════════════════════════════════════ */
-.row-wrap{position:relative;padding:6px 0 12px;}
+.row-wrap{position:relative;padding:0;}
 .row-scroll{
   display:flex;gap:4px;
   overflow-x:auto;overflow-y:visible;
-  padding:4px 4px 8px;scrollbar-width:none;
+  padding:20px 4px 24px;scrollbar-width:none;
   scroll-behavior:smooth;
 }
 .row-scroll::-webkit-scrollbar{display:none}
@@ -176,7 +176,7 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   cursor:pointer;position:relative;z-index:1;
   transition:z-index 0s .3s;
 }
-.movie-card:hover{z-index:50;transition:z-index 0s 0s;}
+.movie-card:hover{z-index:350;transition:z-index 0s 0s;}
 .card-thumb{
   width:168px;height:240px;border-radius:8px;overflow:hidden;
   position:relative;background:var(--b3);border:1px solid rgba(255,255,255,.06);
@@ -184,7 +184,12 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 }
 .movie-card:hover .card-thumb{
   transform:scale(1.06) translateY(-4px);
-  box-shadow:0 12px 40px rgba(0,0,0,.7),0 0 0 1.5px rgba(245,197,24,.3);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:
+    0 0 0 3px rgba(245,197,24,.35),        /* golden border glow */
+    0 0 30px 10px rgba(0,0,0,.85),           /* dark "lifted" shadow around card */
+    0 18px 50px rgba(0,0,0,.8);              /* drop shadow beneath */
 }
 .card-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 .m-badge{
@@ -206,11 +211,8 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 .movie-card:hover .card-quick-add{opacity:1;transform:scale(1)}
 .card-quick-add:hover,.card-quick-add.added{background:var(--y);border-color:var(--y);color:#000}
 
-/* Dim siblings on hover */
-.row-scroll:has(.movie-card:hover) .movie-card:not(:hover) .card-thumb{
-  filter:brightness(.45);transition:filter .28s ease;
-}
-.card-thumb{filter:brightness(1);transition:filter .28s ease,transform .35s var(--expo),box-shadow .35s var(--smooth);}
+/* Subtle shadow around hovered card only — no row-wide dimming */
+.card-thumb{transition:filter .28s ease,transform .35s var(--expo),box-shadow .35s var(--smooth);}
 
 /* ── SHARED FLOATING POPUP ── */
 #card-popup{
@@ -275,11 +277,11 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
    (same row structure as movie rows but with number overlay)
 ══════════════════════════════════════ */
 #trending-section{padding:56px 0 0}
-.trend-scroll-wrap{position:relative;padding:6px 0 12px;}
+.trend-scroll-wrap{position:relative;padding:0;}
 .trend-row{
   display:flex;gap:10px;
   overflow-x:auto;overflow-y:visible;
-  padding:4px 4px 8px;scrollbar-width:none;scroll-behavior:smooth;
+  padding:20px 4px 24px;scrollbar-width:none;scroll-behavior:smooth;
 }
 .trend-row::-webkit-scrollbar{display:none}
 .trend-arr{
@@ -297,12 +299,15 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   flex:0 0 175px;border-radius:var(--r2);overflow:hidden;cursor:pointer;
   background:var(--b3);border:1px solid rgba(255,255,255,.06);
   position:relative;flex-shrink:0;
-  transition:transform .38s var(--expo),border-color .3s var(--smooth),box-shadow .38s var(--smooth);
+  z-index:1;
+  transition:transform .38s var(--expo),border-color .3s var(--smooth),box-shadow .38s var(--smooth),z-index 0s .38s;
 }
 .trend-card:hover{
   transform:translateY(-7px) scale(1.03);
   border-color:rgba(245,197,24,.35);
   box-shadow:0 22px 52px rgba(0,0,0,.7),0 0 0 1px rgba(245,197,24,.18);
+  z-index:350;
+  transition:transform .38s var(--expo),border-color .3s var(--smooth),box-shadow .38s var(--smooth),z-index 0s 0s;
 }
 .trend-card img{width:100%;height:248px;object-fit:cover;display:block;transition:transform .55s var(--expo);}
 .trend-card:hover img{transform:scale(1.07)}
@@ -388,11 +393,11 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 
 /* platform card — wider landscape style */
 .plat-row{
-  display:flex;gap:10px;overflow-x:auto;
-  padding:4px 4px 10px;scrollbar-width:none;scroll-behavior:smooth;
+  display:flex;gap:10px;overflow-x:auto;overflow-y:visible;
+  padding:20px 4px 24px;scrollbar-width:none;scroll-behavior:smooth;
 }
 .plat-row::-webkit-scrollbar{display:none}
-.plat-wrap{position:relative;padding:4px 0 8px;}
+.plat-wrap{position:relative;padding:0;}
 .plat-arr{
   position:absolute;top:0;bottom:0;width:48px;
   display:flex;align-items:center;justify-content:center;
@@ -408,12 +413,15 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   flex:0 0 190px;border-radius:var(--r);overflow:hidden;
   background:var(--b3);border:1px solid rgba(255,255,255,.06);
   cursor:pointer;position:relative;flex-shrink:0;
-  transition:transform .35s var(--expo),box-shadow .35s var(--smooth),border-color .3s var(--smooth);
+  z-index:1;
+  transition:transform .35s var(--expo),box-shadow .35s var(--smooth),border-color .3s var(--smooth),z-index 0s .35s;
 }
 .plat-card:hover{
   transform:translateY(-6px) scale(1.04);
   box-shadow:0 18px 48px rgba(0,0,0,.65),0 0 0 1px rgba(245,197,24,.25);
   border-color:rgba(245,197,24,.25);
+  z-index:350;
+  transition:transform .35s var(--expo),box-shadow .35s var(--smooth),border-color .3s var(--smooth),z-index 0s 0s;
 }
 .plat-card img{width:100%;height:268px;object-fit:cover;display:block;transition:transform .5s var(--expo);}
 .plat-card:hover img{transform:scale(1.06)}
