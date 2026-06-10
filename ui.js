@@ -1237,7 +1237,10 @@ function transitionModal(fn) {
   }, 220);
 }
 
-export function openModal(movie, _fromSimilar = false) {
+export function openModal(movie, _fromSimilar = false, skipHashUpdate = false) {
+  if (!skipHashUpdate && movie && movie.id) {
+    window.location.hash = `#movie-${movie.id}`;
+  }
   if (_fromSimilar) {
     transitionModal(() => {
       openModalContent(movie);
@@ -1533,11 +1536,20 @@ function populateSimilar(movie) {
   }
 }
 
-export function closeModal() {
+export function closeModal(skipHashUpdate = false) {
   document.getElementById('overlay').classList.remove('on');
   const iframe = document.getElementById('m-video-iframe');
   if (iframe) iframe.src = '';
   document.body.style.overflow = '';
+  state.currentModalMovie = null;
+  
+  if (!skipHashUpdate) {
+    if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
+      window.location.hash = '#watchlist-section';
+    } else {
+      window.location.hash = '#home';
+    }
+  }
 }
 
 export function handleOverlay(e) {
@@ -1591,8 +1603,7 @@ export function updateDatabaseStatus(type, status) {
 }
 
 export function scrollToWatchlist() {
-  const el = document.getElementById('watchlist-section');
-  if (el) el.scrollIntoView({ behavior: 'smooth' });
+  window.location.hash = '#watchlist-section';
 }
 
 /* ─── SCROLLSPY ─── */
@@ -1626,6 +1637,7 @@ export function initScrollspy() {
   
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
+      if (document.body.classList.contains('watchlist-active')) return;
       if (entry.isIntersecting) {
         const id = entry.target.getAttribute('id');
         links.forEach(link => {
@@ -1640,10 +1652,18 @@ export function initScrollspy() {
 }
 
 /* ─── REALTIME SEARCH ─── */
-export function clearSearch() {
+export function clearSearch(skipHashUpdate = false) {
   document.getElementById('search-input').value = '';
   document.getElementById('search-section').style.display = 'none';
   document.body.classList.remove('search-active');
+  
+  if (!skipHashUpdate) {
+    if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
+      window.location.hash = '#watchlist-section';
+    } else {
+      window.location.hash = '#home';
+    }
+  }
 }
 
 let searchDebounce;
@@ -1656,9 +1676,18 @@ export function handleSearchInput(e) {
   if (!q) {
     if (searchSec) searchSec.style.display = 'none';
     document.body.classList.remove('search-active');
+    
+    if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
+      window.location.hash = '#watchlist-section';
+    } else {
+      window.location.hash = '#home';
+    }
     return;
   }
 
+  if (!document.body.classList.contains('search-active')) {
+    window.location.hash = '#search';
+  }
   document.body.classList.add('search-active');
 
   clearTimeout(searchDebounce);
@@ -1953,6 +1982,7 @@ window.closeModal = closeModal;
 window.openModal = openModal;
 window.surpriseMe = surpriseMe;
 window.setType = setType;
+window.initHashRouting = initHashRouting;
 
 // Keyboard horizontal grid navigation for hovered rows
 let hoveredScrollContainer = null;
@@ -2055,3 +2085,104 @@ window.addEventListener('keydown', (e) => {
     }
   }
 });
+
+/* ─── BROWSER HASH ROUTING ─── */
+export let activeViewState = 'home'; // Tracks active base view: 'home' or 'watchlist'
+
+export function initHashRouting() {
+  window.addEventListener('hashchange', handleHashChange);
+  // Run on initial load to handle deep links
+  handleHashChange();
+}
+
+export function handleHashChange() {
+  const hash = window.location.hash || '';
+  
+  // 1. Movie details modal routing
+  if (hash.startsWith('#movie-')) {
+    const movieIdStr = hash.replace('#movie-', '');
+    const movieId = isNaN(movieIdStr) ? movieIdStr : Number(movieIdStr);
+    
+    // If the details modal is already open for this movie, avoid re-triggering
+    if (state.currentModalMovie && String(state.currentModalMovie.id) === String(movieId)) {
+      return;
+    }
+    
+    fetchTMDBDetails(movieId).then(details => {
+      if (details) {
+        openModal(details, false, true);
+      } else {
+        const localMovie = MOVIES.find(m => String(m.id) === String(movieId));
+        if (localMovie) {
+          openModal(localMovie, false, true);
+        }
+      }
+    });
+    return;
+  }
+  
+  // Close details modal if open but hash does not point to a movie anymore
+  if (state.currentModalMovie && !hash.startsWith('#movie-')) {
+    closeModal(true);
+  }
+
+  // 2. Watchlist routing
+  if (hash === '#watchlist-section' || hash === '#watchlist') {
+    activeViewState = 'watchlist';
+    showWatchlistPage();
+    return;
+  }
+  
+  // 3. Search routing
+  if (hash === '#search') {
+    document.body.classList.remove('watchlist-active');
+    document.body.classList.add('search-active');
+    document.getElementById('search-section').style.display = 'block';
+    return;
+  }
+
+  // 4. Section routing (Trending, Platforms, Surprise Me)
+  if (hash === '#trending-section' || hash === '#platforms-section' || hash === '#surprise-section') {
+    activeViewState = 'home';
+    showHomePage();
+    
+    const target = document.getElementById(hash.substring(1));
+    if (target) {
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    }
+    return;
+  }
+  
+  // 5. Default home page routing
+  if (hash === '' || hash === '#' || hash === '#home' || hash === '#hero') {
+    activeViewState = 'home';
+    showHomePage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+}
+
+export function showWatchlistPage() {
+  clearSearch(true);
+  document.body.classList.add('watchlist-active');
+  document.getElementById('watchlist-section').style.display = 'block';
+  updateNavbarActiveLink('watchlist-section');
+  window.scrollTo(0, 0);
+  closeModal(true);
+}
+
+export function showHomePage() {
+  document.body.classList.remove('watchlist-active');
+  document.getElementById('watchlist-section').style.display = 'none';
+  clearSearch(true);
+}
+
+export function updateNavbarActiveLink(activeId) {
+  const links = document.querySelectorAll('.nav-links a');
+  links.forEach(link => {
+    const href = link.getAttribute('href').substring(1);
+    link.classList.toggle('active', href === activeId);
+  });
+}

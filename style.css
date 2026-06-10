@@ -617,7 +617,17 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 .s-card-btns{display:flex;gap:7px}
 
 /* ── WATCHLIST + ROULETTE ── */
-#watchlist-section{padding:56px 0 0}
+#watchlist-section{
+  display:none;
+  padding:80px 0 0;
+}
+body.watchlist-active #watchlist-section{
+  display:block;
+}
+body.watchlist-active #hero,
+body.watchlist-active main > section:not(#watchlist-section) {
+  display:none !important;
+}
 .wl-empty{text-align:center;padding:48px 0;color:var(--t3);display:flex;flex-direction:column;align-items:center;gap:12px;}
 .wl-empty i{font-size:36px;color:var(--b5)}
 .wl-empty p{font-size:13px}
