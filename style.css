@@ -28,7 +28,10 @@ body::before{
   display:flex;align-items:center;gap:28px;
   background:transparent;
   border-bottom:1px solid transparent;
-  transition:background .4s var(--smooth),border-color .4s var(--smooth),backdrop-filter .4s var(--smooth),-webkit-backdrop-filter .4s var(--smooth);
+  transition:background .4s var(--smooth),border-color .4s var(--smooth),backdrop-filter .4s var(--smooth),-webkit-backdrop-filter .4s var(--smooth),transform .35s var(--smooth);
+}
+#nav.nav-hidden{
+  transform:translateY(-100%);
 }
 #nav.solid, #nav.scrolled{
   background:rgba(5,5,8,.75);

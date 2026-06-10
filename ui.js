@@ -1889,15 +1889,33 @@ export function initSeeAllButtons() {
 export function initNavbarScroll() {
   const nav = document.getElementById('nav');
   if (!nav) return;
-  const handleScroll = () => {
+  
+  // Update solid/glassmorphic state
+  const updateScrolledState = () => {
     if (window.scrollY > 20) {
       nav.classList.add('scrolled');
     } else {
       nav.classList.remove('scrolled');
     }
   };
-  window.addEventListener('scroll', handleScroll, { passive: true });
-  handleScroll();
+  
+  // Hide during active scroll, show on stop
+  let isScrolling = null;
+  const handleScrollBehavior = () => {
+    nav.classList.add('nav-hidden');
+    clearTimeout(isScrolling);
+    isScrolling = setTimeout(() => {
+      nav.classList.remove('nav-hidden');
+    }, 200); // Wait 200ms of inactivity to slide it back down
+  };
+  
+  window.addEventListener('scroll', () => {
+    updateScrolledState();
+    handleScrollBehavior();
+  }, { passive: true });
+  
+  // Initial check on page load without triggering hide animation
+  updateScrolledState();
 }
 
 // Setup intersection observer reveal in modules
