@@ -2186,3 +2186,188 @@ export function updateNavbarActiveLink(activeId) {
     link.classList.toggle('active', href === activeId);
   });
 }
+
+/* ─── LANDING PAGE: AUTHENTICATION & PROFILE ─── */
+
+import { saveAuthState } from './state.js';
+
+window.switchLoginTab = function(tab) {
+  const loginTab = document.getElementById('tab-login');
+  const signupTab = document.getElementById('tab-signup');
+  const submitBtn = document.getElementById('auth-submit-btn');
+
+  if (tab === 'login') {
+    loginTab.classList.add('active');
+    signupTab.classList.remove('active');
+    submitBtn.textContent = 'Log In';
+  } else {
+    signupTab.classList.add('active');
+    loginTab.classList.remove('active');
+    submitBtn.textContent = 'Sign Up';
+  }
+};
+
+window.handleAuthSubmit = function(e) {
+  e.preventDefault();
+  const email = document.getElementById('auth-email').value;
+  // Mock login success
+  state.isLoggedIn = true;
+  state.user = { name: email.split('@')[0], role: 'Member' };
+  saveAuthState();
+  document.body.classList.remove('not-logged-in');
+  updateProfileUI();
+};
+
+window.continueAsGuest = function() {
+  state.isLoggedIn = true;
+  state.user = { name: 'Guest', role: 'Limited Access' };
+  saveAuthState();
+  document.body.classList.remove('not-logged-in');
+  updateProfileUI();
+};
+
+window.logout = function() {
+  state.isLoggedIn = false;
+  state.user = null;
+  saveAuthState();
+  document.body.classList.add('not-logged-in');
+  document.getElementById('profile-dropdown').classList.remove('show');
+  window.location.hash = ''; // Return to top
+};
+
+export function initProfileDropdown() {
+  const avatarBtn = document.getElementById('avatar-btn');
+  const dropdown = document.getElementById('profile-dropdown');
+
+  if (avatarBtn && dropdown) {
+    avatarBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target) && e.target !== avatarBtn) {
+        dropdown.classList.remove('show');
+      }
+    });
+  }
+
+  updateProfileUI();
+}
+
+function updateProfileUI() {
+  const nameEl = document.getElementById('pd-display-name');
+  const roleEl = document.getElementById('pd-display-role');
+  if (nameEl && roleEl && state.user) {
+    nameEl.textContent = state.user.name;
+    roleEl.textContent = state.user.role;
+  }
+}
+
+/* ─── GRID MOTION FOR LANDING BACKGROUND ─── */
+
+export async function initGridMotion() {
+  const bgContainer = document.getElementById('grid-motion-bg');
+  if (!bgContainer) return;
+
+  // Clear existing
+  bgContainer.innerHTML = '';
+  bgContainer.className = 'intro';
+
+  let topItems = [];
+
+  // Try to fetch from TMDB first
+  if (TMDB_API_KEY) {
+    try {
+      const [resMovies, resSeries] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/trending/movie/day?api_key=${TMDB_API_KEY}`),
+        fetch(`https://api.themoviedb.org/3/trending/tv/day?api_key=${TMDB_API_KEY}`)
+      ]);
+      const dataMovies = await resMovies.json();
+      const dataSeries = await resSeries.json();
+      
+      const movies = (dataMovies.results || []).map(m => ({ poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null }));
+      const series = (dataSeries.results || []).map(s => ({ poster: s.poster_path ? `https://image.tmdb.org/t/p/w500${s.poster_path}` : null }));
+      
+      topItems = [...movies.slice(0, 14), ...series.slice(0, 14)];
+    } catch(e) {
+      console.warn("Failed to fetch TMDB for landing grid, falling back to local data.", e);
+    }
+  }
+
+  // Fallback if TMDB failed or no key
+  if (topItems.length === 0) {
+    const allSeries = PLATFORMS_DATA.flatMap(p => p.series || []);
+    const sortedMovies = [...MOVIES].sort((a,b) => parseFloat(b.rating) - parseFloat(a.rating));
+    const sortedSeries = [...allSeries].sort((a,b) => parseFloat(b.rating) - parseFloat(a.rating));
+    topItems = [...sortedMovies.slice(0, 14), ...sortedSeries.slice(0, 14)];
+  }
+
+  // Shuffle them randomly for the grid
+  topItems.sort(() => Math.random() - 0.5);
+  
+  const posters = topItems.map(item => item.poster).filter(p => !!p);
+  
+  // Fill any gaps if we have fewer than 28 posters
+  while(posters.length > 0 && posters.length < 28) {
+    posters.push(...topItems.map(item => item.poster).slice(0, 28 - posters.length));
+  }
+
+  const items = posters.slice(0, 28);
+  if (items.length < 28) return; // safeguard
+  
+  // Create 4 rows
+  const gridInner = document.createElement('div');
+  gridInner.className = 'gridMotion-container';
+  gridInner.style.zIndex = '1';
+
+  let posterIdx = 0;
+  for (let r = 0; r < 4; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    // Make the row hold 14 items instead of 7
+    row.style.gridTemplateColumns = 'repeat(14, 1fr)';
+    // Double the width to fit the duplicated items
+    row.style.width = '200%';
+    
+    // Create the first 7 items
+    const rowItems = [];
+    for (let c = 0; c < 7; c++) {
+      const itemWrapper = document.createElement('div');
+      itemWrapper.className = 'row__item';
+      
+      const itemInner = document.createElement('div');
+      itemInner.className = 'row__item-inner';
+      
+      const img = document.createElement('div');
+      img.className = 'row__item-img';
+      img.style.backgroundImage = `url(${items[posterIdx % items.length]})`;
+      
+      itemInner.appendChild(img);
+      itemWrapper.appendChild(itemInner);
+      rowItems.push(itemWrapper);
+      posterIdx++;
+    }
+    
+    // Append the 7 items, then clone them to create a seamless duplicate for infinite scrolling
+    rowItems.forEach(item => row.appendChild(item));
+    rowItems.forEach(item => row.appendChild(item.cloneNode(true)));
+
+    gridInner.appendChild(row);
+  }
+
+  bgContainer.appendChild(gridInner);
+
+  // Smooth, continuous, one-direction animation (infinite marquee)
+  const rows = gridInner.querySelectorAll('.row');
+  rows.forEach((row, i) => {
+    // Noticeable speed variations for a strong parallax effect
+    const duration = 25 + i * 12; 
+    gsap.to(row, {
+      xPercent: -50,
+      duration: duration,
+      ease: "none",
+      repeat: -1
+    });
+  });
+}

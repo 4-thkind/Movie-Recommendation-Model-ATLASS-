@@ -995,3 +995,340 @@ body.search-active main > section:not(#search-section) {
     gap: 12px !important;
   }
 }
+
+/* ─── LANDING PAGE & AUTH STYLES ─── */
+
+body.not-logged-in {
+  overflow: hidden;
+}
+
+body.not-logged-in #nav,
+body.not-logged-in main,
+body.not-logged-in #hero,
+body.not-logged-in footer,
+body.not-logged-in #card-popup,
+body.not-logged-in #overlay {
+  display: none !important;
+}
+
+#landing-page {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--b0);
+}
+
+body.not-logged-in #landing-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Grid Motion Background */
+.intro {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.intro::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, transparent 30%, rgba(5,5,8,0.7) 100%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.gridMotion-container {
+  gap: 1rem;
+  flex: none;
+  position: relative;
+  width: 150vw;
+  height: 150vh;
+  display: grid;
+  grid-template-rows: repeat(4, 1fr);
+  grid-template-columns: 100%;
+  transform: rotate(-15deg);
+  transform-origin: center center;
+  z-index: 2;
+  opacity: 0.85; /* Increased from 0.35 to make it much brighter */
+}
+
+.row {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(7, 1fr);
+  will-change: transform, filter;
+}
+
+.row__item {
+  position: relative;
+  aspect-ratio: 2 / 3;
+}
+
+.row__item-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  background-color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row__item-img {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: 50% 50%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  filter: grayscale(15%); /* Reduced from 40% for brighter colors */
+  transition: filter 0.4s var(--smooth);
+}
+
+.row__item:hover .row__item-img {
+  filter: grayscale(0%);
+}
+
+.landing-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 5, 8, 0.15); /* Reduced opacity for a brighter background */
+  z-index: 3;
+}
+
+/* Login Card */
+.login-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+  animation: rl-in 0.8s var(--expo) both;
+}
+
+.login-card {
+  background: rgba(15, 15, 28, 0.65);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--t2);
+  margin-top: 8px;
+}
+
+.login-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  background: rgba(0,0,0,0.3);
+  padding: 5px;
+  border-radius: 30px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.login-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--t2);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.3s var(--smooth);
+}
+
+.login-tab.active {
+  background: var(--b4);
+  color: var(--t1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--t1);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s var(--smooth);
+}
+
+.form-group input:focus {
+  border-color: var(--v);
+  background: rgba(0,0,0,0.6);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+}
+
+.login-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 16px;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 24px 0;
+  color: var(--t3);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.login-divider span {
+  padding: 0 10px;
+}
+
+.guest-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 16px;
+  font-size: 14px;
+}
+
+/* ─── PROFILE DROPDOWN ─── */
+
+.profile-container {
+  position: relative;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 14px;
+  width: 220px;
+  background: var(--b3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  pointer-events: none;
+  transition: all 0.3s var(--spring);
+  z-index: 1000;
+}
+
+.profile-dropdown.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+.pd-user-info {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 8px;
+}
+
+.pd-username {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--t1);
+  margin-bottom: 4px;
+  font-family: 'Syne', sans-serif;
+}
+
+.pd-role {
+  font-size: 11px;
+  color: var(--t3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pd-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--t2);
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s var(--smooth);
+}
+
+.pd-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--t1);
+}
+
+.pd-item i {
+  font-size: 14px;
+  color: var(--t3);
+  transition: color 0.2s;
+}
+
+.pd-item:hover i {
+  color: var(--vl);
+}
+
+.pd-logout:hover i {
+  color: #ef4444;
+}

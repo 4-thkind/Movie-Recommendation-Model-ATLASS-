@@ -13,7 +13,9 @@ export const state = {
     ratings: {},
     movieRatings: {},
     loaded: false
-  }
+  },
+  isLoggedIn: false,
+  user: null
 };
 
 // LocalStorage helpers
@@ -32,4 +34,22 @@ export function loadWatchlistFromStorage() {
   } else {
     state.watchlist = [];
   }
+}
+
+export function loadAuthState() {
+  const auth = localStorage.getItem('user_auth');
+  if (auth) {
+    try {
+      const parsed = JSON.parse(auth);
+      state.isLoggedIn = parsed.isLoggedIn || false;
+      state.user = parsed.user || null;
+    } catch(e) {
+      state.isLoggedIn = false;
+      state.user = null;
+    }
+  }
+}
+
+export function saveAuthState() {
+  localStorage.setItem('user_auth', JSON.stringify({ isLoggedIn: state.isLoggedIn, user: state.user }));
 }

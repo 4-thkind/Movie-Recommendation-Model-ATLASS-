@@ -1,12 +1,19 @@
-import { state, loadWatchlistFromStorage } from './state.js';
+import { state, loadWatchlistFromStorage, loadAuthState } from './state.js';
 import { loadMovieLensDatabase } from './recommender.js';
-import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting } from './ui.js';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown } from './ui.js';
 import { initPillNav } from './PillNav.js';
 
 /* ─── INIT ─── */
 window.addEventListener('DOMContentLoaded', () => {
-  // Load watchlist from localStorage
+  // Load watchlist and auth from localStorage
   loadWatchlistFromStorage();
+  loadAuthState();
+
+  if (state.isLoggedIn) {
+    document.body.classList.remove('not-logged-in');
+  } else {
+    document.body.classList.add('not-logged-in');
+  }
 
   // Initialize TMDB API key if not present in localStorage
   if (!localStorage.getItem('tmdb_api_key')) {
@@ -26,6 +33,8 @@ window.addEventListener('DOMContentLoaded', () => {
   initNavbarScroll();
   initPillNav();
   initHashRouting();
+  initGridMotion();
+  initProfileDropdown();
 
   if (!state.movieLensData.loaded) {
     renderRows();
