@@ -137,20 +137,16 @@ body::before{
   will-change: transform, opacity;
 }
 
+/* Style active pill as solid yellow capsule with dark text */
 .pill.active::after, .pill.is-active::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  background: var(--y);
-  border-radius: 50%;
-  z-index: 4;
+  content: none;
 }
 .pill.active, .pill.is-active {
-  color: var(--t1);
+  background: var(--y);
+  color: #000000;
+}
+.pill.active .pill-label, .pill.is-active .pill-label {
+  color: #000000;
 }
 .nav-search{
   flex:1;max-width:280px;margin-left:auto;

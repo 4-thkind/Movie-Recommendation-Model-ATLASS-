@@ -953,35 +953,57 @@ export function updateWLCount() {
 }
 
 export function updateWatchlistUI() {
-  const container = document.getElementById('watchlist-grid');
+  const container = document.getElementById('wl-strip');
   const empty = document.getElementById('wl-empty');
   if (!container || !empty) return;
   
-  container.innerHTML = '';
+  // Clear only existing wl-item elements to avoid deleting empty state
+  container.querySelectorAll('.wl-item').forEach(el => el.remove());
   
   if (state.watchlist.length === 0) {
-    container.style.display = 'none';
     empty.style.display = 'flex';
   } else {
     empty.style.display = 'none';
-    container.style.display = 'grid';
     state.watchlist.forEach(movie => {
-      container.appendChild(buildCard(movie.id, movie));
+      const item = document.createElement('div');
+      item.className = 'wl-item';
+      item.dataset.id = movie.id;
+      item.innerHTML = `
+        <img src="${movie.poster}" alt="${movie.title}" title="${movie.title}"/>
+        <div class="wl-remove">
+          <i class="fa-solid fa-xmark"></i>
+        </div>
+      `;
+      item.querySelector('img').addEventListener('click', () => openModal(movie));
+      item.querySelector('.wl-remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFromWatchlist(movie.id);
+      });
+      container.appendChild(item);
     });
   }
+  buildDrum();
 }
 
 /* ─── ROULETTE LOGIC ─── */
 export function openRoulette() {
   if (state.watchlist.length < 2) return;
-  document.getElementById('roulette-wrap').classList.add('on');
+  document.getElementById('roulette-wrap').classList.add('open');
   document.getElementById('roulette-prompt').style.display = 'none';
   buildDrum();
 }
 
 export function closeRoulette() {
-  document.getElementById('roulette-wrap').classList.remove('on');
+  document.getElementById('roulette-wrap').classList.remove('open');
   resetWinner();
+  const prompt = document.getElementById('roulette-prompt');
+  if (prompt && state.watchlist.length >= 2) {
+    prompt.style.display = 'block';
+    setTimeout(() => {
+      prompt.style.opacity = '1';
+      prompt.style.transform = 'translateY(0)';
+    }, 50);
+  }
 }
 
 export function dismissRoulette() {
@@ -995,7 +1017,7 @@ export function dismissRoulette() {
 
 export function buildDrum() {
   const inner = document.getElementById('drum-inner');
-  if (!inner) return;
+  if (!inner || state.watchlist.length === 0) return;
   
   inner.innerHTML = '';
   const pool = [...state.watchlist];
@@ -1091,11 +1113,15 @@ export function spinRoulette() {
 export function showWinner(movie) {
   const panel = document.getElementById('winner-reveal');
   if (!panel) return;
-  document.getElementById('w-img').src = movie.poster;
-  document.getElementById('w-title').textContent = movie.title;
-  document.getElementById('w-genres').textContent = movie.genre;
-  document.getElementById('w-rating').textContent = `★ ${movie.rating}`;
-  document.getElementById('w-info').onclick = () => openModal(movie);
+  
+  const nameEl = document.getElementById('winner-name');
+  const metaEl = document.getElementById('winner-meta');
+  const openEl = document.getElementById('winner-open');
+  
+  if (nameEl) nameEl.textContent = movie.title;
+  if (metaEl) metaEl.textContent = `${movie.year} · ${movie.genre} · ★ ${movie.rating}`;
+  if (openEl) openEl.onclick = () => openModal(movie);
+  
   panel.classList.add('show');
 }
 
@@ -1976,7 +2002,10 @@ window.closeSettingsModal = closeSettingsModal;
 window.handleSettingsOverlay = handleSettingsOverlay;
 window.saveSettings = saveSettings;
 window.spinRoulette = spinRoulette;
+window.openRoulette = openRoulette;
+window.dismissRoulette = dismissRoulette;
 window.closeRoulette = closeRoulette;
+window.scrollTrend = scrollTrend;
 window.handleOverlay = handleOverlay;
 window.closeModal = closeModal;
 window.openModal = openModal;
