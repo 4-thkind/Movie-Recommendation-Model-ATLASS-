@@ -2,7 +2,7 @@ import { state, saveWatchlistToStorage } from './state.js';
 import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js';
 import { MOVIES } from './data.js';
 import { initializeRecommender, calculateMatchScore } from './recommender.js';
-import { createCircularGallery } from './CircularGallery.js';
+import { createCircularGallery } from './CircularGallery.js?v=2';
 
 // Live platforms list
 export const LIVE_PLATFORMS = [
@@ -978,7 +978,6 @@ export function updateWatchlistUI() {
       container.appendChild(card);
     });
   }
-  buildDrum();
   initPickGallery();
 }
 
@@ -1155,53 +1154,83 @@ let pickGalleryApp = null;
 let pickSpinning = false;
 
 export function initPickGallery() {
-  const container = document.getElementById('pick-gallery-container');
-  const emptyMsg = document.getElementById('pick-empty-msg');
-  const galleryWrap = document.getElementById('pick-gallery-wrap');
-  const rollBtn = document.getElementById('pick-roll-btn');
-  if (!container) return;
-
-  // Destroy previous instance
-  if (pickGalleryApp) {
-    pickGalleryApp.destroy();
-    pickGalleryApp = null;
+  if (window.initPickGalleryTimeout) {
+    clearTimeout(window.initPickGalleryTimeout);
   }
 
-  if (state.watchlist.length === 0) {
-    galleryWrap.style.display = 'none';
-    emptyMsg.style.display = 'flex';
-    rollBtn.style.display = 'none';
-    return;
-  }
+  window.initPickGalleryTimeout = setTimeout(() => {
+    const container = document.getElementById('pick-gallery-container');
+    const emptyMsg = document.getElementById('pick-empty-msg');
+    const galleryWrap = document.getElementById('pick-gallery-wrap');
+    const rollBtn = document.getElementById('pick-roll-btn');
+    const lockMsg = document.getElementById('pick-locked-state');
+    const result = document.getElementById('pick-result');
+    if (!container) return;
 
-  emptyMsg.style.display = 'none';
-  galleryWrap.style.display = 'block';
-  rollBtn.style.display = 'inline-flex';
-
-  // Map watchlist to gallery items
-  const items = state.watchlist.map(m => {
-    let poster = m.poster || '';
-    if (m.poster_path && !poster.startsWith('http')) {
-      poster = `https://image.tmdb.org/t/p/w500${m.poster_path}`;
+    // Destroy previous instance
+    if (pickGalleryApp) {
+      pickGalleryApp.destroy();
+      pickGalleryApp = null;
     }
-    return { image: poster, text: m.title || 'Untitled' };
-  });
 
-  createCircularGallery(container, {
-    items,
-    bend: 3,
-    textColor: '#ffffff',
-    borderRadius: 0.05,
-    font: 'bold 24px DM Sans',
-    scrollSpeed: 2,
-    scrollEase: 0.02
-  }).then(app => {
-    pickGalleryApp = app;
-  });
+    container.innerHTML = '';
+    if (result) {
+      result.classList.remove('show');
+      result.style.display = 'none';
+    }
+
+    const N = state.watchlist.length;
+
+    if (N === 0) {
+      if (galleryWrap) galleryWrap.style.display = 'none';
+      if (emptyMsg) emptyMsg.style.display = 'flex';
+      if (rollBtn) rollBtn.style.display = 'none';
+      if (lockMsg) lockMsg.style.display = 'none';
+      return;
+    }
+
+    if (N === 1) {
+      if (galleryWrap) galleryWrap.style.display = 'none';
+      if (emptyMsg) emptyMsg.style.display = 'none';
+      if (rollBtn) rollBtn.style.display = 'none';
+      if (lockMsg) lockMsg.style.display = 'flex';
+      return;
+    }
+
+    // If 2 or more movies, unlock!
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    if (lockMsg) lockMsg.style.display = 'none';
+    if (galleryWrap) galleryWrap.style.display = 'block';
+    if (rollBtn) rollBtn.style.display = 'inline-flex';
+
+    // Map watchlist to gallery items
+    const items = state.watchlist.map(m => {
+      let poster = m.poster || '';
+      if (m.poster_path && !poster.startsWith('http')) {
+        poster = `https://image.tmdb.org/t/p/w500${m.poster_path}`;
+      }
+      return { image: poster, text: m.title || 'Untitled' };
+    });
+
+    createCircularGallery(container, {
+      items,
+      bend: 3,
+      textColor: '#ffffff',
+      borderRadius: 0.05,
+      font: 'bold 24px DM Sans',
+      scrollSpeed: 2,
+      scrollEase: 0.02
+    }).then(app => {
+      pickGalleryApp = app;
+      if (pickGalleryApp) {
+        pickGalleryApp.onResize();
+      }
+    });
+  }, 100);
 }
 
 export function rollPickMovie() {
-  if (pickSpinning || !pickGalleryApp || state.watchlist.length === 0) return;
+  if (pickSpinning || !pickGalleryApp || state.watchlist.length < 2) return;
   pickSpinning = true;
 
   const btn = document.getElementById('pick-roll-btn');
@@ -1213,43 +1242,29 @@ export function rollPickMovie() {
   const winnerIdx = Math.floor(Math.random() * state.watchlist.length);
   const winner = state.watchlist[winnerIdx];
 
-  // Fast spin: push scroll target far ahead rapidly
   const app = pickGalleryApp;
-  const origSpeed = app.scrollSpeed;
-  app.scrollSpeed = 18;
+  const w = app.medias[0].width;
+  const N = state.watchlist.length;
 
-  // Rapidly advance the scroll target
-  let spinFrames = 0;
-  const spinInterval = setInterval(() => {
-    app.scroll.target += 12;
-    spinFrames++;
-    if (spinFrames > 60) { // ~1s at 60fps
-      clearInterval(spinInterval);
-      // Decelerate
-      app.scrollSpeed = 8;
-      setTimeout(() => {
-        app.scrollSpeed = 4;
-        setTimeout(() => {
-          app.scrollSpeed = 2;
-          app.scroll.ease = 0.02;
-          // Snap to a card position
-          if (app.medias && app.medias[0]) {
-            const w = app.medias[0].width;
-            const idx = Math.round(Math.abs(app.scroll.target) / w);
-            app.scroll.target = app.scroll.target < 0 ? -(w * idx) : w * idx;
-          }
-          // Show result after settling
-          setTimeout(() => {
-            showPickResult(winner);
-            if (btn) btn.classList.remove('spinning');
-            app.scrollSpeed = origSpeed;
-            pickSpinning = false;
-            confettiBurst();
-          }, 800);
-        }, 400);
-      }, 400);
-    }
-  }, 16);
+  // Calculate current index position
+  const currentIndex = Math.round(app.scroll.target / w);
+
+  // We want to spin smoothly with 4 rotations (less speed/rotations as requested)
+  const rotations = 4;
+  const targetIndex = currentIndex + rotations * N + ((winnerIdx - (currentIndex % N) + N) % N);
+
+  // Set target and start programmatic spin
+  app.scroll.target = targetIndex * w;
+  app.scroll.ease = 0.02; // Slower, smoother deceleration ease
+  app.isSpinning = true;
+
+  // Callback when settled
+  app.onSpinEnd = () => {
+    showPickResult(winner);
+    if (btn) btn.classList.remove('spinning');
+    pickSpinning = false;
+    confettiBurst();
+  };
 }
 
 function showPickResult(movie) {
@@ -1707,7 +1722,13 @@ export function handleOverlay(e) {
   if (e.target === document.getElementById('overlay')) closeModal();
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => { 
+  if (e.key === 'Escape') {
+    closeModal();
+    if (typeof window.closeSearchModal === 'function') window.closeSearchModal();
+    if (typeof window.closeSettingsModal === 'function') window.closeSettingsModal();
+  }
+});
 
 /* ─── SETTINGS MODAL ─── */
 export function openSettingsModal() {
@@ -2435,6 +2456,39 @@ window.addEventListener('keydown', (e) => {
         selected.click();
       }
     }
+  } else if (e.key.toLowerCase() === 's') {
+    if (document.activeElement && (
+      document.activeElement.tagName === 'INPUT' || 
+      document.activeElement.tagName === 'TEXTAREA' || 
+      document.activeElement.isContentEditable
+    )) {
+      return;
+    }
+    e.preventDefault();
+    if (typeof window.openSearchModal === 'function') {
+      window.openSearchModal();
+    }
+  } else if (e.key.toLowerCase() === 'r') {
+    if (document.activeElement && (
+      document.activeElement.tagName === 'INPUT' || 
+      document.activeElement.tagName === 'TEXTAREA' || 
+      document.activeElement.isContentEditable
+    )) {
+      return;
+    }
+    e.preventDefault();
+    if (state.watchlist.length >= 2 && !pickSpinning) {
+      // Switch to watchlist tab if not already there, then spin
+      if (activeViewState !== 'watchlist') {
+        window.location.hash = '#watchlist-section';
+        // Wait briefly for page switch to render and gallery to initialize before spinning
+        setTimeout(() => {
+          rollPickMovie();
+        }, 150);
+      } else {
+        rollPickMovie();
+      }
+    }
   }
 });
 
@@ -2524,6 +2578,7 @@ export function showWatchlistPage() {
   updateNavbarActiveLink('watchlist-section');
   window.scrollTo(0, 0);
   closeModal(true);
+  updateWatchlistUI();
 }
 
 export function showHomePage() {
@@ -2569,6 +2624,7 @@ window.handleAuthSubmit = function(e) {
   saveAuthState();
   document.body.classList.remove('not-logged-in');
   updateProfileUI();
+  updateWatchlistUI();
 };
 
 window.continueAsGuest = function() {
@@ -2577,6 +2633,7 @@ window.continueAsGuest = function() {
   saveAuthState();
   document.body.classList.remove('not-logged-in');
   updateProfileUI();
+  updateWatchlistUI();
 };
 
 window.logout = function() {

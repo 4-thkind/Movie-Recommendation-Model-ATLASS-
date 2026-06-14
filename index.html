@@ -259,45 +259,7 @@
       </div>
     </div>
 
-    <!-- Prompt: appears after items are added, before roulette -->
-    <div id="roulette-prompt">
-      <div class="rp-inner">
-        <div class="rp-icon"><i class="fa-solid fa-film"></i></div>
-        <div class="rp-text">
-          <p class="rp-title">Can't decide what to watch?</p>
-          <p class="rp-sub">You have <strong id="rp-count">0</strong> movies saved. Let the roulette pick for you.</p>
-        </div>
-        <button class="rp-yes" id="rp-yes-btn" onclick="openRoulette()">
-          <i class="fa-solid fa-dice"></i> Yes, spin it!
-        </button>
-        <button class="rp-no" onclick="dismissRoulette()">Maybe later</button>
-      </div>
-    </div>
 
-    <!-- Roulette — hidden until user says yes -->
-    <div id="roulette-wrap">
-      <div class="roulette-header">
-        <div class="roulette-title"><i class="fa-solid fa-dice" style="color:var(--y)"></i> Watchlist Roulette</div>
-        <button class="roulette-close" onclick="closeRoulette()" title="Close roulette">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-      <div class="drum-wrap" id="drum-wrap">
-        <div id="drum-inner"></div>
-        <div class="drum-cursor"></div>
-      </div>
-      <button class="spin-btn" id="spin-btn" onclick="spinRoulette()">
-        <i class="fa-solid fa-rotate" id="spin-icon"></i> Spin to Decide
-      </button>
-      <div id="winner-reveal">
-        <p class="winner-label">Tonight's Pick</p>
-        <h3 id="winner-name"></h3>
-        <p id="winner-meta" style="margin-top:4px;font-size:12px;color:var(--t2)"></p>
-        <button class="btn-primary" style="margin-top:14px;font-size:12px;padding:9px 22px" id="winner-open">
-          <i class="fa-solid fa-play" style="font-size:10px"></i> Watch Now
-        </button>
-      </div>
-    </div>
 
     <!-- ═══ PICK A MOVIE FOR ME (CircularGallery) ═══ -->
     <div id="pick-movie-section">
@@ -305,7 +267,7 @@
         <h2 class="pick-heading">Can't Decide? Let Us Pick For You 🎬</h2>
         <p class="pick-sub">Spin the gallery and let fate choose your next watch</p>
         <button class="pick-roll-btn" id="pick-roll-btn" onclick="rollPickMovie()">
-          <i class="fa-solid fa-dice"></i> Roll It!
+          <i class="fa-solid fa-dice"></i> Spin It!
         </button>
         <div class="pick-gallery-wrap" id="pick-gallery-wrap">
           <div class="pick-gallery-container" id="pick-gallery-container"></div>
@@ -313,6 +275,12 @@
         <div class="pick-empty-msg" id="pick-empty-msg" style="display:none">
           <i class="fa-regular fa-bookmark" style="font-size:28px;color:var(--t3)"></i>
           <p>Add some movies to your watchlist first!</p>
+        </div>
+        <div class="pick-locked-state" id="pick-locked-state" style="display:none">
+          <div class="lock-icon-wrap">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <p class="lock-text">Add at least 2 movies to your watchlist to unlock the Roulette of Fate! 🔮</p>
         </div>
         <!-- Result banner -->
         <div class="pick-result" id="pick-result">
@@ -324,7 +292,7 @@
               <p class="pick-result-meta" id="pick-result-meta"></p>
               <div class="pick-result-btns">
                 <button class="btn-primary pick-watch-btn" id="pick-watch-btn"><i class="fa-solid fa-play" style="font-size:10px"></i> Watch Now</button>
-                <button class="btn-secondary pick-again-btn" onclick="rollPickMovie()"><i class="fa-solid fa-rotate" style="font-size:10px"></i> Roll Again</button>
+                <button class="btn-secondary pick-again-btn" onclick="rollPickMovie()"><i class="fa-solid fa-rotate" style="font-size:10px"></i> Spin Again</button>
               </div>
             </div>
           </div>

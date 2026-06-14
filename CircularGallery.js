@@ -4,7 +4,7 @@
  * Requires: https://cdn.jsdelivr.net/npm/ogl@1.0.8/dist/ogl.mjs
  */
 
-const OGL_CDN = 'https://cdn.jsdelivr.net/npm/ogl@1.0.11/+esm';
+const OGL_CDN = 'https://cdn.jsdelivr.net/npm/ogl@1.0.11/dist/ogl.mjs';
 let _ogl = null;
 
 async function loadOGL() {
@@ -80,7 +80,7 @@ class Media {
     const texture = new Texture(this.gl, { generateMipmaps: true });
     this.program = new Program(this.gl, {
       depthTest: false, depthWrite: false,
-      vertex: `precision highp float;attribute vec3 position;attribute vec2 uv;uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;uniform float uTime;uniform float uSpeed;varying vec2 vUv;void main(){vUv=uv;vec3 p=position;p.z=(sin(p.x*4.0+uTime)*1.5+cos(p.y*2.0+uTime)*1.5)*(0.1+uSpeed*0.5);gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,
+      vertex: `precision highp float;attribute vec3 position;attribute vec2 uv;uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;uniform float uTime;uniform float uSpeed;varying vec2 vUv;void main(){vUv=uv;vec3 p=position;p.z=uTime*0.0+uSpeed*0.0;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0);}`,
       fragment: `precision highp float;uniform vec2 uImageSizes;uniform vec2 uPlaneSizes;uniform sampler2D tMap;uniform float uBorderRadius;varying vec2 vUv;float roundedBoxSDF(vec2 p,vec2 b,float r){vec2 d=abs(p)-b;return length(max(d,vec2(0.0)))+min(max(d.x,d.y),0.0)-r;}void main(){vec2 ratio=vec2(min((uPlaneSizes.x/uPlaneSizes.y)/(uImageSizes.x/uImageSizes.y),1.0),min((uPlaneSizes.y/uPlaneSizes.x)/(uImageSizes.y/uImageSizes.x),1.0));vec2 uv=vec2(vUv.x*ratio.x+(1.0-ratio.x)*0.5,vUv.y*ratio.y+(1.0-ratio.y)*0.5);vec4 color=texture2D(tMap,uv);float d=roundedBoxSDF(vUv-0.5,vec2(0.5-uBorderRadius),uBorderRadius);float alpha=1.0-smoothstep(-0.002,0.002,d);gl_FragColor=vec4(color.rgb,alpha);}`,
       uniforms: {
         tMap: { value: texture }, uPlaneSizes: { value: [0, 0] },
@@ -207,12 +207,15 @@ class GalleryApp {
   }
 
   onResize() {
-    this.screen = { width: this.container.clientWidth, height: this.container.clientHeight };
-    this.renderer.setSize(this.screen.width, this.screen.height);
-    this.camera.perspective({ aspect: this.screen.width / this.screen.height });
+    const w = this.container.clientWidth || 100;
+    const h_px = this.container.clientHeight || 100;
+    this.screen = { width: w, height: h_px };
+    this.renderer.setSize(w, h_px);
+    const aspect = w / h_px;
+    this.camera.perspective({ aspect });
     const fov = (this.camera.fov * Math.PI) / 180;
     const h = 2 * Math.tan(fov / 2) * this.camera.position.z;
-    this.viewport = { width: h * this.camera.aspect, height: h };
+    this.viewport = { width: h * aspect, height: h };
     if (this.medias) this.medias.forEach(m => m.onResize({ screen: this.screen, viewport: this.viewport }));
   }
 
@@ -222,36 +225,27 @@ class GalleryApp {
     if (this.medias) this.medias.forEach(m => m.update(this.scroll, dir));
     this.renderer.render({ scene: this.scene, camera: this.camera });
     this.scroll.last = this.scroll.current;
+
+    // Check if programmatic spin has settled on target
+    if (this.isSpinning && Math.abs(this.scroll.target - this.scroll.current) < 0.01) {
+      this.scroll.current = this.scroll.target; // Snap to exact target
+      this.isSpinning = false;
+      if (typeof this.onSpinEnd === 'function') {
+        this.onSpinEnd();
+      }
+    }
+
     this.raf = requestAnimationFrame(this.update.bind(this));
   }
 
   addEventListeners() {
     this._onResize = this.onResize.bind(this);
-    this._onWheel = this.onWheel.bind(this);
-    this._onDown = this.onTouchDown.bind(this);
-    this._onMove = this.onTouchMove.bind(this);
-    this._onUp = this.onTouchUp.bind(this);
     window.addEventListener('resize', this._onResize);
-    // Only listen on the container itself for scroll/drag to avoid hijacking the page
-    this.container.addEventListener('wheel', this._onWheel, { passive: true });
-    this.container.addEventListener('mousedown', this._onDown);
-    this.container.addEventListener('mousemove', this._onMove);
-    this.container.addEventListener('mouseup', this._onUp);
-    this.container.addEventListener('touchstart', this._onDown, { passive: true });
-    this.container.addEventListener('touchmove', this._onMove, { passive: true });
-    this.container.addEventListener('touchend', this._onUp);
   }
 
   destroy() {
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this._onResize);
-    this.container.removeEventListener('wheel', this._onWheel);
-    this.container.removeEventListener('mousedown', this._onDown);
-    this.container.removeEventListener('mousemove', this._onMove);
-    this.container.removeEventListener('mouseup', this._onUp);
-    this.container.removeEventListener('touchstart', this._onDown);
-    this.container.removeEventListener('touchmove', this._onMove);
-    this.container.removeEventListener('touchend', this._onUp);
     if (this.gl && this.gl.canvas && this.gl.canvas.parentNode) {
       this.gl.canvas.parentNode.removeChild(this.gl.canvas);
     }
