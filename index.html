@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 
@@ -54,68 +54,11 @@
 <nav id="nav">
   <a href="#" class="logo">
     <div class="logo-icon"><i class="fa-solid fa-film"></i></div>
-    <span class="logo-text"><em>Cine</em>Match</span>
+    <span class="logo-text">ATLASS</span>
   </a>
-  <div class="nav-links pill-nav-items" id="nav-links">
-    <ul class="pill-list" role="menubar">
-      <li role="none">
-        <a role="menuitem" href="#hero" data-section="hero" class="pill active">
-          <span class="hover-circle" aria-hidden="true"></span>
-          <span class="label-stack">
-            <span class="pill-label">Home</span>
-            <span class="pill-label-hover" aria-hidden="true">Home</span>
-          </span>
-        </a>
-      </li>
-      <li role="none">
-        <a role="menuitem" href="#trending-section" data-section="trending-section" class="pill">
-          <span class="hover-circle" aria-hidden="true"></span>
-          <span class="label-stack">
-            <span class="pill-label">Trending</span>
-            <span class="pill-label-hover" aria-hidden="true">Trending</span>
-          </span>
-        </a>
-      </li>
-      <li role="none">
-        <a role="menuitem" href="#platforms-section" data-section="platforms-section" class="pill">
-          <span class="hover-circle" aria-hidden="true"></span>
-          <span class="label-stack">
-            <span class="pill-label">Platforms</span>
-            <span class="pill-label-hover" aria-hidden="true">Platforms</span>
-          </span>
-        </a>
-      </li>
-      <li role="none">
-        <a role="menuitem" href="#surprise-section" data-section="surprise-section" class="pill">
-          <span class="hover-circle" aria-hidden="true"></span>
-          <span class="label-stack">
-            <span class="pill-label">Surprise Me</span>
-            <span class="pill-label-hover" aria-hidden="true">Surprise Me</span>
-          </span>
-        </a>
-      </li>
-      <li role="none">
-        <a role="menuitem" href="#watchlist-section" data-section="watchlist-section" class="pill">
-          <span class="hover-circle" aria-hidden="true"></span>
-          <span class="label-stack">
-            <span class="pill-label">Watchlist</span>
-            <span class="pill-label-hover" aria-hidden="true">Watchlist</span>
-          </span>
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div class="nav-search">
-    <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="text" placeholder="Search movies…" id="search-input"/>
-  </div>
   <div class="nav-right">
-    <button class="watchlist-btn" id="settings-btn" style="background:var(--b3);border-color:rgba(255,255,255,.1);color:var(--t2);padding:7px 11px" onclick="openSettingsModal()" title="CineMatch Settings">
-      <i class="fa-solid fa-gear"></i>
-    </button>
     <div class="profile-container" id="profile-container">
       <img class="avatar" id="avatar-btn" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" alt="Profile" style="cursor:pointer"/>
-      
       <div class="profile-dropdown" id="profile-dropdown">
         <div class="pd-user-info">
           <div class="pd-username" id="pd-display-name">Pranav Pant</div>
@@ -169,8 +112,12 @@
 
 <!-- ═══ MAIN ═══ -->
 <main>
-  <!-- Search Results Section -->
+  <!-- Search Results Section (Legacy page - Disabled)
   <section id="search-section" style="display:none;padding-top:44px" class="reveal">
+    <div class="tt-search-wrapper">
+      <i class="fa-solid fa-magnifying-glass tt-search-icon"></i>
+      <input type="text" id="search-input" placeholder="Type to search movies..." autocomplete="off" class="tt-search-input"/>
+    </div>
     <div class="sec-head">
       <div>
         <div class="sec-title">
@@ -187,6 +134,7 @@
       <div class="arr R" onclick="scrollRow('search-results',1)"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
   </section>
+  -->
 
 
   <!-- ROW 1: Top Picks -->
@@ -343,6 +291,40 @@
         </button>
       </div>
     </div>
+
+    <!-- ═══ PICK A MOVIE FOR ME (CircularGallery) ═══ -->
+    <div id="pick-movie-section">
+      <div class="pick-glass-card">
+        <h2 class="pick-heading">Can't Decide? Let Us Pick For You 🎬</h2>
+        <p class="pick-sub">Spin the gallery and let fate choose your next watch</p>
+        <button class="pick-roll-btn" id="pick-roll-btn" onclick="rollPickMovie()">
+          <i class="fa-solid fa-dice"></i> Roll It!
+        </button>
+        <div class="pick-gallery-wrap" id="pick-gallery-wrap">
+          <div class="pick-gallery-container" id="pick-gallery-container"></div>
+        </div>
+        <div class="pick-empty-msg" id="pick-empty-msg" style="display:none">
+          <i class="fa-regular fa-bookmark" style="font-size:28px;color:var(--t3)"></i>
+          <p>Add some movies to your watchlist first!</p>
+        </div>
+        <!-- Result banner -->
+        <div class="pick-result" id="pick-result">
+          <div class="pick-result-inner">
+            <img class="pick-result-poster" id="pick-result-poster" src="" alt=""/>
+            <div class="pick-result-info">
+              <div class="pick-result-tag"><i class="fa-solid fa-sparkles" style="font-size:9px"></i> Tonight's Pick</div>
+              <h3 class="pick-result-title" id="pick-result-title"></h3>
+              <p class="pick-result-meta" id="pick-result-meta"></p>
+              <div class="pick-result-btns">
+                <button class="btn-primary pick-watch-btn" id="pick-watch-btn"><i class="fa-solid fa-play" style="font-size:10px"></i> Watch Now</button>
+                <button class="btn-secondary pick-again-btn" onclick="rollPickMovie()"><i class="fa-solid fa-rotate" style="font-size:10px"></i> Roll Again</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </section>
 
 </main>
@@ -449,7 +431,7 @@
       </div>
       <p class="m-synopsis" id="m-synopsis"></p>
       <div class="ai-box">
-        <div class="ai-box-head"><i class="fa-solid fa-brain"></i> Why CineMatch picked this</div>
+        <div class="ai-box-head"><i class="fa-solid fa-brain"></i> Why ATLASS picked this</div>
         <div class="ai-pills" id="m-reasons"></div>
       </div>
       <div class="m-crew-container" style="display: flex; gap: 32px; margin-bottom: 20px;">
@@ -462,16 +444,91 @@
           <div class="m-cast-row" id="m-cast"></div>
         </div>
       </div>
-      <p style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">You May Also Like</p>
-      <div class="mini-row" id="m-similar"></div>
-      <div class="m-actions">
-        <button class="btn-primary" id="m-play-btn" style="font-size:12px;padding:10px 22px"><i class="fa-solid fa-play" style="font-size:10px"></i> Play Trailer</button>
-        <button class="btn-secondary" style="font-size:12px;padding:10px 18px" id="m-add-wl-new"><i class="fa-solid fa-plus" style="font-size:10px"></i> Watchlist</button>
         <button class="danger-btn" onclick="closeModal()"><i class="fa-solid fa-ban" style="font-size:11px"></i> Don't Show Again</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ═══ SEARCH MODAL OVERLAY ═══ -->
+<div id="search-overlay" onclick="handleSearchOverlay(event)">
+  <div id="search-modal">
+    <div class="sm-header">
+      <h2 class="sm-title">Search</h2>
+      <div class="sm-header-right">
+        <div class="sm-dropdown-wrap">
+          <select id="search-category" class="sm-dropdown">
+            <option value="all">Movies & TV Shows</option>
+            <option value="movie">Movies</option>
+            <option value="tv">TV Shows</option>
+          </select>
+          <i class="fa-solid fa-chevron-down sm-dropdown-arrow"></i>
+        </div>
+        <button class="sm-close-btn" onclick="closeSearchModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    
+    <div class="sm-input-wrapper">
+      <i class="fa-solid fa-magnifying-glass sm-search-icon"></i>
+      <input type="text" id="sm-search-input" placeholder="Search by title..." autocomplete="off" />
+      <button id="sm-clear-btn" class="sm-clear-btn" onclick="clearSearchModalInput()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    
+    <div class="sm-results-container">
+      <div id="sm-results-list" class="sm-results-list">
+        <div class="sm-placeholder">Type something to search...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<nav class="tiktok-nav" id="tiktok-nav">
+  <a href="#hero" class="tt-item active" data-tab="hero" onclick="setActiveTab(this)">
+    <div class="tt-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    </div>
+    <span class="tt-label">Home</span>
+  </a>
+  <a href="#surprise-section" class="tt-item" data-tab="surprise-section" onclick="setActiveTab(this)">
+    <div class="tt-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+    </div>
+    <span class="tt-label">Genre</span>
+  </a>
+  <a href="#watchlist-section" class="tt-item" data-tab="watchlist-section" onclick="setActiveTab(this)">
+    <div class="tt-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      <div class="tt-badge" id="tt-wl-badge" style="display:none"></div>
+    </div>
+    <span class="tt-label">Watchlist</span>
+  </a>
+  <a href="javascript:void(0)" class="tt-item" onclick="openSearchTab()">
+    <div class="tt-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </div>
+    <span class="tt-label">Search</span>
+  </a>
+
+</nav>
+
+<script>
+  function setActiveTab(clickedEl) {
+    document.querySelectorAll('.tt-item').forEach(el => el.classList.remove('active'));
+    clickedEl.classList.add('active');
+  }
+  function openSearchTab() {
+    if (typeof window.openSearchModal === 'function') {
+      window.openSearchModal();
+    }
+  }
+  function toggleProfile() {
+    const avatarBtn = document.getElementById('avatar-btn');
+    if(avatarBtn) {
+      avatarBtn.click();
+    }
+  }
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 <script type="module" src="app.js?v=7"></script>
