@@ -1219,7 +1219,13 @@ export function initPickGallery() {
       borderRadius: 0.05,
       font: 'bold 24px DM Sans',
       scrollSpeed: 2,
-      scrollEase: 0.02
+      scrollEase: 0.02,
+      onCardClick: (index) => {
+        const movie = state.watchlist[index];
+        if (movie) {
+          openModal(movie);
+        }
+      }
     }).then(app => {
       pickGalleryApp = app;
       if (pickGalleryApp) {

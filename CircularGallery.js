@@ -147,7 +147,7 @@ class Media {
 }
 
 class GalleryApp {
-  constructor(container, { items, bend = 3, textColor = '#ffffff', borderRadius = 0.05, font = 'bold 24px DM Sans', scrollSpeed = 2, scrollEase = 0.05 }, OGL) {
+  constructor(container, { items, bend = 3, textColor = '#ffffff', borderRadius = 0.05, font = 'bold 24px DM Sans', scrollSpeed = 2, scrollEase = 0.05, onCardClick }, OGL) {
     this.container = container;
     this.OGL = OGL;
     this.scrollSpeed = scrollSpeed;
@@ -155,6 +155,8 @@ class GalleryApp {
     this.onCheckDebounce = debounce(this.onCheck.bind(this), 200);
     this.medias = [];
     this.isDown = false; this.start = 0; this.raf = 0;
+    this.onCardClick = onCardClick;
+    this.originalLength = items ? items.length : 0;
     this.createRenderer();
     this.createCamera();
     this.createScene();
@@ -241,11 +243,42 @@ class GalleryApp {
   addEventListeners() {
     this._onResize = this.onResize.bind(this);
     window.addEventListener('resize', this._onResize);
+
+    this._onClick = (e) => {
+      if (this.isSpinning) return;
+      const rect = this.renderer.gl.canvas.getBoundingClientRect();
+      const mouse = {
+        x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        y: -((e.clientY - rect.top) / rect.height) * 2 + 1
+      };
+
+      const raycast = new this.OGL.Raycast(this.gl);
+      raycast.castMouse(this.camera, mouse);
+
+      const meshes = this.medias.map(m => m.plane);
+      const hits = raycast.intersectBounds(meshes);
+
+      if (hits.length > 0) {
+        const hitMesh = hits[0];
+        const clickedMedia = this.medias.find(m => m.plane === hitMesh);
+        if (clickedMedia && typeof this.onCardClick === 'function') {
+          const N = this.originalLength;
+          if (N > 0) {
+            const origIdx = clickedMedia.index % N;
+            this.onCardClick(origIdx);
+          }
+        }
+      }
+    };
+    this.container.addEventListener('click', this._onClick);
   }
 
   destroy() {
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this._onResize);
+    if (this._onClick) {
+      this.container.removeEventListener('click', this._onClick);
+    }
     if (this.gl && this.gl.canvas && this.gl.canvas.parentNode) {
       this.gl.canvas.parentNode.removeChild(this.gl.canvas);
     }
