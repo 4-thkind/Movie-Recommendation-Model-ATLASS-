@@ -82,21 +82,8 @@
   </div>
 </nav>
 
-<!-- CORS Warning Banner -->
-<div id="cors-warning-banner" style="display:none;background:#ef4444;color:#fff;text-align:center;padding:12px;font-size:13px;font-weight:600;position:fixed;top:62px;left:0;right:0;z-index:899">
-  <i class="fa-solid fa-triangle-exclamation" style="margin-right:8px"></i>
-  CineMatch is running via file://. Browser security policies block loading MovieLens CSVs. Please run a local web server (e.g. `python -m http.server` or Live Server).
-</div>
-<script>
-  // Bug 7 fix: toggle body class when CORS banner is shown so layout compensates
-  (function() {
-    const banner = document.getElementById('cors-warning-banner');
-    const observer = new MutationObserver(() => {
-      document.body.classList.toggle('has-cors-banner', banner.style.display !== 'none');
-    });
-    observer.observe(banner, { attributes: true, attributeFilter: ['style'] });
-  })();
-</script>
+<!-- Floating Toast Container -->
+<div id="toast-container" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
 
 <!-- ═══ HERO ═══ -->
 <section id="hero">
@@ -307,26 +294,155 @@
 
 <!-- ═══ SETTINGS MODAL ═══ -->
 <div id="settings-overlay" onclick="handleSettingsOverlay(event)">
-  <div id="settings-modal">
+  <div id="settings-modal" style="padding: 24px;">
     <button class="m-close" onclick="closeSettingsModal()"><i class="fa-solid fa-xmark"></i></button>
-    <div style="padding:28px">
-      <h2 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:18px;letter-spacing:-.4px"><i class="fa-solid fa-gear" style="color:var(--y);margin-right:8px"></i>CineMatch Settings</h2>
-      
-      <div style="margin-bottom:20px">
-        <label style="display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">TMDb API Key (v3 auth)</label>
-        <input type="text" id="tmdb-key-input" placeholder="Enter TMDb API Key..." style="width:100%;padding:12px;border-radius:8px;background:var(--b3);border:1px solid rgba(255,255,255,.1);color:var(--t1);font-family:inherit;font-size:13px;outline:none;transition:border-color .3s"/>
-        <p style="font-size:11px;color:var(--t3);margin-top:6px;line-height:1.4">Get your key from <a href="https://www.themoviedb.org/settings/api" target="_blank" style="color:var(--y);text-decoration:none">TMDb Settings</a>. Stored locally in your browser.</p>
+    
+    <h2 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:18px;letter-spacing:-.4px">
+      <i class="fa-solid fa-gear" style="color:var(--y);margin-right:8px"></i>CineMatch Settings
+    </h2>
+    
+    <!-- Tab Navigation -->
+    <div class="settings-tabs">
+      <button class="settings-tab-btn active" data-tab="api-integration" onclick="switchSettingsTab('api-integration')">
+        <i class="fa-solid fa-key"></i> API
+      </button>
+      <button class="settings-tab-btn" data-tab="user-preferences" onclick="switchSettingsTab('user-preferences')">
+        <i class="fa-solid fa-sliders"></i> Preferences
+      </button>
+      <button class="settings-tab-btn" data-tab="roulette-tuning" onclick="switchSettingsTab('roulette-tuning')">
+        <i class="fa-solid fa-dice"></i> Roulette
+      </button>
+    </div>
+    
+    <!-- Tab 1: API & Integration -->
+    <div class="settings-tab-content active" id="tab-api-integration">
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">TMDb API Key (v3 auth)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="tmdb-key-input" placeholder="Enter TMDb API Key..." style="flex:1;padding:10px 12px;border-radius:8px;background:var(--b3);border:1px solid rgba(255,255,255,.1);color:var(--t1);font-family:inherit;font-size:13px;outline:none;transition:border-color .3s"/>
+          <button class="btn-primary" id="test-connection-btn" onclick="testTMDBConnection()" style="font-size:12px;padding:10px 14px;border-radius:8px;background:var(--y);color:#000;font-weight:700;border:none;cursor:pointer;">Test</button>
+        </div>
+        <div class="status-indicator-wrap">
+          <div class="status-dot" id="connection-status-indicator"></div>
+          <span class="status-text" id="connection-status-text">Checking...</span>
+        </div>
+        <p style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.4">Get a free key from <a href="https://www.themoviedb.org/settings/api" target="_blank" style="color:var(--y);text-decoration:none">TMDb Settings</a> to fetch high-res posters, cast, trailers, and live metadata.</p>
       </div>
 
-      <div style="margin-bottom:20px;padding:15px;background:var(--b3);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
-        <h4 style="font-size:11px;font-weight:700;color:var(--t1);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">MovieLens Database Status</h4>
-        <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">movies.csv:</span><span id="status-movies" style="font-weight:600;color:var(--t3)">Checking...</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">links.csv:</span><span id="status-links" style="font-weight:600;color:var(--t3)">Checking...</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">ratings.csv:</span><span id="status-ratings" style="font-weight:600;color:var(--t3)">Checking...</span></div>
+      <!-- Settings Stats Grid -->
+      <div class="settings-stats-grid">
+        <div class="settings-stat-card">
+          <span class="settings-stat-val" id="tmdb-latency-val">N/A</span>
+          <span class="settings-stat-lbl">TMDb Latency</span>
+        </div>
+        <div class="settings-stat-card">
+          <span class="settings-stat-val" id="session-runtime-val">0m</span>
+          <span class="settings-stat-lbl">Session Time</span>
         </div>
       </div>
 
+      <!-- Developer Database Status -->
+      <div style="padding:12px 14px;background:rgba(255,255,255,.02);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
+        <h4 style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">MovieLens Status (Offline Mode)</h4>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:11px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--t3)">movies.csv:</span><span id="status-movies" style="font-weight:600;color:var(--t3)">Checking...</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--t3)">links.csv:</span><span id="status-links" style="font-weight:600;color:var(--t3)">Checking...</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--t3)">ratings.csv:</span><span id="status-ratings" style="font-weight:600;color:var(--t3)">Checking...</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tab 2: User Preferences -->
+    <div class="settings-tab-content" id="tab-user-preferences">
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Favorite Genres (Match Score Boost)</label>
+        <div class="genre-pills-container">
+          <div class="genre-pill" data-genre="Action" onclick="toggleGenrePill(event)">Action</div>
+          <div class="genre-pill" data-genre="Adventure" onclick="toggleGenrePill(event)">Adventure</div>
+          <div class="genre-pill" data-genre="Animation" onclick="toggleGenrePill(event)">Animation</div>
+          <div class="genre-pill" data-genre="Comedy" onclick="toggleGenrePill(event)">Comedy</div>
+          <div class="genre-pill" data-genre="Crime" onclick="toggleGenrePill(event)">Crime</div>
+          <div class="genre-pill" data-genre="Documentary" onclick="toggleGenrePill(event)">Documentary</div>
+          <div class="genre-pill" data-genre="Drama" onclick="toggleGenrePill(event)">Drama</div>
+          <div class="genre-pill" data-genre="Fantasy" onclick="toggleGenrePill(event)">Fantasy</div>
+          <div class="genre-pill" data-genre="Horror" onclick="toggleGenrePill(event)">Horror</div>
+          <div class="genre-pill" data-genre="Romance" onclick="toggleGenrePill(event)">Romance</div>
+          <div class="genre-pill" data-genre="Sci-Fi" onclick="toggleGenrePill(event)">Sci-Fi</div>
+          <div class="genre-pill" data-genre="Thriller" onclick="toggleGenrePill(event)">Thriller</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Preferred Providers</label>
+        <div class="providers-grid">
+          <div class="provider-checkbox-label" data-provider-id="netflix" onclick="toggleProviderCheckbox(event)" style="--bg-color:#e50914;--border-color:#e50914">
+            <input type="checkbox"/>
+            <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
+            <div class="provider-logo-mini" style="background:#e50914"><i class="fa-solid fa-n"></i></div>
+            <span>Netflix</span>
+          </div>
+          <div class="provider-checkbox-label" data-provider-id="prime" onclick="toggleProviderCheckbox(event)" style="--bg-color:#00a8e0;--border-color:#00a8e0">
+            <input type="checkbox"/>
+            <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
+            <div class="provider-logo-mini" style="background:#00a8e0"><i class="fa-brands fa-amazon"></i></div>
+            <span>Prime Video</span>
+          </div>
+          <div class="provider-checkbox-label" data-provider-id="appletv" onclick="toggleProviderCheckbox(event)" style="--bg-color:#a2aaad;--border-color:#a2aaad">
+            <input type="checkbox"/>
+            <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
+            <div class="provider-logo-mini" style="background:#444"><i class="fa-brands fa-apple"></i></div>
+            <span>Apple TV+</span>
+          </div>
+          <div class="provider-checkbox-label" data-provider-id="disney" onclick="toggleProviderCheckbox(event)" style="--bg-color:#113ccf;--border-color:#113ccf">
+            <input type="checkbox"/>
+            <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
+            <div class="provider-logo-mini" style="background:#113ccf"><i class="fa-solid fa-star"></i></div>
+            <span>Disney+</span>
+          </div>
+          <div class="provider-checkbox-label" data-provider-id="max" onclick="toggleProviderCheckbox(event)" style="--bg-color:#002be0;--border-color:#002be0">
+            <input type="checkbox"/>
+            <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
+            <div class="provider-logo-mini" style="background:#002be0"><i class="fa-solid fa-m"></i></div>
+            <span>Max</span>
+          </div>
+          <div class="provider-checkbox-label" data-provider-id="hulu" onclick="toggleProviderCheckbox(event)" style="--bg-color:#1ce783;--border-color:#1ce783">
+            <input type="checkbox"/>
+            <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
+            <div class="provider-logo-mini" style="background:#1ce783;color:#000"><i class="fa-solid fa-h"></i></div>
+            <span>Hulu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tab 3: Roulette Tuning -->
+    <div class="settings-tab-content" id="tab-roulette-tuning">
+      <!-- Confetti Switch -->
+      <div class="settings-control-group" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--b3);border-radius:10px;border:1px solid rgba(255,255,255,.05);margin-bottom:16px">
+        <div>
+          <h4 style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">Victory Confetti</h4>
+          <p style="font-size:10px;color:var(--t3)">Launch particles on selection match</p>
+        </div>
+        <label class="switch-control">
+          <input type="checkbox" id="confetti-toggle"/>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+      
+      <!-- Bend Intensity Slider -->
+      <div class="settings-control-group" style="padding:14px;background:var(--b3);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
+        <div class="settings-control-label-row">
+          <div>
+            <h4 style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">Bend Curvature Intensity</h4>
+            <p style="font-size:10px;color:var(--t3)">WebGL circular gallery radius scale</p>
+          </div>
+          <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--y)" id="bend-intensity-val">3.0</span>
+        </div>
+        <input type="range" id="bend-intensity-slider" min="0.0" max="5.0" step="0.5" class="slider-control" oninput="document.getElementById('bend-intensity-val').textContent = parseFloat(this.value).toFixed(1)"/>
+      </div>
+    </div>
+    
+    <div style="margin-top:24px">
       <button class="btn-primary" style="width:100%;justify-content:center" onclick="saveSettings()">Save Changes</button>
     </div>
   </div>

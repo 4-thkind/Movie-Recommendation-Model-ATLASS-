@@ -123,7 +123,13 @@ export async function loadMovieLensDatabase() {
   }
 
   if (window.location.protocol === 'file:') {
-    document.getElementById('cors-warning-banner').style.display = 'block';
+    if (typeof window.showToast === 'function') {
+      window.showToast(
+        "Offline Database Error", 
+        "CineMatch is running via file://. Browser security policies block loading local CSVs. Run a local web server (e.g. python -m http.server) to enable offline recommendations.",
+        "error"
+      );
+    }
     updateDatabaseStatus('movies', 'CORS Blocked');
     updateDatabaseStatus('links', 'CORS Blocked');
     updateDatabaseStatus('ratings', 'CORS Blocked');

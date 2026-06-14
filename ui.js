@@ -4,6 +4,8 @@ import { MOVIES } from './data.js';
 import { initializeRecommender, calculateMatchScore } from './recommender.js';
 import { createCircularGallery } from './CircularGallery.js?v=3';
 
+const sessionStart = Date.now();
+
 // Live platforms list
 export const LIVE_PLATFORMS = [
   { id: 'netflix', name: 'Netflix', color: '#e50914', icon: 'fa-solid fa-n', providerId: 8 },
@@ -87,6 +89,62 @@ export const PLATFORMS_DATA = [
   }
 ];
 
+export function applyMatchScorePreferencesBoost(movieObj) {
+  if (!movieObj) return;
+  let score = movieObj.match || 75;
+  
+  // Load favorite genres
+  const favGenresStr = localStorage.getItem('fav_genres');
+  if (favGenresStr) {
+    try {
+      const favGenres = JSON.parse(favGenresStr);
+      if (Array.isArray(favGenres) && favGenres.length > 0 && movieObj.genre) {
+        const movieGenres = movieObj.genre.split('·').map(g => g.trim().toLowerCase());
+        favGenres.forEach(fg => {
+          if (movieGenres.includes(fg.toLowerCase())) {
+            score += 4; // Boost by 4% per matching genre
+          }
+        });
+      }
+    } catch(e) {
+      console.error("Error parsing fav_genres settings", e);
+    }
+  }
+
+  // Load favorite providers
+  const favProvidersStr = localStorage.getItem('fav_providers');
+  if (favProvidersStr) {
+    try {
+      const favProviders = JSON.parse(favProvidersStr);
+      if (Array.isArray(favProviders) && favProviders.length > 0 && movieObj.platforms) {
+        const providerMap = {
+          'netflix': 'Netflix',
+          'prime': 'Prime Video',
+          'appletv': 'Apple TV+',
+          'disney': 'Disney+',
+          'max': 'Max',
+          'hulu': 'Hulu'
+        };
+        const moviePlatforms = movieObj.platforms.map(p => p.toLowerCase());
+        let hasFavProvider = false;
+        favProviders.forEach(fp => {
+          const platformName = providerMap[fp.toLowerCase()];
+          if (platformName && moviePlatforms.includes(platformName.toLowerCase())) {
+            hasFavProvider = true;
+          }
+        });
+        if (hasFavProvider) {
+          score += 5; // Boost by 5% if available on a favorite platform
+        }
+      }
+    } catch(e) {
+      console.error("Error parsing fav_providers settings", e);
+    }
+  }
+  
+  movieObj.match = Math.min(99, Math.max(0, score));
+}
+
 /* ─── FETCH TMDB DETAILS (WITH CACHING & FALLBACK) ─── */
 export async function fetchTMDBDetails(movieId) {
   if (state.tmdbCache[movieId]) return state.tmdbCache[movieId];
@@ -108,8 +166,12 @@ export async function fetchTMDBDetails(movieId) {
   } else {
     if (!state.movieLensData.loaded) {
       const fallback = MOVIES.find(m => m.id === movieId);
-      if (fallback) return fallback;
-      return {
+      if (fallback) {
+        const copied = { ...fallback };
+        applyMatchScorePreferencesBoost(copied);
+        return copied;
+      }
+      const inlineFallback = {
         id: movieId,
         title: `MovieLens #${movieId}`,
         year: "N/A",
@@ -125,6 +187,8 @@ export async function fetchTMDBDetails(movieId) {
         cast: [{name: "Cast N/A", character: "Cast Member", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}],
         director: [{name: "Director N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80"}]
       };
+      applyMatchScorePreferencesBoost(inlineFallback);
+      return inlineFallback;
     }
     const movie = state.movieLensData.movies[movieId];
     if (!movie) return null;
@@ -158,6 +222,7 @@ export async function fetchTMDBDetails(movieId) {
         { name: "Director N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }
       ]
     };
+    applyMatchScorePreferencesBoost(fallbackMock);
     state.tmdbCache[movieId] = fallbackMock;
     return fallbackMock;
   }
@@ -213,6 +278,7 @@ export async function fetchTMDBDetails(movieId) {
       }
     }
     
+    applyMatchScorePreferencesBoost(mapped);
     state.tmdbCache[movieId] = mapped;
     return mapped;
   } catch (err) {
@@ -1132,6 +1198,10 @@ export function resetWinner() {
 }
 
 export function confettiBurst() {
+  const savedVal = localStorage.getItem('confetti_enabled');
+  const confettiEnabled = savedVal !== null ? (savedVal === 'true') : true;
+  if (!confettiEnabled) return;
+
   for (let i = 0; i < 75; i++) {
     const dot = document.createElement('div');
     dot.className = 'confetti';
@@ -1203,18 +1273,22 @@ export function initPickGallery() {
     if (galleryWrap) galleryWrap.style.display = 'block';
     if (rollBtn) rollBtn.style.display = 'inline-flex';
 
-    // Map watchlist to gallery items
+    // Map watchlist to gallery items and wrap with a CORS proxy so WebGL can load textures without CORS blocks
     const items = state.watchlist.map(m => {
       let poster = m.poster || '';
       if (m.poster_path && !poster.startsWith('http')) {
         poster = `https://image.tmdb.org/t/p/w500${m.poster_path}`;
       }
-      return { image: poster, text: m.title || 'Untitled' };
+      const proxyPoster = poster ? `https://images.weserv.nl/?url=${encodeURIComponent(poster)}` : '';
+      return { image: proxyPoster, text: m.title || 'Untitled' };
     });
+
+    const savedBend = localStorage.getItem('roulette_bend');
+    const bendVal = savedBend !== null ? parseFloat(savedBend) : 3.0;
 
     createCircularGallery(container, {
       items,
-      bend: 3,
+      bend: bendVal,
       textColor: '#ffffff',
       borderRadius: 0.05,
       font: 'bold 24px DM Sans',
@@ -1244,24 +1318,30 @@ export function rollPickMovie() {
   if (btn) btn.classList.add('spinning');
   if (result) { result.classList.remove('show'); result.style.display = 'none'; }
 
+  const app = pickGalleryApp;
+  
+  // Reset highlights on all media cards
+  app.medias.forEach(media => {
+    media.uWinningTarget = 0.0;
+  });
+
   // Pick a random winner
   const winnerIdx = Math.floor(Math.random() * state.watchlist.length);
   const winner = state.watchlist[winnerIdx];
 
-  const app = pickGalleryApp;
   const w = app.medias[0].width;
   const N = state.watchlist.length;
 
   // Calculate current index position
   const currentIndex = Math.round(app.scroll.target / w);
 
-  // We want to spin smoothly with 4 rotations (less speed/rotations as requested)
+  // We want to spin smoothly with 4 rotations
   const rotations = 4;
   const targetIndex = currentIndex + rotations * N + ((winnerIdx - (currentIndex % N) + N) % N);
 
-  // Set target and start programmatic spin
+  // Set target and start programmatic spin with faster deceleration ease
   app.scroll.target = targetIndex * w;
-  app.scroll.ease = 0.02; // Slower, smoother deceleration ease
+  app.scroll.ease = 0.04; // Faster deceleration
   app.isSpinning = true;
 
   // Callback when settled
@@ -1270,6 +1350,15 @@ export function rollPickMovie() {
     if (btn) btn.classList.remove('spinning');
     pickSpinning = false;
     confettiBurst();
+
+    // Highlight the winning card and all its marquee duplicate instances
+    app.medias.forEach(media => {
+      if (media.index % N === winnerIdx) {
+        media.uWinningTarget = 1.0;
+      } else {
+        media.uWinningTarget = 0.0;
+      }
+    });
   };
 }
 
@@ -1736,9 +1825,210 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* ─── SETTINGS MODAL ─── */
+/* ─── TOAST NOTIFICATIONS ─── */
+export function showToast(title, message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast-alert ${type}`;
+  
+  let iconClass = 'fa-circle-info';
+  if (type === 'error') iconClass = 'fa-circle-exclamation';
+  if (type === 'success') iconClass = 'fa-circle-check';
+
+  toast.innerHTML = `
+    <div class="toast-icon"><i class="fa-solid ${iconClass}"></i></div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    </div>
+    <button class="toast-close"><i class="fa-solid fa-xmark"></i></button>
+  `;
+
+  container.appendChild(toast);
+
+  const closeBtn = toast.querySelector('.toast-close');
+  closeBtn.addEventListener('click', () => {
+    toast.classList.add('hide');
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  });
+
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.classList.add('hide');
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 300);
+    }
+  }, 5000);
+}
+
+/* ─── SETTINGS TABS ─── */
+export function switchSettingsTab(tabId) {
+  document.querySelectorAll('.settings-tab-content').forEach(el => {
+    el.classList.remove('active');
+  });
+  
+  document.querySelectorAll('.settings-tab-btn').forEach(el => {
+    el.classList.remove('active');
+  });
+  
+  const targetContent = document.getElementById(`tab-${tabId}`);
+  if (targetContent) {
+    targetContent.classList.add('active');
+  }
+  
+  const targetBtn = document.querySelector(`.settings-tab-btn[data-tab="${tabId}"]`);
+  if (targetBtn) {
+    targetBtn.classList.add('active');
+  }
+}
+
+/* ─── API KEY CONNECTION TESTER ─── */
+export async function testTMDBConnection() {
+  const keyInput = document.getElementById('tmdb-key-input');
+  const dot = document.getElementById('connection-status-indicator');
+  const text = document.getElementById('connection-status-text');
+  const latencyValEl = document.getElementById('tmdb-latency-val');
+  
+  if (!keyInput || !dot || !text) return;
+  
+  const key = keyInput.value.trim();
+  if (!key) {
+    dot.className = 'status-dot';
+    text.textContent = 'Please enter an API key to test.';
+    text.style.color = 'var(--t3)';
+    if (latencyValEl) latencyValEl.textContent = 'N/A';
+    return;
+  }
+  
+  dot.className = 'status-dot testing';
+  text.textContent = 'Testing connection...';
+  text.style.color = '#f59e0b';
+  
+  try {
+    const startTime = performance.now();
+    const res = await fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${key}`);
+    const endTime = performance.now();
+    
+    if (res.ok) {
+      const latency = Math.round(endTime - startTime);
+      dot.className = 'status-dot connected';
+      text.textContent = `Connected successfully! Latency: ${latency}ms`;
+      text.style.color = '#10b981';
+      if (latencyValEl) latencyValEl.textContent = `${latency}ms`;
+      
+      updateDatabaseStatus('movies', 'Live (TMDB)');
+      updateDatabaseStatus('links', 'Live (TMDB)');
+      updateDatabaseStatus('ratings', 'Live (TMDB)');
+    } else {
+      dot.className = 'status-dot failed';
+      text.textContent = `Failed! HTTP error ${res.status}. Check key.`;
+      text.style.color = '#ef4444';
+      if (latencyValEl) latencyValEl.textContent = 'Failed';
+    }
+  } catch (error) {
+    dot.className = 'status-dot failed';
+    text.textContent = 'Connection failed! Network error.';
+    text.style.color = '#ef4444';
+    if (latencyValEl) latencyValEl.textContent = 'Offline';
+  }
+}
+
+/* ─── PREFERENCES TOGGLERS ─── */
+export function toggleGenrePill(event) {
+  const pill = event.currentTarget;
+  pill.classList.toggle('selected');
+}
+
+export function toggleProviderCheckbox(event) {
+  const label = event.currentTarget;
+  const checkbox = label.querySelector('input');
+  if (checkbox) {
+    checkbox.checked = !checkbox.checked;
+    if (checkbox.checked) {
+      label.classList.add('selected');
+    } else {
+      label.classList.remove('selected');
+    }
+  }
+}
+
+/* ─── SETTINGS MODAL OPERATORS ─── */
 export function openSettingsModal() {
   document.getElementById('tmdb-key-input').value = localStorage.getItem('tmdb_api_key') || '';
+  
+  switchSettingsTab('api-integration');
+  
+  const runtimeMin = Math.round((Date.now() - sessionStart) / 60000);
+  const runtimeValEl = document.getElementById('session-runtime-val');
+  if (runtimeValEl) {
+    runtimeValEl.textContent = `${runtimeMin}m`;
+  }
+  
+  const favGenresStr = localStorage.getItem('fav_genres');
+  let favGenres = [];
+  if (favGenresStr) {
+    try { favGenres = JSON.parse(favGenresStr); } catch(e) {}
+  }
+  document.querySelectorAll('.genre-pill').forEach(pill => {
+    const genreName = pill.dataset.genre;
+    if (favGenres.includes(genreName)) {
+      pill.classList.add('selected');
+    } else {
+      pill.classList.remove('selected');
+    }
+  });
+  
+  const favProvidersStr = localStorage.getItem('fav_providers');
+  let favProviders = [];
+  if (favProvidersStr) {
+    try { favProviders = JSON.parse(favProvidersStr); } catch(e) {}
+  }
+  document.querySelectorAll('.provider-checkbox-label').forEach(label => {
+    const providerId = label.dataset.providerId;
+    const checkbox = label.querySelector('input');
+    if (favProviders.includes(providerId)) {
+      label.classList.add('selected');
+      if (checkbox) checkbox.checked = true;
+    } else {
+      label.classList.remove('selected');
+      if (checkbox) checkbox.checked = false;
+    }
+  });
+
+  const confettiEnabled = localStorage.getItem('confetti_enabled') !== 'false';
+  const confettiCheckbox = document.getElementById('confetti-toggle');
+  if (confettiCheckbox) {
+    confettiCheckbox.checked = confettiEnabled;
+  }
+  
+  const savedBend = localStorage.getItem('roulette_bend');
+  const bendVal = savedBend !== null ? parseFloat(savedBend) : 3.0;
+  const bendSlider = document.getElementById('bend-intensity-slider');
+  const bendValEl = document.getElementById('bend-intensity-val');
+  if (bendSlider) {
+    bendSlider.value = bendVal;
+  }
+  if (bendValEl) {
+    bendValEl.textContent = bendVal.toFixed(1);
+  }
+
+  const key = document.getElementById('tmdb-key-input').value.trim();
+  if (key) {
+    testTMDBConnection();
+  } else {
+    const dot = document.getElementById('connection-status-indicator');
+    const text = document.getElementById('connection-status-text');
+    const latencyValEl = document.getElementById('tmdb-latency-val');
+    if (dot) dot.className = 'status-dot';
+    if (text) text.textContent = 'API Key is not configured.';
+    if (latencyValEl) latencyValEl.textContent = 'N/A';
+  }
+  
   document.getElementById('settings-overlay').classList.add('on');
   document.body.style.overflow = 'hidden';
 }
@@ -1755,16 +2045,53 @@ export function handleSettingsOverlay(e) {
 }
 
 export function saveSettings() {
-  const key = document.getElementById('tmdb-key-input').value.trim();
-  if (key) {
-    localStorage.setItem('tmdb_api_key', key);
+  const oldKey = localStorage.getItem('tmdb_api_key') || '';
+  const newKey = document.getElementById('tmdb-key-input').value.trim();
+  
+  if (newKey) {
+    localStorage.setItem('tmdb_api_key', newKey);
   } else {
     localStorage.removeItem('tmdb_api_key');
   }
+  
+  const selectedPills = document.querySelectorAll('.genre-pill.selected');
+  const favGenres = Array.from(selectedPills).map(pill => pill.dataset.genre);
+  localStorage.setItem('fav_genres', JSON.stringify(favGenres));
+  
+  const selectedProviderLabels = document.querySelectorAll('.provider-checkbox-label.selected');
+  const favProviders = Array.from(selectedProviderLabels).map(lbl => lbl.dataset.providerId);
+  localStorage.setItem('fav_providers', JSON.stringify(favProviders));
+  
+  const confettiCheckbox = document.getElementById('confetti-toggle');
+  if (confettiCheckbox) {
+    localStorage.setItem('confetti_enabled', confettiCheckbox.checked ? 'true' : 'false');
+  }
+  
+  const bendSlider = document.getElementById('bend-intensity-slider');
+  if (bendSlider) {
+    const bendVal = parseFloat(bendSlider.value);
+    localStorage.setItem('roulette_bend', bendVal.toString());
+    
+    if (pickGalleryApp && pickGalleryApp.medias) {
+      pickGalleryApp.medias.forEach(m => {
+        m.bend = bendVal;
+      });
+    }
+  }
+
+  // Clear TMDB cache and force re-rendering rows to recalculate match scores with boosts
+  state.tmdbCache = {};
+  if (typeof renderRows === 'function') {
+    renderRows();
+  }
+
   closeSettingsModal();
   
-  // Reload page to re-initialize modules cleanly with the updated config
-  window.location.reload();
+  if (oldKey !== newKey) {
+    window.location.reload();
+  } else {
+    showToast("Settings Saved", "Your preferences have been updated.", "success");
+  }
 }
 
 export function updateDatabaseStatus(type, status) {
@@ -2351,6 +2678,11 @@ window.openSettingsModal = openSettingsModal;
 window.closeSettingsModal = closeSettingsModal;
 window.handleSettingsOverlay = handleSettingsOverlay;
 window.saveSettings = saveSettings;
+window.switchSettingsTab = switchSettingsTab;
+window.testTMDBConnection = testTMDBConnection;
+window.toggleGenrePill = toggleGenrePill;
+window.toggleProviderCheckbox = toggleProviderCheckbox;
+window.showToast = showToast;
 window.spinRoulette = spinRoulette;
 window.openRoulette = openRoulette;
 window.dismissRoulette = dismissRoulette;
@@ -2579,18 +2911,128 @@ export function handleHashChange() {
 
 export function showWatchlistPage() {
   clearSearch(true);
-  document.body.classList.add('watchlist-active');
-  document.getElementById('watchlist-section').style.display = 'block';
   updateNavbarActiveLink('watchlist-section');
-  window.scrollTo(0, 0);
   closeModal(true);
-  updateWatchlistUI();
+
+  const homeElements = [
+    document.getElementById('hero'),
+    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section)'))
+  ].filter(Boolean);
+  
+  const watchlistSection = document.getElementById('watchlist-section');
+  if (!watchlistSection) return;
+
+  document.body.classList.add('watchlist-active');
+
+  // GSAP cross-fade transition
+  gsap.killTweensOf(homeElements);
+  gsap.killTweensOf(watchlistSection);
+
+  const isHomeVisible = homeElements.some(el => el.style.display !== 'none' && parseFloat(el.style.opacity || "1") > 0);
+  
+  if (isHomeVisible) {
+    gsap.to(homeElements, {
+      opacity: 0,
+      y: -15,
+      scale: 0.98,
+      duration: 0.3,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        homeElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
+        
+        watchlistSection.style.setProperty('display', 'block', 'important');
+        updateWatchlistUI();
+        
+        gsap.fromTo(watchlistSection, 
+          { opacity: 0, y: 15, scale: 0.98 },
+          { 
+            opacity: 1, 
+            y: 0, 
+            scale: 1, 
+            duration: 0.4, 
+            ease: 'power2.out',
+            onComplete: () => {
+              if (pickGalleryApp) {
+                pickGalleryApp.onResize();
+              }
+            }
+          }
+        );
+        window.scrollTo(0, 0);
+      }
+    });
+  } else {
+    homeElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
+    watchlistSection.style.setProperty('display', 'block', 'important');
+    updateWatchlistUI();
+    
+    gsap.fromTo(watchlistSection, 
+      { opacity: 0, y: 15, scale: 0.98 },
+      { 
+        opacity: 1, 
+        y: 0, 
+        scale: 1, 
+        duration: 0.4, 
+        ease: 'power2.out',
+        onComplete: () => {
+          if (pickGalleryApp) {
+            pickGalleryApp.onResize();
+          }
+        }
+      }
+    );
+    window.scrollTo(0, 0);
+  }
 }
 
 export function showHomePage() {
-  document.body.classList.remove('watchlist-active');
-  document.getElementById('watchlist-section').style.display = 'none';
   clearSearch(true);
+  updateNavbarActiveLink('hero');
+  
+  const homeElements = [
+    document.getElementById('hero'),
+    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section)'))
+  ].filter(Boolean);
+
+  const watchlistSection = document.getElementById('watchlist-section');
+  if (!watchlistSection) return;
+
+  document.body.classList.remove('watchlist-active');
+
+  gsap.killTweensOf(homeElements);
+  gsap.killTweensOf(watchlistSection);
+
+  const isWatchlistVisible = watchlistSection.style.display !== 'none' && parseFloat(gsap.getProperty(watchlistSection, "opacity")) > 0;
+
+  if (isWatchlistVisible) {
+    gsap.to(watchlistSection, {
+      opacity: 0,
+      y: 15,
+      scale: 0.98,
+      duration: 0.3,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        watchlistSection.style.setProperty('display', 'none', 'important');
+        
+        homeElements.forEach(el => {
+          el.style.removeProperty('display');
+          el.style.opacity = 0;
+        });
+        
+        gsap.fromTo(homeElements,
+          { opacity: 0, y: -15, scale: 0.98 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'power2.out' }
+        );
+      }
+    });
+  } else {
+    watchlistSection.style.setProperty('display', 'none', 'important');
+    homeElements.forEach(el => el.style.removeProperty('display'));
+    gsap.fromTo(homeElements,
+      { opacity: 0, y: -15, scale: 0.98 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'power2.out' }
+    );
+  }
 }
 
 export function updateNavbarActiveLink(activeId) {
