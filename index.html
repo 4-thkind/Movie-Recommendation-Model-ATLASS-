@@ -57,6 +57,13 @@
     <span class="logo-text">ATLASS</span>
   </a>
   <div class="nav-right">
+    <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme" onclick="toggleTheme()">
+      <span class="toggle-track">
+        <i class="fa-solid fa-sun sun-icon"></i>
+        <i class="fa-solid fa-moon moon-icon"></i>
+      </span>
+      <span class="toggle-knob"></span>
+    </button>
     <div class="profile-container" id="profile-container">
       <img class="avatar" id="avatar-btn" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" alt="Profile" style="cursor:pointer"/>
       <div class="profile-dropdown" id="profile-dropdown">
@@ -531,6 +538,6 @@
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script type="module" src="app.js?v=7"></script>
+<script type="module" src="app.js?v=8"></script>
 </body>
 </html>
