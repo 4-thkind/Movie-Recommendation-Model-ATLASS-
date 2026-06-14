@@ -4,7 +4,7 @@
  * Requires: https://cdn.jsdelivr.net/npm/ogl@1.0.8/dist/ogl.mjs
  */
 
-const OGL_CDN = 'https://cdn.jsdelivr.net/npm/ogl@1.0.11/dist/ogl.mjs';
+const OGL_CDN = 'https://cdn.jsdelivr.net/npm/ogl@1.0.11/+esm';
 let _ogl = null;
 
 async function loadOGL() {

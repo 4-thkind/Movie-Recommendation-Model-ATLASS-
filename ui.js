@@ -2,7 +2,7 @@ import { state, saveWatchlistToStorage } from './state.js';
 import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js';
 import { MOVIES } from './data.js';
 import { initializeRecommender, calculateMatchScore } from './recommender.js';
-import { createCircularGallery } from './CircularGallery.js?v=2';
+import { createCircularGallery } from './CircularGallery.js?v=3';
 
 // Live platforms list
 export const LIVE_PLATFORMS = [
