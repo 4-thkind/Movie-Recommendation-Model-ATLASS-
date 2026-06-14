@@ -2,6 +2,7 @@ import { state, saveWatchlistToStorage } from './state.js';
 import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js';
 import { MOVIES } from './data.js';
 import { initializeRecommender, calculateMatchScore } from './recommender.js';
+import { createCircularGallery } from './CircularGallery.js';
 
 // Live platforms list
 export const LIVE_PLATFORMS = [
@@ -449,10 +450,13 @@ export function buildCard(movieId, initialData = null) {
     match = calculateMatchScore(movieId);
   }
 
+  const starCount = match >= 90 ? 5 : (match >= 75 ? 4 : (match >= 60 ? 3 : (match >= 40 ? 2 : 1)));
+  const starsStr = '★'.repeat(starCount) + '☆'.repeat(5 - starCount);
+
   wrap.innerHTML = `
     <div class="card-thumb">
       <img class="lazy-poster" src="${poster}" alt="${cleanTitle}" style="opacity:${initialData || TMDB_API_KEY ? '1' : '0.35'};transition:opacity 0.5s var(--smooth)"/>
-      <div class="m-badge">${match}%</div>
+      <div class="m-badge"><span class="m-stars-inline">${starsStr}</span> ${match}%</div>
       <button class="card-quick-add${alreadyIn ? ' added' : ''}" data-id="${movieId}" title="${alreadyIn ? 'In Watchlist' : 'Add to Watchlist'}">
         ${alreadyIn ? '<i class="fa-solid fa-check" style="font-size:9px"></i>' : '<i class="fa-solid fa-plus" style="font-size:9px"></i>'}
       </button>
@@ -950,6 +954,11 @@ export function updateWLCount() {
     badge.textContent = state.watchlist.length;
     badge.classList.toggle('pop', state.watchlist.length > 0);
   }
+  
+  const ttBadge = document.getElementById('tt-wl-badge');
+  if (ttBadge) {
+    ttBadge.style.display = state.watchlist.length > 0 ? 'block' : 'none';
+  }
 }
 
 export function updateWatchlistUI() {
@@ -958,31 +967,19 @@ export function updateWatchlistUI() {
   if (!container || !empty) return;
   
   // Clear only existing wl-item elements to avoid deleting empty state
-  container.querySelectorAll('.wl-item').forEach(el => el.remove());
+  container.querySelectorAll('.movie-card, .wl-item').forEach(el => el.remove());
   
   if (state.watchlist.length === 0) {
     empty.style.display = 'flex';
   } else {
     empty.style.display = 'none';
     state.watchlist.forEach(movie => {
-      const item = document.createElement('div');
-      item.className = 'wl-item';
-      item.dataset.id = movie.id;
-      item.innerHTML = `
-        <img src="${movie.poster}" alt="${movie.title}" title="${movie.title}"/>
-        <div class="wl-remove">
-          <i class="fa-solid fa-xmark"></i>
-        </div>
-      `;
-      item.querySelector('img').addEventListener('click', () => openModal(movie));
-      item.querySelector('.wl-remove').addEventListener('click', (e) => {
-        e.stopPropagation();
-        removeFromWatchlist(movie.id);
-      });
-      container.appendChild(item);
+      const card = buildCard(movie.id, movie);
+      container.appendChild(card);
     });
   }
   buildDrum();
+  initPickGallery();
 }
 
 /* ─── ROULETTE LOGIC ─── */
@@ -1152,6 +1149,134 @@ export function confettiBurst() {
     setTimeout(() => dot.remove(), 2600);
   }
 }
+
+/* ─── PICK A MOVIE GALLERY ─── */
+let pickGalleryApp = null;
+let pickSpinning = false;
+
+export function initPickGallery() {
+  const container = document.getElementById('pick-gallery-container');
+  const emptyMsg = document.getElementById('pick-empty-msg');
+  const galleryWrap = document.getElementById('pick-gallery-wrap');
+  const rollBtn = document.getElementById('pick-roll-btn');
+  if (!container) return;
+
+  // Destroy previous instance
+  if (pickGalleryApp) {
+    pickGalleryApp.destroy();
+    pickGalleryApp = null;
+  }
+
+  if (state.watchlist.length === 0) {
+    galleryWrap.style.display = 'none';
+    emptyMsg.style.display = 'flex';
+    rollBtn.style.display = 'none';
+    return;
+  }
+
+  emptyMsg.style.display = 'none';
+  galleryWrap.style.display = 'block';
+  rollBtn.style.display = 'inline-flex';
+
+  // Map watchlist to gallery items
+  const items = state.watchlist.map(m => {
+    let poster = m.poster || '';
+    if (m.poster_path && !poster.startsWith('http')) {
+      poster = `https://image.tmdb.org/t/p/w500${m.poster_path}`;
+    }
+    return { image: poster, text: m.title || 'Untitled' };
+  });
+
+  createCircularGallery(container, {
+    items,
+    bend: 3,
+    textColor: '#ffffff',
+    borderRadius: 0.05,
+    font: 'bold 24px DM Sans',
+    scrollSpeed: 2,
+    scrollEase: 0.02
+  }).then(app => {
+    pickGalleryApp = app;
+  });
+}
+
+export function rollPickMovie() {
+  if (pickSpinning || !pickGalleryApp || state.watchlist.length === 0) return;
+  pickSpinning = true;
+
+  const btn = document.getElementById('pick-roll-btn');
+  const result = document.getElementById('pick-result');
+  if (btn) btn.classList.add('spinning');
+  if (result) { result.classList.remove('show'); result.style.display = 'none'; }
+
+  // Pick a random winner
+  const winnerIdx = Math.floor(Math.random() * state.watchlist.length);
+  const winner = state.watchlist[winnerIdx];
+
+  // Fast spin: push scroll target far ahead rapidly
+  const app = pickGalleryApp;
+  const origSpeed = app.scrollSpeed;
+  app.scrollSpeed = 18;
+
+  // Rapidly advance the scroll target
+  let spinFrames = 0;
+  const spinInterval = setInterval(() => {
+    app.scroll.target += 12;
+    spinFrames++;
+    if (spinFrames > 60) { // ~1s at 60fps
+      clearInterval(spinInterval);
+      // Decelerate
+      app.scrollSpeed = 8;
+      setTimeout(() => {
+        app.scrollSpeed = 4;
+        setTimeout(() => {
+          app.scrollSpeed = 2;
+          app.scroll.ease = 0.02;
+          // Snap to a card position
+          if (app.medias && app.medias[0]) {
+            const w = app.medias[0].width;
+            const idx = Math.round(Math.abs(app.scroll.target) / w);
+            app.scroll.target = app.scroll.target < 0 ? -(w * idx) : w * idx;
+          }
+          // Show result after settling
+          setTimeout(() => {
+            showPickResult(winner);
+            if (btn) btn.classList.remove('spinning');
+            app.scrollSpeed = origSpeed;
+            pickSpinning = false;
+            confettiBurst();
+          }, 800);
+        }, 400);
+      }, 400);
+    }
+  }, 16);
+}
+
+function showPickResult(movie) {
+  const result = document.getElementById('pick-result');
+  const poster = document.getElementById('pick-result-poster');
+  const title = document.getElementById('pick-result-title');
+  const meta = document.getElementById('pick-result-meta');
+  const watchBtn = document.getElementById('pick-watch-btn');
+  if (!result) return;
+
+  let img = movie.poster || '';
+  if (movie.poster_path && !img.startsWith('http')) {
+    img = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
+  }
+  if (poster) poster.src = img;
+  if (title) title.textContent = movie.title || 'Untitled';
+  if (meta) meta.textContent = `${movie.year || 'N/A'} · ${movie.genre || ''} · ★ ${movie.rating || '—'}`;
+  if (watchBtn) watchBtn.onclick = () => openModal(movie);
+
+  result.style.display = 'block';
+  // Re-trigger animation
+  result.classList.remove('show');
+  void result.offsetWidth;
+  result.classList.add('show');
+}
+
+window.rollPickMovie = rollPickMovie;
 
 /* ─── SURPRISE ME ─── */
 let lastSurprise = -1;
@@ -1679,8 +1804,14 @@ export function initScrollspy() {
 
 /* ─── REALTIME SEARCH ─── */
 export function clearSearch(skipHashUpdate = false) {
-  document.getElementById('search-input').value = '';
-  document.getElementById('search-section').style.display = 'none';
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  const searchSec = document.getElementById('search-section');
+  if (searchSec) {
+    searchSec.style.display = 'none';
+  }
   document.body.classList.remove('search-active');
   
   if (!skipHashUpdate) {
@@ -1797,6 +1928,196 @@ document.querySelectorAll('.logo, .footer-logo').forEach(logo => {
   });
 });
 
+/* ─── SEARCH MODAL ─── */
+let smDebounce;
+
+window.openSearchModal = function() {
+  const overlay = document.getElementById('search-overlay');
+  if (!overlay) return;
+  overlay.classList.add('on');
+  setTimeout(() => {
+    const inp = document.getElementById('sm-search-input');
+    if (inp) inp.focus();
+  }, 120);
+};
+
+window.closeSearchModal = function() {
+  const overlay = document.getElementById('search-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('on');
+};
+
+window.handleSearchOverlay = function(e) {
+  if (e.target === document.getElementById('search-overlay')) {
+    window.closeSearchModal();
+  }
+};
+
+window.clearSearchModalInput = function() {
+  const inp = document.getElementById('sm-search-input');
+  if (inp) {
+    inp.value = '';
+    inp.dispatchEvent(new Event('input'));
+    inp.focus();
+  }
+};
+
+// Wire up the modal search input
+(function initModalSearch() {
+  const inp = document.getElementById('sm-search-input');
+  const clearBtn = document.getElementById('sm-clear-btn');
+  const catSelect = document.getElementById('search-category');
+  if (!inp) return;
+
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim();
+    if (clearBtn) clearBtn.classList.toggle('visible', q.length > 0);
+    clearTimeout(smDebounce);
+    smDebounce = setTimeout(() => runModalSearch(q), 280);
+  });
+
+  if (catSelect) {
+    catSelect.addEventListener('change', () => {
+      const q = inp.value.trim();
+      if (q) runModalSearch(q);
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.closeSearchModal();
+  });
+})();
+
+function runModalSearch(q) {
+  const list = document.getElementById('sm-results-list');
+  if (!list) return;
+
+  if (!q) {
+    list.innerHTML = '<div class="sm-placeholder">Type something to search...</div>';
+    return;
+  }
+
+  const category = (document.getElementById('search-category') || {}).value || 'all';
+  list.innerHTML = '<div class="sm-loading">Searching...</div>';
+
+  if (TMDB_API_KEY) {
+    const fetches = [];
+    if (category === 'all' || category === 'movie') {
+      fetches.push(
+        fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}`)
+          .then(r => r.json()).then(d => (d.results || []).map(i => ({ ...i, mediaType: 'movie' })))
+          .catch(() => [])
+      );
+    }
+    if (category === 'all' || category === 'tv') {
+      fetches.push(
+        fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}`)
+          .then(r => r.json()).then(d => (d.results || []).map(i => ({ ...i, mediaType: 'tv' })))
+          .catch(() => [])
+      );
+    }
+
+    Promise.all(fetches).then(arrays => {
+      const inp = document.getElementById('sm-search-input');
+      if (inp && inp.value.trim().toLowerCase() !== q.toLowerCase()) return;
+      const combined = [].concat(...arrays)
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+        .slice(0, 20);
+      renderModalResults(combined, list, 'tmdb');
+    });
+  } else {
+    let matches = [];
+    if (state.movieLensData.loaded) {
+      matches = Object.values(state.movieLensData.movies)
+        .filter(m => m.title.toLowerCase().includes(q.toLowerCase()))
+        .slice(0, 20)
+        .map(m => ({
+          id: m.movieId,
+          title: m.title.replace(/\s\(\d{4}\)$/, ''),
+          year: m.title.match(/\((\d{4})\)$/)?.[1] || 'N/A',
+          genre: m.genres.replace(/\|/g, ' · '),
+          mediaType: 'movie',
+          vote_average: null,
+          poster_path: null
+        }));
+    } else {
+      matches = MOVIES
+        .filter(m => m.title.toLowerCase().includes(q.toLowerCase()))
+        .slice(0, 20)
+        .map(m => ({
+          id: m.id,
+          title: m.title,
+          year: m.year,
+          genre: m.genre,
+          mediaType: 'movie',
+          vote_average: parseFloat(m.rating),
+          poster_path: null,
+          poster: m.poster
+        }));
+    }
+    renderModalResults(matches, list, 'offline');
+  }
+}
+
+function renderModalResults(items, list, mode) {
+  list.innerHTML = '';
+  if (items.length === 0) {
+    list.innerHTML = '<div class="sm-no-results">No results found. Try a different title.</div>';
+    return;
+  }
+
+  items.forEach(item => {
+    const isTV = item.mediaType === 'tv';
+    const title = isTV ? (item.name || item.title || 'Unknown') : (item.title || 'Unknown');
+    const year = isTV
+      ? (item.first_air_date ? item.first_air_date.split('-')[0] : (item.year || 'N/A'))
+      : (item.release_date ? item.release_date.split('-')[0] : (item.year || 'N/A'));
+    const rating = item.vote_average ? parseFloat(item.vote_average).toFixed(1) : null;
+    const poster = item.poster_path
+      ? `https://image.tmdb.org/t/p/w92${item.poster_path}`
+      : (item.poster || 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=92&q=80');
+    const genre = item.genre || '';
+    const cardId = mode === 'tmdb' ? `tmdb-${item.mediaType}-${item.id}` : item.id;
+    const inList = state.watchlist.some(m => String(m.id) === String(cardId));
+
+    const row = document.createElement('div');
+    row.className = 'sm-result-row';
+    row.innerHTML = `
+      <img class="sm-result-thumb" src="${poster}" alt="${title}" loading="lazy"
+           onerror="this.src='https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=92&q=80'"/>
+      <div class="sm-result-body">
+        <div class="sm-result-title">${title}</div>
+        <div class="sm-result-meta">
+          <span class="sm-result-type ${isTV ? 'tv' : 'movie'}">${isTV ? 'TV Show' : 'Movie'}</span>
+          ${year !== 'N/A' ? `<span class="sm-dot">·</span><span>${year}</span>` : ''}
+          ${rating ? `<span class="sm-dot">·</span><span class="sm-result-rating"><i class="fa-solid fa-star"></i>${rating}</span>` : ''}
+          ${genre ? `<span class="sm-dot">·</span><span style="color:var(--t3)">${genre.split('·').slice(0,2).join('·').trim()}</span>` : ''}
+        </div>
+      </div>
+      <button class="sm-result-add${inList ? ' added' : ''}" title="${inList ? 'In Watchlist' : 'Add to Watchlist'}">
+        <i class="fa-solid ${inList ? 'fa-check' : 'fa-plus'}" style="font-size:11px"></i>
+      </button>`;
+
+    row.addEventListener('click', () => {
+      window.closeSearchModal();
+      fetchTMDBDetails(cardId).then(details => { if (details) openModal(details); });
+    });
+
+    const addBtn = row.querySelector('.sm-result-add');
+    addBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const details = await fetchTMDBDetails(cardId);
+      if (!details) return;
+      toggleWatchlist(details);
+      addBtn.classList.add('added');
+      addBtn.innerHTML = '<i class="fa-solid fa-check" style="font-size:11px"></i>';
+      addBtn.title = 'In Watchlist';
+    });
+
+    list.appendChild(row);
+  });
+}
+
 /* ─── DYNAMIC HERO SECTION ─── */
 export function updateHeroUI(movie) {
   if (!movie) return;
@@ -1810,7 +2131,9 @@ export function updateHeroUI(movie) {
   
   const chip = heroSection.querySelector('.match-chip');
   if (chip) {
-    chip.innerHTML = `<i class="fa-solid fa-circle-check" style="font-size:10px"></i> ${movie.match}% Match For You`;
+    const starCount = movie.match >= 90 ? 5 : (movie.match >= 75 ? 4 : (movie.match >= 60 ? 3 : (movie.match >= 40 ? 2 : 1)));
+    const starsStr = '★'.repeat(starCount) + '☆'.repeat(5 - starCount);
+    chip.innerHTML = `<span style="color:#FFD700;margin-right:6px;letter-spacing:-0.5px">${starsStr}</span> ${movie.match}% Match For You`;
   }
   
   const title = heroSection.querySelector('.hero-title');
@@ -2162,11 +2485,12 @@ export function handleHashChange() {
     return;
   }
   
-  // 3. Search routing
+  // 3. Search routing - Redirect and show search overlay modal directly
   if (hash === '#search') {
-    document.body.classList.remove('watchlist-active');
-    document.body.classList.add('search-active');
-    document.getElementById('search-section').style.display = 'block';
+    window.location.hash = (activeViewState === 'watchlist') ? '#watchlist-section' : '#home';
+    if (typeof window.openSearchModal === 'function') {
+      window.openSearchModal();
+    }
     return;
   }
 
