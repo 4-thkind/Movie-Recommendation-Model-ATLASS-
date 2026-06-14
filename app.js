@@ -35,6 +35,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initHashRouting();
   initGridMotion();
   initProfileDropdown();
+  initThemeToggle();
 
   if (!state.movieLensData.loaded) {
     renderRows();
@@ -42,3 +43,22 @@ window.addEventListener('DOMContentLoaded', () => {
     initHero();
   }
 });
+
+function applyTheme(theme) {
+  const isLight = theme === 'light';
+  document.body.classList.toggle('light-theme', isLight);
+  const icon = document.querySelector('#theme-toggle-btn i');
+  if (icon) icon.className = isLight ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  localStorage.setItem('theme', theme);
+}
+
+window.toggleTheme = function() {
+  applyTheme(document.body.classList.contains('light-theme') ? 'dark' : 'light');
+};
+
+function initThemeToggle() {
+  const toggleBtn = document.getElementById('theme-toggle-btn');
+  if (!toggleBtn) return;
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  applyTheme(savedTheme);
+}
