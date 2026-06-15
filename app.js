@@ -1,6 +1,6 @@
 import { state, loadWatchlistFromStorage, loadAuthState } from './state.js';
 import { loadMovieLensDatabase } from './recommender.js';
-import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery } from './ui.js';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover } from './ui.js';
 import { initPillNav } from './PillNav.js';
 
 /* ─── INIT ─── */
@@ -36,6 +36,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initGridMotion();
   initProfileDropdown();
   initThemeToggle();
+  initGenrePopover();
 
   if (!state.movieLensData.loaded) {
     renderRows();

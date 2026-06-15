@@ -2158,6 +2158,7 @@ export function initScrollspy() {
 
 /* ─── REALTIME SEARCH ─── */
 export function clearSearch(skipHashUpdate = false) {
+  state.isShowingGenre = false;
   const searchInput = document.getElementById('search-input');
   if (searchInput) {
     searchInput.value = '';
@@ -2165,8 +2166,21 @@ export function clearSearch(skipHashUpdate = false) {
   const searchSec = document.getElementById('search-section');
   if (searchSec) {
     searchSec.style.display = 'none';
+    const titleEl = searchSec.querySelector('.sec-title');
+    if (titleEl) {
+      titleEl.innerHTML = `<i class="fa-solid fa-magnifying-glass" style="color:var(--v);font-size:15px"></i> Search Results`;
+    }
   }
   document.body.classList.remove('search-active');
+  
+  const genreBtn = document.getElementById('dock-genre-btn');
+  if (genreBtn) {
+    genreBtn.classList.remove('active');
+  }
+  const currentTab = (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') ? 'watchlist-section' : 'hero';
+  document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-tab') === currentTab);
+  });
   
   if (!skipHashUpdate) {
     if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
@@ -2179,6 +2193,11 @@ export function clearSearch(skipHashUpdate = false) {
 
 let searchDebounce;
 export function handleSearchInput(e) {
+  state.isShowingGenre = false;
+  const genreBtn = document.getElementById('dock-genre-btn');
+  if (genreBtn) {
+    genreBtn.classList.remove('active');
+  }
   const q = e.target.value.trim().toLowerCase();
   const searchSec = document.getElementById('search-section');
   const searchResults = document.getElementById('search-results');
@@ -3229,3 +3248,277 @@ export async function initGridMotion() {
     });
   });
 }
+
+/* ─── GENRE POPOVER CONTROLLER & FETCHING ─── */
+const GENRES = [
+  { id: 28, name: "Action", icon: "fa-solid fa-gun" },
+  { id: 35, name: "Comedy", icon: "fa-solid fa-face-laugh-beam" },
+  { id: 878, name: "Sci-Fi", icon: "fa-solid fa-user-astronaut" },
+  { id: 27, name: "Horror", icon: "fa-solid fa-ghost" },
+  { id: 18, name: "Drama", icon: "fa-solid fa-masks-theater" },
+  { id: 53, name: "Thriller", icon: "fa-solid fa-skull-crossbones" },
+  { id: 10749, name: "Romance", icon: "fa-solid fa-heart" },
+  { id: 9648, name: "Mystery", icon: "fa-solid fa-user-secret" },
+  { id: 12, name: "Adventure", icon: "fa-solid fa-compass" },
+  { id: 14, name: "Fantasy", icon: "fa-solid fa-wand-magic-sparkles" },
+  { id: 16, name: "Animation", icon: "fa-solid fa-cat" },
+  { id: 80, name: "Crime", icon: "fa-solid fa-handcuffs" }
+];
+
+export function toggleGenrePopover() {
+  const popover = document.getElementById('genre-popover');
+  if (!popover) return;
+  if (popover.classList.contains('on')) {
+    closeGenrePopover();
+  } else {
+    openGenrePopover();
+  }
+}
+
+export function openGenrePopover() {
+  const popover = document.getElementById('genre-popover');
+  if (!popover) return;
+  popover.classList.add('on');
+  
+  // Highlight dock Genre button as active and remove other active links
+  document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => el.classList.remove('active'));
+  const dockBtn = document.getElementById('dock-genre-btn');
+  if (dockBtn) {
+    dockBtn.classList.add('active');
+  }
+}
+
+export function closeGenrePopover() {
+  const popover = document.getElementById('genre-popover');
+  if (!popover) return;
+  popover.classList.remove('on');
+  
+  const genreBtn = document.getElementById('dock-genre-btn');
+  
+  if (state.isShowingGenre) {
+    document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => el.classList.remove('active'));
+    if (genreBtn) {
+      genreBtn.classList.add('active');
+    }
+  } else {
+    if (genreBtn) {
+      genreBtn.classList.remove('active');
+    }
+    const currentTab = (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') ? 'watchlist-section' : 'hero';
+    const activeEl = document.querySelector(`.tiktok-nav .tt-item[data-tab="${currentTab}"]`);
+    if (activeEl) {
+      activeEl.classList.add('active');
+    }
+  }
+}
+
+export function showGenreMovies(genreId, genreName) {
+  closeGenrePopover();
+
+  const searchSec = document.getElementById('search-section');
+  const searchResults = document.getElementById('search-results');
+  const countEl = document.getElementById('search-count');
+  if (!searchSec || !searchResults) return;
+
+  state.isShowingGenre = true;
+
+  // Set URL hash to search
+  window.location.hash = '#search';
+  document.body.classList.add('search-active');
+  
+  // Highlight dock Genre button as active and remove other active links
+  const genreBtn = document.getElementById('dock-genre-btn');
+  if (genreBtn) {
+    document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => el.classList.remove('active'));
+    genreBtn.classList.add('active');
+  }
+  
+  // Update header and sub-header details
+  const titleEl = searchSec.querySelector('.sec-title');
+  if (titleEl) {
+    titleEl.innerHTML = `<i class="fa-solid fa-tags" style="color:var(--y);font-size:15px"></i> ${genreName} Movies`;
+  }
+  const subEl = searchSec.querySelector('.sec-sub');
+  if (subEl) {
+    subEl.textContent = `Top rated and popular titles in ${genreName}`;
+  }
+
+  // Clear inputs
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) searchInput.value = '';
+
+  // Clear previous results and show loading
+  searchResults.innerHTML = '';
+  if (countEl) countEl.textContent = "Loading...";
+  searchSec.style.display = 'block';
+
+  // Perform TMDb / local MovieLens filtering
+  if (TMDB_API_KEY) {
+    // Online mode: Query TMDb discover movies matching the selected genre sorted by vote average
+    fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100`)
+      .then(res => res.json())
+      .then(data => {
+        searchResults.innerHTML = '';
+        const items = data.results || [];
+        if (countEl) countEl.textContent = `${items.length} found`;
+        
+        if (items.length === 0) {
+          searchResults.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No movies found in this genre.</div>';
+          return;
+        }
+
+        items.slice(0, 18).forEach(item => {
+          let cardId = `tmdb-movie-${item.id}`;
+          if (state.movieLensData.loaded) {
+            const mlMovie = Object.values(state.movieLensData.movies).find(m => m.tmdbId == item.id);
+            if (mlMovie) {
+              cardId = mlMovie.movieId;
+            }
+          }
+          searchResults.appendChild(buildCard(cardId, item));
+        });
+      })
+      .catch(err => {
+        console.error("TMDb discover error, falling back to local search", err);
+        showGenreMoviesOfflineFallback(genreName, searchResults, countEl);
+      });
+  } else {
+    // Offline mode
+    showGenreMoviesOfflineFallback(genreName, searchResults, countEl);
+  }
+
+  // Scroll to search section smoothly
+  setTimeout(() => {
+    searchSec.scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
+
+function showGenreMoviesOfflineFallback(genreName, container, countEl) {
+  container.innerHTML = '';
+  
+  if (state.movieLensData.loaded) {
+    // Get MovieLens movies matching this genre
+    const matchedMovies = Object.values(state.movieLensData.movies).filter(m => {
+      if (!m.genres) return false;
+      return m.genres.toLowerCase().includes(genreName.toLowerCase());
+    });
+
+    // Score them using Bayesian weighting: (count * avg + 5 * 3.5) / (count + 5)
+    const scored = matchedMovies.map(m => {
+      const ratings = state.movieLensData.movieRatings[m.movieId] || {};
+      const count = Object.keys(ratings).length;
+      let avg = 0;
+      if (count > 0) {
+        avg = Object.values(ratings).reduce((a, b) => a + b, 0) / count;
+      }
+      const score = (count * avg + 5 * 3.5) / (count + 5);
+      return { movieId: m.movieId, score, count };
+    });
+
+    // Sort descending by Bayesian score
+    scored.sort((a, b) => b.score - a.score);
+    const topScored = scored.slice(0, 18);
+
+    if (countEl) countEl.textContent = `${topScored.length} found`;
+
+    if (topScored.length === 0) {
+      container.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No movies found in this genre.</div>';
+      return;
+    }
+
+    topScored.forEach(item => {
+      container.appendChild(buildCard(item.movieId));
+    });
+  } else {
+    // Fallback to local MOVIES array in data.js
+    const matched = MOVIES.filter(m => {
+      if (!m.genre) return false;
+      return m.genre.toLowerCase().includes(genreName.toLowerCase());
+    });
+
+    if (countEl) countEl.textContent = `${matched.length} found`;
+
+    if (matched.length === 0) {
+      container.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No movies found in this genre.</div>';
+      return;
+    }
+
+    matched.forEach(movie => {
+      container.appendChild(buildCard(movie.id));
+    });
+  }
+}
+
+export function initGenrePopover() {
+  const container = document.getElementById('gp-pills-container');
+  if (container) {
+    container.innerHTML = GENRES.map(g => `
+      <button class="gp-pill" data-id="${g.id}" data-name="${g.name}">
+        <i class="${g.icon}"></i>
+        <span>${g.name}</span>
+      </button>
+    `).join('');
+
+    // Bind click events on pills
+    container.querySelectorAll('.gp-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const id = pill.dataset.id;
+        const name = pill.dataset.name;
+        showGenreMovies(id, name);
+      });
+    });
+  }
+
+  // Bind click on bottom nav Genre button
+  const dockBtn = document.getElementById('dock-genre-btn');
+  if (dockBtn) {
+    dockBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleGenrePopover();
+    });
+  }
+
+  // Bind click on close button
+  const closeBtn = document.getElementById('gp-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeGenrePopover();
+    });
+  }
+
+  // Bind outside click to close popover
+  document.addEventListener('click', (e) => {
+    const popover = document.getElementById('genre-popover');
+    if (popover && popover.classList.contains('on')) {
+      const isClickInside = popover.contains(e.target);
+      const isClickDockBtn = document.getElementById('dock-genre-btn')?.contains(e.target);
+      if (!isClickInside && !isClickDockBtn) {
+        closeGenrePopover();
+      }
+    }
+  });
+
+  // Stop propagation on popover click
+  const popover = document.getElementById('genre-popover');
+  if (popover) {
+    popover.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+
+  // Bind escape key to close popover
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeGenrePopover();
+    }
+  });
+}
+
+// Bind to window for compatibility
+window.initGenrePopover = initGenrePopover;
+window.toggleGenrePopover = toggleGenrePopover;
+window.closeGenrePopover = closeGenrePopover;
+window.openGenrePopover = openGenrePopover;
+window.showGenreMovies = showGenreMovies;

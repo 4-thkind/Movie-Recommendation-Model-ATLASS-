@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -106,7 +106,7 @@
 
 <!-- ═══ MAIN ═══ -->
 <main>
-  <!-- Search Results Section (Legacy page - Disabled)
+  <!-- Search Results Section -->
   <section id="search-section" style="display:none;padding-top:44px" class="reveal">
     <div class="tt-search-wrapper">
       <i class="fa-solid fa-magnifying-glass tt-search-icon"></i>
@@ -128,7 +128,6 @@
       <div class="arr R" onclick="scrollRow('search-results',1)"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
   </section>
-  -->
 
 
   <!-- ROW 1: Top Picks -->
@@ -573,6 +572,17 @@
   </div>
 </div>
 
+<!-- ═══ GENRE POPOVER ═══ -->
+<div id="genre-popover" class="genre-popover">
+  <div class="gp-header">
+    <h3 class="gp-title"><i class="fa-solid fa-tags" style="color:var(--y)"></i> Explore by Genre</h3>
+    <button class="gp-close-btn" id="gp-close-btn"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="gp-pills-container" id="gp-pills-container">
+    <!-- Generated dynamically in ui.js -->
+  </div>
+</div>
+
 <!-- ═══ BOTTOM NAV ═══ -->
 <nav class="tiktok-nav" id="tiktok-nav">
   <a href="#hero" class="tt-item active" data-tab="hero" onclick="setActiveTab(this)">
@@ -581,7 +591,7 @@
     </div>
     <span class="tt-label">Home</span>
   </a>
-  <a href="#surprise-section" class="tt-item" data-tab="surprise-section" onclick="setActiveTab(this)">
+  <a href="javascript:void(0)" class="tt-item" data-tab="genre" id="dock-genre-btn">
     <div class="tt-icon-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
     </div>
@@ -622,6 +632,6 @@
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script type="module" src="app.js?v=8"></script>
+<script type="module" src="app.js?v=9"></script>
 </body>
 </html>
