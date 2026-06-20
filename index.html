@@ -106,21 +106,61 @@
 
 <!-- ═══ MAIN ═══ -->
 <main>
+  <!-- Global Search Bar on Homepage -->
+  <div class="homepage-search-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+    <div style="display: flex; gap: 12px; align-items: center; width: 100%; max-width: 600px;">
+      <div class="tt-search-wrapper" style="flex-grow: 1; margin-bottom: 0;">
+        <i class="fa-solid fa-magnifying-glass tt-search-icon"></i>
+        <input type="text" id="search-input" placeholder="Type to search movies..." autocomplete="off" class="tt-search-input"/>
+        <div id="search-suggestions" class="search-suggestions-dropdown" style="display:none;"></div>
+      </div>
+      <button class="tuner-toggle-btn" id="tuner-toggle-btn" onclick="toggleTasteTuner()" title="Tune Taste Weights">
+        <i class="fa-solid fa-sliders"></i>
+      </button>
+    </div>
+
+    <!-- Taste Tuner Drawer -->
+    <div id="taste-tuner-drawer" class="taste-tuner-drawer" style="display: none;">
+      <div class="tuner-title">Tweak Recommendations Weight</div>
+      <div class="tuner-sliders">
+        <div class="tuner-item">
+          <label>Action & Thriller</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-action" oninput="updateTastePreference('Action', this.value)"/>
+          <span class="tuner-val" id="val-Action">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Sci-Fi & Fantasy</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-scifi" oninput="updateTastePreference('SciFi', this.value)"/>
+          <span class="tuner-val" id="val-SciFi">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Romance & Drama</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-romance" oninput="updateTastePreference('Romance', this.value)"/>
+          <span class="tuner-val" id="val-Romance">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Comedy & Family</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-comedy" oninput="updateTastePreference('Comedy', this.value)"/>
+          <span class="tuner-val" id="val-Comedy">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Horror & Mystery</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-horror" oninput="updateTastePreference('Horror', this.value)"/>
+          <span class="tuner-val" id="val-Horror">50%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Search Results Section -->
   <section id="search-section" style="display:none;padding-top:44px" class="reveal">
-    <div class="tt-search-wrapper">
-      <i class="fa-solid fa-magnifying-glass tt-search-icon"></i>
-      <input type="text" id="search-input" placeholder="Type to search movies..." autocomplete="off" class="tt-search-input"/>
-    </div>
     <div class="sec-head">
       <div>
         <div class="sec-title">
           Search Results
-          <span class="sec-tag tag-violet" id="search-count">0 found</span>
         </div>
         <p class="sec-sub">Results matching your search query</p>
       </div>
-      <button onclick="clearSearch()" style="background:transparent;border:none;color:var(--t2);cursor:pointer;font-size:12px;font-weight:600">Clear Search</button>
     </div>
     <div class="row-wrap" id="search-results-wrap">
       <div class="arr L" onclick="scrollRow('search-results',-1)"><i class="fa-solid fa-chevron-left"></i></div>
