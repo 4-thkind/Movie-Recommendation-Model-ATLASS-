@@ -156,13 +156,25 @@
   <section id="search-section" style="display:none;padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title">
+        <div class="sec-title" id="search-section-title">
           Search Results
+          <span class="sec-tag tag-violet" id="search-count" style="display:none"></span>
         </div>
-        <p class="sec-sub">Results matching your search query</p>
+        <p class="sec-sub" id="search-sub">Results matching your search query</p>
+      </div>
+      <button onclick="clearSearch()" style="background:transparent;border:none;color:var(--t2);cursor:pointer;font-size:12px;font-weight:600">Clear</button>
+    </div>
+    <!-- Genre mode: multi-row grid with Load More -->
+    <div id="genre-grid-wrap" style="display:none">
+      <div class="genre-results-grid" id="genre-results-grid"></div>
+      <div id="genre-load-more-wrap" style="display:none;text-align:center;padding:32px 0 8px">
+        <button id="genre-load-more-btn" class="genre-load-more-btn">
+          <i class="fa-solid fa-circle-plus"></i> Load More
+        </button>
       </div>
     </div>
-    <div class="row-wrap" id="search-results-wrap">
+    <!-- Search mode: horizontal row (unchanged) -->
+    <div id="search-row-wrap" class="row-wrap">
       <div class="arr L" onclick="scrollRow('search-results',-1)"><i class="fa-solid fa-chevron-left"></i></div>
       <div class="row-scroll" id="search-results"></div>
       <div class="arr R" onclick="scrollRow('search-results',1)"><i class="fa-solid fa-chevron-right"></i></div>
