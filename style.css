@@ -2862,3 +2862,67 @@ body.watchlist-active .homepage-search-container {
 }
 
 
+
+/* ══════════════════════════════════════
+   GENRE BROWSE — multi-row grid + Load More
+══════════════════════════════════════ */
+.genre-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 14px 10px;
+  padding: 4px 0 8px;
+}
+
+/* Each card in grid mode fills its cell */
+.genre-results-grid .movie-card {
+  flex: unset;
+  width: 100%;
+}
+
+.genre-results-grid .card-thumb {
+  width: 100%;
+}
+
+/* Load More button */
+.genre-load-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 40px;
+  padding: 13px 36px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--t1);
+  font-family: 'Syne', sans-serif;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: all .25s var(--smooth);
+}
+.genre-load-more-btn:hover {
+  background: var(--v2);
+  border-color: rgba(124,58,237,.5);
+  color: var(--vl);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(124,58,237,.2);
+}
+.genre-load-more-btn:disabled {
+  opacity: .45;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+.genre-load-more-btn i {
+  font-size: 15px;
+  color: var(--vl);
+}
+
+/* Fade-in animation for newly appended cards */
+@keyframes card-fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+.genre-results-grid .movie-card.entering {
+  animation: card-fade-in .4s var(--expo) both;
+}
