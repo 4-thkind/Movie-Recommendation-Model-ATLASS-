@@ -1,12 +1,13 @@
 import { state } from './state.js';
 import { TMDB_API_KEY, DEFAULT_RECS } from './config.js';
-import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero } from './ui.js';
+import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite } from './ui.js';
 
 /* ─── RECOMMENDATION ENGINE ─── */
 export function initializeRecommender() {
   const rw1 = document.getElementById('rw1');
   if (!rw1) return;
   rw1.innerHTML = '';
+  rw1._infiniteInit = false;
 
   if (TMDB_API_KEY) {
     // Online TMDB recommendations based on watchlist seed
@@ -20,7 +21,8 @@ export function initializeRecommender() {
           } else {
             loadDefaultRecs(rw1);
           }
-        }).catch(() => loadDefaultRecs(rw1));
+          requestAnimationFrame(() => makeRowInfinite(rw1));
+        }).catch(() => { loadDefaultRecs(rw1); requestAnimationFrame(() => makeRowInfinite(rw1)); });
     } else {
       loadDefaultRecs(rw1);
     }
@@ -36,6 +38,7 @@ export function initializeRecommender() {
     DEFAULT_RECS.forEach(id => {
       rw1.appendChild(buildCard(id));
     });
+    requestAnimationFrame(() => makeRowInfinite(rw1));
     return;
   }
 
@@ -97,13 +100,17 @@ export function initializeRecommender() {
       rw1.appendChild(buildCard(id));
     });
   }
+  requestAnimationFrame(() => makeRowInfinite(rw1));
 }
 
 export function loadDefaultRecs(container) {
   fetch(`https://api.themoviedb.org/3/movie/top_rated?api_key=${TMDB_API_KEY}`)
     .then(res => res.json())
     .then(data => {
-      if (data.results) data.results.slice(0, 15).forEach(m => container.appendChild(buildCard(m.id, m)));
+      if (data.results) {
+        data.results.slice(0, 15).forEach(m => container.appendChild(buildCard(m.id, m)));
+        requestAnimationFrame(() => makeRowInfinite(container));
+      }
     });
 }
 
