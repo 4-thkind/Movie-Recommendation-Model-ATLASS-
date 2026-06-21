@@ -611,6 +611,7 @@ export function renderTrendingGrid(itemsList) {
   const grid = document.getElementById('trend-row');
   if (!grid) return;
   grid.innerHTML = '';
+  grid._infiniteInit = false;
 
   itemsList.forEach((item, i) => {
     const card = document.createElement('div');
@@ -674,6 +675,9 @@ export function renderTrendingGrid(itemsList) {
     });
     grid.appendChild(card);
   });
+
+  // Enable infinite scroll once all cards are in the DOM
+  requestAnimationFrame(() => makeRowInfinite(grid));
 }
 
 /* ─── RENDER ROWS ─── */
@@ -683,12 +687,16 @@ export function renderRows() {
   const rw2 = document.getElementById('rw2');
   if (!rw2) return;
   rw2.innerHTML = '';
+  rw2._infiniteInit = false;
 
   if (TMDB_API_KEY) {
     fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}`)
       .then(res => res.json())
       .then(data => {
-        if (data.results) data.results.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
+        if (data.results) {
+          data.results.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
+          requestAnimationFrame(() => makeRowInfinite(rw2));
+        }
       });
     return;
   }
@@ -697,26 +705,118 @@ export function renderRows() {
   popularRecs.forEach(id => {
     rw2.appendChild(buildCard(id));
   });
+  requestAnimationFrame(() => makeRowInfinite(rw2));
 }
 
-function addRandomCards(el, dir, isTrend) {
-  // Backwards compatibility for scrolling row expansion
+/* ─── INFINITE SCROLL ENGINE ─────────────────────────────────────────────────
+   How it works:
+   1. After a row is populated we call makeRowInfinite(el).
+   2. We clone the full set of children and append a copy at the END and
+      prepend a copy at the START, giving the illusion of an endless tape.
+   3. We position scrollLeft so the user starts on the "real" middle copy.
+   4. A scroll listener watches proximity to either edge and re-clones when
+      the buffer runs low — so no matter how long or fast the user scrolls
+      the row never ends.
+   5. A flag prevents re-entrancy while we adjust scrollLeft.
+──────────────────────────────────────────────────────────────────────────── */
+
+export function makeRowInfinite(el) {
+  if (!el) return;
+  // Always re-initialize: remove from WeakSet tracking by using a fresh flag on the element
+  if (el._infiniteInit) return;
+
+  // Need at least 2 items to loop meaningfully
+  const snapshot = Array.from(el.children);
+  if (snapshot.length < 2) return;
+
+  el._infiniteInit = true;
+
+  // Build one full clone-set and append/prepend it
+  // cloneNode(true) copies DOM structure but NOT addEventListener-attached handlers.
+  // We re-wire clicks on clones by finding the matching original card by index and
+  // simulating a click on it — this delegates to the already-resolved handlers.
+  function rewireClone(clone, originalIndex) {
+    const orig = snapshot[originalIndex % snapshot.length];
+    // Forward card click → original
+    clone.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return; // let buttons handle themselves
+      orig.click();
+    });
+    // Forward button clicks → matching buttons on original
+    const cloneBtns = clone.querySelectorAll('button');
+    const origBtns  = orig.querySelectorAll('button');
+    cloneBtns.forEach((btn, i) => {
+      if (origBtns[i]) btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        origBtns[i].click();
+      });
+    });
+  }
+
+  function appendClones() {
+    snapshot.forEach((child, i) => {
+      const clone = child.cloneNode(true);
+      clone.dataset.cloned = 'true';
+      rewireClone(clone, i);
+      el.appendChild(clone);
+    });
+  }
+
+  function prependClones() {
+    // Insert in reverse so order is preserved after prepend
+    [...snapshot].reverse().forEach((child, ri) => {
+      const i = snapshot.length - 1 - ri;
+      const clone = child.cloneNode(true);
+      clone.dataset.cloned = 'true';
+      rewireClone(clone, i);
+      el.insertBefore(clone, el.firstChild);
+    });
+  }
+
+  // Start with one copy on each side so user can scroll both ways immediately
+  prependClones();
+  appendClones();
+
+  // Jump to the start of the real (middle) section without animation
+  const originalWidth = snapshot.reduce((sum, c) => sum + c.offsetWidth + parseInt(getComputedStyle(el).gap || '0'), 0);
+  el.scrollLeft = originalWidth;
+
+  let ticking = false;
+
+  el.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+
+    requestAnimationFrame(() => {
+      const { scrollLeft, scrollWidth, clientWidth } = el;
+      const threshold = clientWidth * 1.5; // ~1.5 screens worth of buffer
+
+      // Near the right edge → append another clone batch
+      if (scrollLeft + clientWidth >= scrollWidth - threshold) {
+        appendClones();
+      }
+
+      // Near the left edge → prepend another clone batch and compensate scroll
+      if (scrollLeft <= threshold) {
+        const before = el.scrollWidth;
+        prependClones();
+        // Shift scrollLeft by the width we just added so the view doesn't jump
+        el.scrollLeft += (el.scrollWidth - before);
+      }
+
+      ticking = false;
+    });
+  }, { passive: true });
 }
 
 export function scrollRow(id, dir) {
   const el = document.getElementById(id);
-  if (el) {
-    if (state.movieLensData.loaded) addRandomCards(el, dir, false);
-    el.scrollBy({ left: dir * 540, behavior: 'smooth' });
-  }
+  if (el) el.scrollBy({ left: dir * 540, behavior: 'smooth' });
 }
 
 export function scrollTrend(dir) {
   const el = document.getElementById('trend-row');
-  if (el) {
-    if (state.movieLensData.loaded) addRandomCards(el, dir, true);
-    el.scrollBy({ left: dir * 580, behavior: 'smooth' });
-  }
+  if (el) el.scrollBy({ left: dir * 580, behavior: 'smooth' });
 }
 
 /* ─── PLATFORM BROWSER WIRING ─── */
@@ -757,6 +857,7 @@ export function renderPlatCards(platId, type) {
   const row = document.getElementById('pr-' + platId);
   if (!row) return;
   row.innerHTML = '';
+  row._infiniteInit = false; // allow re-initialization after content is replaced
 
   if (TMDB_API_KEY) {
     const plat = LIVE_PLATFORMS.find(p => p.id === platId);
@@ -851,6 +952,7 @@ export function renderPlatCards(platId, type) {
             card.addEventListener('mouseleave', () => cancelPopup());
             row.appendChild(card);
           });
+          requestAnimationFrame(() => makeRowInfinite(row));
         }
       });
     return;
@@ -896,6 +998,7 @@ export function renderPlatCards(platId, type) {
 
     row.appendChild(card);
   });
+  requestAnimationFrame(() => makeRowInfinite(row));
 }
 
 export function switchPlatform(platId) {
@@ -2278,11 +2381,24 @@ export function clearSearch(skipHashUpdate = false) {
   const searchSec = document.getElementById('search-section');
   if (searchSec) {
     searchSec.style.display = 'none';
-    const titleEl = searchSec.querySelector('.sec-title');
+    const titleEl = document.getElementById('search-section-title');
     if (titleEl) {
-      titleEl.innerHTML = `<i class="fa-solid fa-magnifying-glass" style="color:var(--v);font-size:15px"></i> Search Results`;
+      titleEl.innerHTML = `Search Results <span class="sec-tag tag-violet" id="search-count" style="display:none"></span>`;
     }
+    const subEl = document.getElementById('search-sub');
+    if (subEl) subEl.textContent = 'Results matching your search query';
   }
+
+  // Reset genre grid ↔ search row toggle
+  const gridWrap = document.getElementById('genre-grid-wrap');
+  const rowWrap  = document.getElementById('search-row-wrap');
+  const grid     = document.getElementById('genre-results-grid');
+  const lmWrap   = document.getElementById('genre-load-more-wrap');
+  if (gridWrap) { gridWrap.style.display = 'none'; }
+  if (rowWrap)  { rowWrap.style.display = 'block'; }
+  if (grid)     { grid.innerHTML = ''; }
+  if (lmWrap)   { lmWrap.style.display = 'none'; }
+
   document.body.classList.remove('search-active');
   
   const genreBtn = document.getElementById('dock-genre-btn');
@@ -2310,6 +2426,13 @@ export function handleSearchInput(e) {
   if (genreBtn) {
     genreBtn.classList.remove('active');
   }
+
+  // Text search always uses the horizontal row, not the genre grid
+  const gridWrap = document.getElementById('genre-grid-wrap');
+  const rowWrap  = document.getElementById('search-row-wrap');
+  if (gridWrap) gridWrap.style.display = 'none';
+  if (rowWrap)  rowWrap.style.display  = 'block';
+
   const q = e.target.value.trim().toLowerCase();
   const searchSec = document.getElementById('search-section');
   const searchResults = document.getElementById('search-results');
@@ -2328,6 +2451,10 @@ export function handleSearchInput(e) {
   }
 
   document.body.classList.add('search-active');
+
+  // Make count badge visible for text search
+  const countTag = document.getElementById('search-count');
+  if (countTag) countTag.style.display = '';
 
   clearTimeout(searchDebounce);
   searchDebounce = setTimeout(() => {
@@ -2443,13 +2570,15 @@ export function handleSearchInput(e) {
   }, 300);
 }
 
-// Logo click listener
+// Logo click listener — always navigate home regardless of current view
 document.querySelectorAll('.logo, .footer-logo').forEach(logo => {
   logo.addEventListener('click', (e) => {
     e.preventDefault();
-    clearSearch();
+    activeViewState = 'home';
+    showHomePage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    initHero();
+    // Update hash without triggering another hashchange event
+    history.replaceState(null, '', '#home');
   });
 });
 
@@ -3489,168 +3618,208 @@ export function showGenreMovies(genreId, genreName) {
     return;
   }
 
-  const searchSec = document.getElementById('search-section');
-  const searchResults = document.getElementById('search-results');
-  const countEl = document.getElementById('search-count');
-  if (!searchSec || !searchResults) return;
+  const searchSec   = document.getElementById('search-section');
+  const gridWrap    = document.getElementById('genre-grid-wrap');
+  const rowWrap     = document.getElementById('search-row-wrap');
+  const grid        = document.getElementById('genre-results-grid');
+  const lmWrap      = document.getElementById('genre-load-more-wrap');
+  const lmBtn       = document.getElementById('genre-load-more-btn');
+  const countEl     = document.getElementById('search-count');
+  const titleEl     = searchSec ? searchSec.querySelector('#search-section-title') : null;
+  const subEl       = document.getElementById('search-sub');
+
+  if (!searchSec || !grid) return;
 
   state.isShowingGenre = true;
-
   document.body.classList.add('search-active');
-  
-  // Highlight dock Genre button as active and remove other active links
+
+  // Switch to grid mode
+  if (gridWrap) gridWrap.style.display = 'block';
+  if (rowWrap)  rowWrap.style.display  = 'none';
+
+  // Highlight dock Genre button
   const genreBtn = document.getElementById('dock-genre-btn');
   if (genreBtn) {
     document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => el.classList.remove('active'));
     genreBtn.classList.add('active');
   }
-  
-  // Update header and sub-header details
-  const titleEl = searchSec.querySelector('.sec-title');
+
+  // Update header
   if (titleEl) {
-    titleEl.innerHTML = `<i class="fa-solid fa-tags" style="color:var(--y);font-size:15px"></i> ${genreName} Movies`;
+    titleEl.innerHTML = `<i class="fa-solid fa-tags" style="color:var(--y);font-size:15px"></i> ${genreName} <span class="sec-tag tag-violet" id="search-count">Loading...</span>`;
   }
-  const subEl = searchSec.querySelector('.sec-sub');
-  if (subEl) {
-    subEl.textContent = `Top rated and popular titles in ${genreName}`;
-  }
+  if (subEl) subEl.textContent = `Top rated and popular titles in ${genreName}`;
 
-  // Clear inputs
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) searchInput.value = '';
-
-  // Clear previous results and show loading
-  searchResults.innerHTML = '';
-  if (countEl) countEl.textContent = "Loading...";
+  grid.innerHTML = '';
+  if (lmWrap) lmWrap.style.display = 'none';
   searchSec.style.display = 'block';
 
-  // Perform TMDb / local MovieLens filtering
-  if (TMDB_API_KEY) {
-    // Online mode: Query TMDb discover movies matching the selected genre sorted by vote average across 3 pages
-    const p1 = fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100&page=1`)
-      .then(res => res.json()).catch(() => ({ results: [] }));
-    const p2 = fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100&page=2`)
-      .then(res => res.json()).catch(() => ({ results: [] }));
-    const p3 = fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100&page=3`)
-      .then(res => res.json()).catch(() => ({ results: [] }));
+  // ── Pagination state ──────────────────────────────────────────────────────
+  const BATCH_INITIAL = 60; // first load  (~10 rows of 6)
+  const BATCH_MORE    = 30; // each Load More (~5 rows)
+  let allItems    = [];     // full deduplicated pool (by TMDb id / MovieLens id)
+  let rendered    = 0;      // cursor into allItems — how far we've sliced
+  let tmdbPage    = 1;      // next TMDb page to fetch (online mode)
+  let fetching    = false;
+  const renderedIds = new Set(); // absolute guard: tracks every card id put into the DOM
 
-    Promise.all([p1, p2, p3])
-      .then(([d1, d2, d3]) => {
-        searchResults.innerHTML = '';
-        const items = [
-          ...(d1.results || []),
-          ...(d2.results || []),
-          ...(d3.results || [])
-        ];
+  function renderBatch(count) {
+    let added = 0;
+    // Walk forward from the cursor, skip anything already rendered (race-safety)
+    while (added < count && rendered < allItems.length) {
+      const item   = allItems[rendered];
+      rendered++;
+      const cardId = typeof item === 'number' ? String(item) : String(item.id);
+      if (renderedIds.has(cardId)) continue; // already in DOM — skip
+      renderedIds.add(cardId);
 
-        // Deduplicate items by ID
-        const seen = new Set();
-        const uniqueItems = [];
-        items.forEach(item => {
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
-            uniqueItems.push(item);
-          }
-        });
-
-        // Sort descending by vote_average with popularity as tie-breaker
-        uniqueItems.sort((a, b) => {
-          const diff = (b.vote_average || 0) - (a.vote_average || 0);
-          if (Math.abs(diff) > 0.001) return diff;
-          return (b.popularity || 0) - (a.popularity || 0);
-        });
-
-        const topGenreMovies = uniqueItems.slice(0, 60);
-        
-        if (countEl) countEl.textContent = `${topGenreMovies.length} found`;
-        
-        if (topGenreMovies.length === 0) {
-          searchResults.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No movies found in this genre.</div>';
-          return;
-        }
-
-        topGenreMovies.forEach(item => {
-          let cardId = `tmdb-movie-${item.id}`;
-          if (state.movieLensData.loaded) {
-            const mlMovie = Object.values(state.movieLensData.movies).find(m => m.tmdbId == item.id);
-            if (mlMovie) {
-              cardId = mlMovie.movieId;
-            }
-          }
-          searchResults.appendChild(buildCard(cardId, item));
-        });
-      })
-      .catch(err => {
-        console.error("TMDb discover error, falling back to local search", err);
-        showGenreMoviesOfflineFallback(genreName, searchResults, countEl);
-      });
-  } else {
-    // Offline mode
-    showGenreMoviesOfflineFallback(genreName, searchResults, countEl);
+      const card = buildCard(
+        typeof item === 'number' ? item : `tmdb-movie-${item.id}`,
+        typeof item === 'object' ? item : null
+      );
+      card.classList.add('entering');
+      card.style.animationDelay = `${(added % 12) * 30}ms`;
+      grid.appendChild(card);
+      added++;
+    }
+    updateLoadMore();
   }
 
-  // Scroll to search section smoothly
-  setTimeout(() => {
-    searchSec.scrollIntoView({ behavior: 'smooth' });
-  }, 100);
+  function updateLoadMore() {
+    const countTag = document.getElementById('search-count');
+    if (countTag) countTag.textContent = `${rendered} of ${allItems.length}+`;
+    if (!lmWrap || !lmBtn) return;
+    // Show Load More if there are more items buffered OR more TMDb pages
+    lmWrap.style.display = 'block';
+    lmBtn.disabled = fetching;
+    lmBtn.innerHTML = fetching
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Loading…'
+      : '<i class="fa-solid fa-circle-plus"></i> Load More';
+  }
+
+  // ── Online (TMDb) path ────────────────────────────────────────────────────
+  if (TMDB_API_KEY) {
+    const seen = new Set();
+
+    async function fetchTMDBPage(page) {
+      const res = await fetch(
+        `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100&page=${page}`
+      );
+      const data = await res.json();
+      return data.results || [];
+    }
+
+    async function loadMoreTMDB(renderAfter = true) {
+      if (fetching) return;
+      fetching = true;
+      updateLoadMore();
+      try {
+        // Fetch 2 pages at a time to fill a full Load More batch quickly
+        const [r1, r2] = await Promise.all([
+          fetchTMDBPage(tmdbPage),
+          fetchTMDBPage(tmdbPage + 1)
+        ]);
+        tmdbPage += 2;
+        const combined = [...r1, ...r2];
+        combined.forEach(item => {
+          if (!seen.has(item.id)) { seen.add(item.id); allItems.push(item); }
+        });
+      } catch (e) {
+        console.warn('TMDb genre fetch error', e);
+      }
+      fetching = false;
+      if (renderAfter) {
+        renderBatch(rendered === 0 ? BATCH_INITIAL : BATCH_MORE);
+      } else {
+        updateLoadMore(); // just refresh button state after silent pre-fetch
+      }
+    }
+
+    // Wire Load More button — render from buffer first, silently pre-fetch more in background
+    if (lmBtn) {
+      lmBtn.onclick = () => {
+        if (rendered < allItems.length) {
+          renderBatch(BATCH_MORE);
+          // If buffer is getting thin, pre-fetch silently (no render on completion)
+          if (allItems.length - rendered < BATCH_MORE * 2) loadMoreTMDB(false);
+        } else {
+          // Buffer exhausted — fetch and render
+          loadMoreTMDB(true);
+        }
+      };
+    }
+
+    // Initial load — fetch pages 1–4 upfront so the first render is rich
+    (async () => {
+      fetching = true;
+      try {
+        const pages = await Promise.all([1,2,3,4].map(p => fetchTMDBPage(p)));
+        tmdbPage = 5;
+        pages.flat().forEach(item => {
+          if (!seen.has(item.id)) { seen.add(item.id); allItems.push(item); }
+        });
+      } catch(e) { console.warn('TMDb initial genre fetch error', e); }
+      fetching = false;
+      renderBatch(BATCH_INITIAL);
+    })();
+
+  } else {
+    // ── Offline (MovieLens / fallback) path ──────────────────────────────────
+    buildGenrePoolOffline(genreName, (pool) => {
+      allItems = pool;
+      const countTag = document.getElementById('search-count');
+      if (countTag) countTag.textContent = `${pool.length} found`;
+
+      if (pool.length === 0) {
+        grid.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">No movies found in this genre.</div>';
+        if (lmWrap) lmWrap.style.display = 'none';
+        return;
+      }
+
+      renderBatch(BATCH_INITIAL);
+
+      if (lmBtn) {
+        lmBtn.onclick = () => renderBatch(BATCH_MORE);
+      }
+    });
+  }
+
+  // Scroll to search section
+  setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth' }), 100);
 }
 
-function showGenreMoviesOfflineFallback(genreName, container, countEl) {
-  container.innerHTML = '';
-  
-  if (state.movieLensData.loaded) {
-    // Get MovieLens movies matching this genre
-    const matchedMovies = Object.values(state.movieLensData.movies).filter(m => {
-      if (!m.genres) return false;
-      return m.genres.toLowerCase().includes(genreName.toLowerCase());
-    });
+function buildGenrePoolOffline(genreName, callback) {
+  const seenIds = new Set(); // deduplicate pool before handing it back
 
-    // Score them using Bayesian weighting: (count * avg + 5 * 3.5) / (count + 5)
-    const scored = matchedMovies.map(m => {
+  if (state.movieLensData.loaded) {
+    const matched = Object.values(state.movieLensData.movies).filter(m =>
+      m.genres && m.genres.toLowerCase().includes(genreName.toLowerCase())
+    );
+    const scored = matched.map(m => {
       const ratings = state.movieLensData.movieRatings[m.movieId] || {};
       const count = Object.keys(ratings).length;
-      let avg = 0;
-      if (count > 0) {
-        avg = Object.values(ratings).reduce((a, b) => a + b, 0) / count;
-      }
+      const avg = count > 0
+        ? Object.values(ratings).reduce((a, b) => a + b, 0) / count
+        : 0;
       const score = (count * avg + 5 * 3.5) / (count + 5);
-      return { movieId: m.movieId, score, count };
+      return { id: m.movieId, score };
     });
-
-    // Sort descending by Bayesian score
     scored.sort((a, b) => b.score - a.score);
-    const topScored = scored.slice(0, 60);
-
-    if (countEl) countEl.textContent = `${topScored.length} found`;
-
-    if (topScored.length === 0) {
-      container.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No movies found in this genre.</div>';
-      return;
-    }
-
-    topScored.forEach(item => {
-      container.appendChild(buildCard(item.movieId));
+    const pool = [];
+    scored.forEach(s => {
+      if (!seenIds.has(s.id)) { seenIds.add(s.id); pool.push(s.id); }
     });
+    callback(pool);
   } else {
-    // Fallback to local MOVIES array in data.js
-    const matched = MOVIES.filter(m => {
-      if (!m.genre) return false;
-      return m.genre.toLowerCase().includes(genreName.toLowerCase());
-    });
-
+    const matched = MOVIES.filter(m =>
+      m.genre && m.genre.toLowerCase().includes(genreName.toLowerCase())
+    );
     matched.sort((a, b) => parseFloat(b.rating || 0) - parseFloat(a.rating || 0));
-    const topMatched = matched.slice(0, 60);
-
-    if (countEl) countEl.textContent = `${topMatched.length} found`;
-
-    if (topMatched.length === 0) {
-      container.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No movies found in this genre.</div>';
-      return;
-    }
-
-    topMatched.forEach(movie => {
-      container.appendChild(buildCard(movie.id));
+    const pool = [];
+    matched.forEach(m => {
+      if (!seenIds.has(m.id)) { seenIds.add(m.id); pool.push(m.id); }
     });
+    callback(pool);
   }
 }
 
