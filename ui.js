@@ -397,104 +397,164 @@ function playClick() {
   } catch(e){}
 }
 
-/* ─── SHARED FLOATING POPUP (NETFLIX-STYLE) ─── */
-const popup = document.getElementById('card-popup');
-let hideTimer = null;
-let popupTimer = null;
-let popupCardEl = null;
+/* ─── IN-CARD EXPAND SYSTEM (NETFLIX-STYLE MORPH) ─── */
+let expandTimer = null;
+let collapseTimer = null;
+let currentExpandedCard = null;
 
 export function schedulePopup(movie, cardEl) {
-  clearTimeout(popupTimer);
-  clearTimeout(hideTimer);
-  popupTimer = setTimeout(() => showPopup(movie, cardEl), 280);
+  if (!cardEl) return;
+  clearTimeout(expandTimer);
+  clearTimeout(collapseTimer);
+  expandTimer = setTimeout(() => showPopup(movie, cardEl), 500);
 }
 
 export function cancelPopup() {
-  clearTimeout(popupTimer);
-  hideTimer = setTimeout(() => hidePopup(), 120);
+  clearTimeout(expandTimer);
+  collapseTimer = setTimeout(() => hidePopup(), 120);
 }
 
 export function showPopup(movie, cardEl) {
-  if (!popup) return;
+  if (!cardEl) return;
+
+  // Collapse any other open card first
+  if (currentExpandedCard && currentExpandedCard !== cardEl) {
+    _collapseCard(currentExpandedCard);
+  }
+
   state.currentPopupMovie = movie;
-  popupCardEl = cardEl;
-  
+  currentExpandedCard = cardEl;
+
+  // Find or build the expand panel
+  let panel = cardEl.querySelector('.card-expand');
+  if (!panel) {
+    panel = _buildExpandPanel();
+    cardEl.appendChild(panel);
+  }
+  if (!panel) {
+    panel = _buildExpandPanel();
+    cardEl.appendChild(panel);
+  }
+
   // Populate
-  document.getElementById('pp-img').src = movie.backdrop || movie.poster;
-  document.getElementById('pp-match').textContent = movie.match + '% Match';
-  document.getElementById('pp-rating').textContent = movie.rating || '...';
-  document.getElementById('pp-cert').textContent = movie.cert || 'PG-13';
-  document.getElementById('pp-title').textContent = movie.title;
-  
-  // Genres
-  const genres = (movie.genre || "").split('·').map(g => g.trim());
-  document.getElementById('pp-genres').innerHTML = genres.map((g, i) =>
-    i < genres.length - 1 ? `<span>${g}</span><span class="pg-dot"></span>` : `<span>${g}</span>`
-  ).join('');
-  
-  // Add btn state
-  const addBtn = document.getElementById('pp-add');
-  const inList = state.watchlist.find(m => m.id === movie.id);
-  addBtn.classList.toggle('added', !!inList);
-  addBtn.innerHTML = inList
-    ? '<i class="fa-solid fa-check" style="font-size:10px"></i>'
-    : '<i class="fa-solid fa-plus" style="font-size:10px"></i>';
+  const img = panel.querySelector('.ce-img');
+  if (img) img.src = movie.backdrop || movie.poster || '';
+  const titleEl = panel.querySelector('.ce-title');
+  if (titleEl) titleEl.textContent = movie.title || '';
+  const matchEl = panel.querySelector('.ce-match');
+  if (matchEl) matchEl.textContent = (movie.match || 85) + '% Match';
+  const ratingEl = panel.querySelector('.ce-rating-val');
+  if (ratingEl) ratingEl.textContent = movie.rating || '7.0';
+  const certEl = panel.querySelector('.ce-cert');
+  if (certEl) certEl.textContent = movie.cert || 'PG-13';
+  const genreEl = panel.querySelector('.ce-genres');
+  if (genreEl) {
+    const genres = (movie.genre || '').split('·').map(g => g.trim()).filter(Boolean);
+    genreEl.innerHTML = genres.map((g, i) =>
+      i < genres.length - 1
+        ? `<span>${g}</span><span class="ce-dot"></span>`
+        : `<span>${g}</span>`
+    ).join('');
+  }
+
+  // Watchlist button state
+  const addBtn = panel.querySelector('.ce-add');
+  if (addBtn) {
+    const inList = state.watchlist.find(m => String(m.id) === String(movie.id));
+    addBtn.classList.toggle('added', !!inList);
+    addBtn.innerHTML = inList
+      ? '<i class="fa-solid fa-check" style="font-size:10px"></i>'
+      : '<i class="fa-solid fa-plus" style="font-size:10px"></i>';
+  }
 
   // Wire buttons
-  document.getElementById('pp-play').onclick = () => openModal(movie);
-  document.getElementById('pp-info').onclick = () => openModal(movie);
-  document.getElementById('pp-add').onclick = (e) => {
+  const playBtn = panel.querySelector('.ce-play');
+  if (playBtn) playBtn.onclick = (e) => { e.stopPropagation(); openModal(movie); };
+  if (addBtn) addBtn.onclick = (e) => {
     e.stopPropagation();
-    addToWatchlist(movie, e.currentTarget);
-    e.currentTarget.classList.add('added');
-    e.currentTarget.innerHTML = '<i class="fa-solid fa-check" style="font-size:10px"></i>';
+    toggleWatchlist(movie);
+    const inList = state.watchlist.find(m => String(m.id) === String(movie.id));
+    addBtn.classList.toggle('added', !!inList);
+    addBtn.innerHTML = inList
+      ? '<i class="fa-solid fa-check" style="font-size:10px"></i>'
+      : '<i class="fa-solid fa-plus" style="font-size:10px"></i>';
   };
+  const infoBtn = panel.querySelector('.ce-info');
+  if (infoBtn) infoBtn.onclick = (e) => { e.stopPropagation(); openModal(movie); };
 
-  repositionPopup();
-  popup.classList.remove('hiding');
-  popup.classList.add('visible');
+  // Keep hover alive while over the expand panel
+  panel.onmouseenter = () => { clearTimeout(collapseTimer); };
+  panel.onmouseleave = () => { hidePopup(); };
+
+  // Determine horizontal clamp — flip left/right if near viewport edge
+  const rect = cardEl.getBoundingClientRect();
+  const panelW = parseInt(getComputedStyle(panel).width) || 240;
+  const centreLeft = rect.left + rect.width / 2 - panelW / 2;
+  cardEl.classList.remove('expand-left', 'expand-right');
+  if (centreLeft < 8) {
+    cardEl.classList.add('expand-right');
+  } else if (centreLeft + panelW > window.innerWidth - 8) {
+    cardEl.classList.add('expand-left');
+  }
+
+  cardEl.classList.add('card-is-expanded');
 }
 
 export function hidePopup() {
-  if (!popup) return;
-  clearTimeout(popupTimer);
-  popup.classList.add('hiding');
-  setTimeout(() => {
-    popup.classList.remove('visible', 'hiding');
-    state.currentPopupMovie = null;
-    popupCardEl = null;
-  }, 220);
-}
-
-export function repositionPopup() {
-  if (!popup || !popup.classList.contains('visible') || !popupCardEl) return;
-  
-  const rect = popupCardEl.getBoundingClientRect();
-  const pw = 268, ph = 320;
-  let left = rect.left + rect.width / 2 - pw / 2;
-  let top  = rect.top - ph - 8;
-
-  // Flip below if not enough room above
-  if (top < 70) top = rect.bottom + 8;
-
-  // Clamp horizontally
-  left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-
-  popup.style.left = (left + window.scrollX) + 'px';
-  popup.style.top  = (top + window.scrollY) + 'px';
-}
-
-if (popup) {
-  popup.addEventListener('mouseenter', () => { clearTimeout(hideTimer); clearTimeout(popupTimer); });
-  popup.addEventListener('mouseleave', () => hidePopup());
-}
-
-// Bind scroll events to reposition popups dynamically
-document.addEventListener('scroll', (e) => {
-  if (e.target === document || (e.target.classList && e.target.classList.contains('row-scroll'))) {
-    repositionPopup();
+  clearTimeout(expandTimer);
+  if (currentExpandedCard) {
+    _collapseCard(currentExpandedCard);
+    currentExpandedCard = null;
   }
-}, { capture: true, passive: true });
+  state.currentPopupMovie = null;
+}
+
+// No-op — kept for any legacy call sites
+export function repositionPopup() {}
+
+function _collapseCard(card) {
+  card.classList.remove('card-is-expanded', 'expand-left', 'expand-right');
+}
+
+function _buildExpandPanel() {
+  const panel = document.createElement('div');
+  panel.className = 'card-expand';
+  panel.innerHTML = `
+    <div class="ce-poster">
+      <img class="ce-img" src="" alt="" draggable="false"/>
+      <div class="ce-poster-fade"></div>
+    </div>
+    <div class="ce-body">
+      <div class="ce-actions">
+        <button class="ce-btn ce-play" title="Watch Now">
+          <i class="fa-solid fa-play" style="margin-left:2px;font-size:10px"></i>
+        </button>
+        <button class="ce-btn ce-add" title="Add to Watchlist">
+          <i class="fa-solid fa-plus" style="font-size:10px"></i>
+        </button>
+        <button class="ce-btn ce-like" title="I like this">
+          <i class="fa-solid fa-thumbs-up" style="font-size:10px"></i>
+        </button>
+        <button class="ce-btn ce-info" title="More Info" style="margin-left:auto">
+          <i class="fa-solid fa-chevron-down" style="font-size:10px"></i>
+        </button>
+      </div>
+      <div class="ce-meta">
+        <span class="ce-match"></span>
+        <span class="ce-rating">
+          <i class="fa-solid fa-star" style="font-size:9px"></i>
+          <span class="ce-rating-val"></span>
+        </span>
+        <span class="ce-cert"></span>
+      </div>
+      <div class="ce-title"></div>
+      <div class="ce-genres"></div>
+    </div>`;
+  return panel;
+}
+
+// Bind scroll events — no repositioning needed anymore but keep for legacy
+document.addEventListener('scroll', () => {}, { capture: true, passive: true });
 
 /* ─── RENDER MOVIES CARD ─── */
 export function buildCard(movieId, initialData = null) {
@@ -571,9 +631,17 @@ export function buildCard(movieId, initialData = null) {
     if (resolvedDetails) toggleWatchlist(resolvedDetails);
   });
 
+  // Attach hover popup immediately — uses whatever resolvedDetails is available at that moment
+  wrap._popupDetails = resolvedDetails; // expose for clones (may be null initially in offline mode)
+  wrap.addEventListener('mouseenter', () => {
+    if (resolvedDetails) schedulePopup(resolvedDetails, wrap);
+  });
+  wrap.addEventListener('mouseleave', () => cancelPopup());
+
   fetchTMDBDetails(movieId).then(details => {
     if (!details) return;
     resolvedDetails = details;
+    wrap._popupDetails = details; // expose for clones
     const img = wrap.querySelector('.lazy-poster');
     if (img) {
       img.src = details.poster;
@@ -584,9 +652,6 @@ export function buildCard(movieId, initialData = null) {
     const glow = getGlowColor(details.genre);
     wrap.style.setProperty('--glow-color', glow.color);
     wrap.style.setProperty('--glow-border', glow.border);
-
-    wrap.addEventListener('mouseenter', () => schedulePopup(details, wrap));
-    wrap.addEventListener('mouseleave', () => cancelPopup());
   });
 
   return wrap;
@@ -669,14 +734,20 @@ export function renderTrendingGrid(itemsList) {
     playBtn.addEventListener('click', e => handleOpen(e));
     addBtn.addEventListener('click', handleAdd);
 
+    // Attach hover popup — uses a quick fallback immediately, updated when details load
+    const quickFallback = { id: tmdbId, title, poster, match: 85, rating, year, cert: 'PG-13', genre: '' };
+    card.addEventListener('mouseenter', () => schedulePopup(resolvedDetails || quickFallback, card));
+    card.addEventListener('mouseleave', () => cancelPopup());
+
     fetchTMDBDetails(tmdbId).then(details => {
       if (!details) return;
       resolvedDetails = details;
+      card._popupDetails = details; // expose for clones
     });
     grid.appendChild(card);
   });
 
-  // Enable infinite scroll once all cards are in the DOM
+  // Infinite scroll — seamless loop in both directions
   requestAnimationFrame(() => makeRowInfinite(grid));
 }
 
@@ -709,40 +780,27 @@ export function renderRows() {
 }
 
 /* ─── INFINITE SCROLL ENGINE ─────────────────────────────────────────────────
-   How it works:
-   1. After a row is populated we call makeRowInfinite(el).
-   2. We clone the full set of children and append a copy at the END and
-      prepend a copy at the START, giving the illusion of an endless tape.
-   3. We position scrollLeft so the user starts on the "real" middle copy.
-   4. A scroll listener watches proximity to either edge and re-clones when
-      the buffer runs low — so no matter how long or fast the user scrolls
-      the row never ends.
-   5. A flag prevents re-entrancy while we adjust scrollLeft.
+   Strategy: pre-fill a large buffer (3 copies each side) so the user never
+   reaches the edge during normal scrolling. A scroll listener silently tops
+   up clones only when the buffer runs low — the prepend compensation is done
+   BEFORE the browser paints by setting scrollLeft synchronously inside the
+   same rAF tick that measures the width difference, preventing any visible jump.
 ──────────────────────────────────────────────────────────────────────────── */
 
 export function makeRowInfinite(el) {
-  if (!el) return;
-  // Always re-initialize: remove from WeakSet tracking by using a fresh flag on the element
-  if (el._infiniteInit) return;
+  if (!el || el._infiniteInit) return;
 
-  // Need at least 2 items to loop meaningfully
   const snapshot = Array.from(el.children);
   if (snapshot.length < 2) return;
 
   el._infiniteInit = true;
 
-  // Build one full clone-set and append/prepend it
-  // cloneNode(true) copies DOM structure but NOT addEventListener-attached handlers.
-  // We re-wire clicks on clones by finding the matching original card by index and
-  // simulating a click on it — this delegates to the already-resolved handlers.
   function rewireClone(clone, originalIndex) {
     const orig = snapshot[originalIndex % snapshot.length];
-    // Forward card click → original
     clone.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return; // let buttons handle themselves
+      if (e.target.closest('button')) return;
       orig.click();
     });
-    // Forward button clicks → matching buttons on original
     const cloneBtns = clone.querySelectorAll('button');
     const origBtns  = orig.querySelectorAll('button');
     cloneBtns.forEach((btn, i) => {
@@ -751,9 +809,14 @@ export function makeRowInfinite(el) {
         origBtns[i].click();
       });
     });
+    clone.addEventListener('mouseenter', () => {
+      const details = orig._popupDetails;
+      if (details) schedulePopup(details, clone);
+    });
+    clone.addEventListener('mouseleave', () => cancelPopup());
   }
 
-  function appendClones() {
+  function appendBatch() {
     snapshot.forEach((child, i) => {
       const clone = child.cloneNode(true);
       clone.dataset.cloned = 'true';
@@ -762,8 +825,7 @@ export function makeRowInfinite(el) {
     });
   }
 
-  function prependClones() {
-    // Insert in reverse so order is preserved after prepend
+  function prependBatch() {
     [...snapshot].reverse().forEach((child, ri) => {
       const i = snapshot.length - 1 - ri;
       const clone = child.cloneNode(true);
@@ -773,13 +835,19 @@ export function makeRowInfinite(el) {
     });
   }
 
-  // Start with one copy on each side so user can scroll both ways immediately
-  prependClones();
-  appendClones();
+  // Pre-fill 3 copies each side — plenty of buffer for any scroll speed
+  const BUFFER = 3;
+  for (let b = 0; b < BUFFER; b++) prependBatch();
+  for (let b = 0; b < BUFFER; b++) appendBatch();
 
-  // Jump to the start of the real (middle) section without animation
-  const originalWidth = snapshot.reduce((sum, c) => sum + c.offsetWidth + parseInt(getComputedStyle(el).gap || '0'), 0);
-  el.scrollLeft = originalWidth;
+  // Measure one full copy width and jump to the start of the real middle section
+  const gap = parseInt(getComputedStyle(el).gap || getComputedStyle(el).columnGap || '0') || 0;
+  const batchWidth = snapshot.reduce((sum, c) => sum + c.offsetWidth + gap, 0);
+  // Disable smooth scroll temporarily so the jump is instant
+  const prevScrollBehavior = el.style.scrollBehavior;
+  el.style.scrollBehavior = 'auto';
+  el.scrollLeft = batchWidth * BUFFER;
+  el.style.scrollBehavior = prevScrollBehavior;
 
   let ticking = false;
 
@@ -789,19 +857,20 @@ export function makeRowInfinite(el) {
 
     requestAnimationFrame(() => {
       const { scrollLeft, scrollWidth, clientWidth } = el;
-      const threshold = clientWidth * 1.5; // ~1.5 screens worth of buffer
+      const threshold = clientWidth * 2;
 
-      // Near the right edge → append another clone batch
       if (scrollLeft + clientWidth >= scrollWidth - threshold) {
-        appendClones();
+        appendBatch();
       }
 
-      // Near the left edge → prepend another clone batch and compensate scroll
       if (scrollLeft <= threshold) {
+        // Measure added width and compensate synchronously — no visible jump
         const before = el.scrollWidth;
-        prependClones();
-        // Shift scrollLeft by the width we just added so the view doesn't jump
-        el.scrollLeft += (el.scrollWidth - before);
+        prependBatch();
+        const added = el.scrollWidth - before;
+        el.style.scrollBehavior = 'auto';
+        el.scrollLeft += added;
+        el.style.scrollBehavior = prevScrollBehavior;
       }
 
       ticking = false;
@@ -906,11 +975,13 @@ export function renderPlatCards(platId, type) {
               cast: [],
               director: []
             };
+            card._popupDetails = resolvedDetails; // expose for clones immediately
 
             if (type === 'movie') {
               fetchTMDBDetails(item.id).then(details => {
                 if(!details) return;
                 resolvedDetails = details;
+                card._popupDetails = details; // expose for clones
                 if (state.currentPopupMovie && state.currentPopupMovie.id === item.id) showPopup(details, card);
               });
             } else {
@@ -937,6 +1008,7 @@ export function renderPlatCards(platId, type) {
                       img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
                     })) : [{ name: "Creator", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }]
                   };
+                  card._popupDetails = resolvedDetails; // expose for clones
                   if (state.currentPopupMovie && state.currentPopupMovie.id === item.id) showPopup(resolvedDetails, card);
                 })
                 .catch(e => console.warn("TV details fetch error:", e));
@@ -952,6 +1024,7 @@ export function renderPlatCards(platId, type) {
             card.addEventListener('mouseleave', () => cancelPopup());
             row.appendChild(card);
           });
+          // Infinite scroll — seamless loop in both directions
           requestAnimationFrame(() => makeRowInfinite(row));
         }
       });
@@ -989,15 +1062,20 @@ export function renderPlatCards(platId, type) {
     playBtn.addEventListener('click', e => handleOpen(e));
     addBtn.addEventListener('click', handleAdd);
 
+    // Attach hover popup immediately with a quick fallback, updated when details resolve
+    const quickFallback = { id: m.id, title: m.title, poster: m.poster, match: 85, rating: m.rating, cert: 'PG-13', genre: m.genre || '' };
+    card.addEventListener('mouseenter', () => schedulePopup(resolvedDetails || quickFallback, card));
+    card.addEventListener('mouseleave', () => cancelPopup());
+
     fetchTMDBDetails(m.id).then(details => {
       if (!details) return;
       resolvedDetails = details;
-      card.addEventListener('mouseenter', () => schedulePopup(details, card));
-      card.addEventListener('mouseleave', () => cancelPopup());
+      card._popupDetails = details; // expose for clones
     });
 
     row.appendChild(card);
   });
+  // Infinite scroll — seamless loop in both directions
   requestAnimationFrame(() => makeRowInfinite(row));
 }
 
@@ -2023,7 +2101,7 @@ export function closeModal(skipHashUpdate = false) {
     if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
       window.location.hash = '#watchlist-section';
     } else {
-      window.location.hash = '#home';
+      history.replaceState(null, '', window.location.pathname);
     }
   }
 }
@@ -2414,7 +2492,7 @@ export function clearSearch(skipHashUpdate = false) {
     if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
       window.location.hash = '#watchlist-section';
     } else {
-      window.location.hash = '#home';
+      history.replaceState(null, '', window.location.pathname);
     }
   }
 }
@@ -2445,7 +2523,7 @@ export function handleSearchInput(e) {
     if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
       window.location.hash = '#watchlist-section';
     } else {
-      window.location.hash = '#home';
+      history.replaceState(null, '', window.location.pathname);
     }
     return;
   }
@@ -2577,8 +2655,8 @@ document.querySelectorAll('.logo, .footer-logo').forEach(logo => {
     activeViewState = 'home';
     showHomePage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Update hash without triggering another hashchange event
-    history.replaceState(null, '', '#home');
+    // Clean the URL — show plain / instead of /#home
+    history.replaceState(null, '', window.location.pathname);
   });
 });
 
@@ -3190,7 +3268,8 @@ export function handleHashChange() {
   
   // 3. Search routing - Redirect and show search overlay modal directly
   if (hash === '#search') {
-    window.location.hash = (activeViewState === 'watchlist') ? '#watchlist-section' : '#home';
+    window.location.hash = (activeViewState === 'watchlist') ? '#watchlist-section' : '';
+    history.replaceState(null, '', window.location.pathname);
     if (typeof window.openSearchModal === 'function') {
       window.openSearchModal();
     }
@@ -3216,6 +3295,8 @@ export function handleHashChange() {
     activeViewState = 'home';
     showHomePage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Clean the URL — show plain / instead of /#home or /#hero
+    history.replaceState(null, '', window.location.pathname);
     return;
   }
 }
@@ -3611,7 +3692,7 @@ export function showGenreMovies(genreId, genreName) {
 
   // If currently on watchlist page, redirect to home page first, then show genre movies
   if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
-    window.location.hash = '#home';
+    history.replaceState(null, '', '#watchlist-section');
     setTimeout(() => {
       showGenreMovies(genreId, genreName);
     }, 350);
