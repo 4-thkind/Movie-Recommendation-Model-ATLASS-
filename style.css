@@ -554,7 +554,7 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   display:flex;gap:4px;
   overflow-x:auto;overflow-y:visible;
   padding:20px 4px 24px;scrollbar-width:none;
-  scroll-behavior:smooth;
+  scroll-behavior:auto;
 }
 .row-scroll::-webkit-scrollbar{display:none}
 
