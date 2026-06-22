@@ -3736,22 +3736,73 @@ export function showGenreMovies(genreId, genreName) {
   searchSec.style.display = 'block';
 
   // ── Pagination state ──────────────────────────────────────────────────────
-  const BATCH_INITIAL = 60; // first load  (~10 rows of 6)
-  const BATCH_MORE    = 30; // each Load More (~5 rows)
+  const ROWS_INITIAL = 10; // first load  — 10 complete rows
+  const ROWS_MORE    =  6; // each Load More — 6 complete rows
   let allItems    = [];     // full deduplicated pool (by TMDb id / MovieLens id)
   let rendered    = 0;      // cursor into allItems — how far we've sliced
   let tmdbPage    = 1;      // next TMDb page to fetch (online mode)
   let fetching    = false;
   const renderedIds = new Set(); // absolute guard: tracks every card id put into the DOM
 
-  function renderBatch(count) {
+  /**
+   * Get the actual number of columns in the grid.
+   * Since columns are fixed at 168px with 10px gap, we use three methods
+   * in priority order — all should agree.
+   */
+  function getColumnCount() {
+    if (!grid) return 7;
+
+    // Method 1: count resolved column tracks from computed style
+    // With fixed 168px columns this returns "168px 168px 168px ..." — 100% accurate
+    try {
+      const tpl = getComputedStyle(grid).gridTemplateColumns;
+      if (tpl && tpl !== 'none' && tpl !== '') {
+        const cols = tpl.trim().split(/\s+/).length;
+        if (cols > 0) return cols;
+      }
+    } catch (_) {}
+
+    // Method 2: measure from actual first rendered card
+    const firstCard = grid.querySelector('.movie-card');
+    if (firstCard) {
+      const cardW = firstCard.getBoundingClientRect().width || firstCard.offsetWidth;
+      const gridW = grid.getBoundingClientRect().width || grid.offsetWidth;
+      if (cardW > 0 && gridW > 0) {
+        return Math.max(1, Math.round(gridW / cardW));
+      }
+    }
+
+    // Method 3: pure math — 168px card + 10px gap
+    const gridWidth = grid.offsetWidth || grid.getBoundingClientRect().width;
+    if (gridWidth > 0) {
+      return Math.max(1, Math.floor((gridWidth + 10) / (168 + 10)));
+    }
+
+    return 7;
+  }
+
+  /**
+   * Append exactly (rows × cols) cards, always completing any partial last row first.
+   * @param {number} rows  Number of COMPLETE new rows to add.
+   */
+  function renderBatch(rows) {
+    const cols = getColumnCount();
+
+    // Cards already in DOM
+    const currentCount = grid.children.length;
+
+    // If the last row is partial, fill it first before adding new rows
+    const remainder = currentCount % cols;
+    const fillLast = remainder === 0 ? 0 : (cols - remainder);
+
+    const total = fillLast + (rows * cols);
+
     let added = 0;
-    // Walk forward from the cursor, skip anything already rendered (race-safety)
-    while (added < count && rendered < allItems.length) {
+    while (added < total && rendered < allItems.length) {
       const item   = allItems[rendered];
       rendered++;
       const cardId = typeof item === 'number' ? String(item) : String(item.id);
-      if (renderedIds.has(cardId)) continue; // already in DOM — skip
+      if (renderedIds.has(cardId)) continue;
       renderedIds.add(cardId);
 
       const card = buildCard(
@@ -3759,10 +3810,34 @@ export function showGenreMovies(genreId, genreName) {
         typeof item === 'object' ? item : null
       );
       card.classList.add('entering');
-      card.style.animationDelay = `${(added % 12) * 30}ms`;
+      card.style.animationDelay = `${(added % (cols * 2)) * 30}ms`;
       grid.appendChild(card);
       added++;
     }
+
+    // Final safety pass: if we still have a partial last row (e.g. skipped dupes),
+    // keep topping up until the row is complete or we run out of items.
+    const afterCount = grid.children.length;
+    const afterRemainder = afterCount % cols;
+    if (afterRemainder !== 0) {
+      const needed = cols - afterRemainder;
+      let extra = 0;
+      while (extra < needed && rendered < allItems.length) {
+        const item   = allItems[rendered];
+        rendered++;
+        const cardId = typeof item === 'number' ? String(item) : String(item.id);
+        if (renderedIds.has(cardId)) continue;
+        renderedIds.add(cardId);
+        const card = buildCard(
+          typeof item === 'number' ? item : `tmdb-movie-${item.id}`,
+          typeof item === 'object' ? item : null
+        );
+        card.classList.add('entering');
+        grid.appendChild(card);
+        extra++;
+      }
+    }
+
     updateLoadMore();
   }
 
@@ -3810,7 +3885,7 @@ export function showGenreMovies(genreId, genreName) {
       }
       fetching = false;
       if (renderAfter) {
-        renderBatch(rendered === 0 ? BATCH_INITIAL : BATCH_MORE);
+        renderBatch(rendered === 0 ? ROWS_INITIAL : ROWS_MORE);
       } else {
         updateLoadMore(); // just refresh button state after silent pre-fetch
       }
@@ -3820,9 +3895,9 @@ export function showGenreMovies(genreId, genreName) {
     if (lmBtn) {
       lmBtn.onclick = () => {
         if (rendered < allItems.length) {
-          renderBatch(BATCH_MORE);
+          renderBatch(ROWS_MORE);
           // If buffer is getting thin, pre-fetch silently (no render on completion)
-          if (allItems.length - rendered < BATCH_MORE * 2) loadMoreTMDB(false);
+          if (allItems.length - rendered < getColumnCount() * ROWS_MORE * 2) loadMoreTMDB(false);
         } else {
           // Buffer exhausted — fetch and render
           loadMoreTMDB(true);
@@ -3841,7 +3916,7 @@ export function showGenreMovies(genreId, genreName) {
         });
       } catch(e) { console.warn('TMDb initial genre fetch error', e); }
       fetching = false;
-      renderBatch(BATCH_INITIAL);
+      renderBatch(ROWS_INITIAL);
     })();
 
   } else {
@@ -3857,10 +3932,10 @@ export function showGenreMovies(genreId, genreName) {
         return;
       }
 
-      renderBatch(BATCH_INITIAL);
+      renderBatch(ROWS_INITIAL);
 
       if (lmBtn) {
-        lmBtn.onclick = () => renderBatch(BATCH_MORE);
+        lmBtn.onclick = () => renderBatch(ROWS_MORE);
       }
     });
   }
