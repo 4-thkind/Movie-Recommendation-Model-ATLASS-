@@ -2,6 +2,98 @@ import { state } from './state.js';
 import { TMDB_API_KEY, DEFAULT_RECS } from './config.js';
 import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite } from './ui.js';
 
+/* ─── RECOMMENDATION ENGINE WORKER CODE ─── */
+const workerCode = `
+  let ratingsData = {};
+
+  function cosineSimilarity(ratingsA, ratingsB) {
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    let shared = 0;
+
+    for (const movieId in ratingsA) {
+      const valA = ratingsA[movieId];
+      normA += valA * valA;
+      if (ratingsB[movieId] !== undefined) {
+        const valB = ratingsB[movieId];
+        dotProduct += valA * valB;
+        shared++;
+      }
+    }
+
+    for (const movieId in ratingsB) {
+      const valB = ratingsB[movieId];
+      normB += valB * valB;
+    }
+
+    if (shared === 0 || normA === 0 || normB === 0) return 0;
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+
+  self.onmessage = function(e) {
+    const data = e.data;
+    if (data.type === 'INIT_DATA') {
+      ratingsData = data.ratings || {};
+      return;
+    }
+
+    if (data.type === 'CALCULATE') {
+      const myRatingsMapped = data.myRatings || {};
+      const similarities = [];
+
+      for (const userId in ratingsData) {
+        const uRatings = ratingsData[userId];
+        const sim = cosineSimilarity(myRatingsMapped, uRatings);
+        if (sim > 0) {
+          similarities.push({ userId, similarity: sim });
+        }
+      }
+
+      similarities.sort((a, b) => b.similarity - a.similarity);
+      const topUsers = similarities.slice(0, 30);
+
+      const predictions = {};
+      const simSum = {};
+
+      topUsers.forEach(u => {
+        const ratings = ratingsData[u.userId];
+        for (const [mid, val] of Object.entries(ratings)) {
+          const movieId = parseInt(mid);
+          if (myRatingsMapped[movieId] !== undefined) continue;
+
+          if (!predictions[movieId]) {
+            predictions[movieId] = 0;
+            simSum[movieId] = 0;
+          }
+          predictions[movieId] += u.similarity * val;
+          simSum[movieId] += u.similarity;
+        }
+      });
+
+      const finalRecs = {};
+      for (const movieId in predictions) {
+        if (simSum[movieId] > 0) {
+          finalRecs[movieId] = predictions[movieId] / simSum[movieId];
+        }
+      }
+
+      self.postMessage({
+        type: 'RESULTS',
+        recommendations: finalRecs
+      });
+    }
+  };
+`;
+
+let recommendationWorker = null;
+
+function initRecommendationWorker() {
+  if (recommendationWorker) return;
+  const blob = new Blob([workerCode], { type: 'application/javascript' });
+  recommendationWorker = new Worker(URL.createObjectURL(blob));
+}
+
 /* ─── RECOMMENDATION ENGINE ─── */
 export function initializeRecommender() {
   const rw1 = document.getElementById('rw1');
@@ -47,60 +139,39 @@ export function initializeRecommender() {
     myRatingsMapped[parseInt(mid)] = parseFloat(r);
   }
 
-  const similarities = [];
-  for (const userId in state.movieLensData.ratings) {
-    const uRatings = state.movieLensData.ratings[userId];
-    const sim = cosineSimilarity(myRatingsMapped, uRatings);
-    if (sim > 0) {
-      similarities.push({ userId, similarity: sim });
-    }
-  }
+  // Ensure worker is created and listening
+  initRecommendationWorker();
 
-  similarities.sort((a, b) => b.similarity - a.similarity);
-  const topUsers = similarities.slice(0, 30);
+  // Set up message handler to update recommendations row
+  recommendationWorker.onmessage = function(e) {
+    if (e.data.type === 'RESULTS') {
+      const finalRecs = e.data.recommendations;
+      state.personalizedRecommendations = finalRecs;
 
-  const predictions = {};
-  const simSum = {};
+      const sortedIds = Object.entries(state.personalizedRecommendations)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(entry => parseInt(entry[0]));
 
-  topUsers.forEach(u => {
-    const ratings = state.movieLensData.ratings[u.userId];
-    for (const [mid, val] of Object.entries(ratings)) {
-      const movieId = parseInt(mid);
-      if (myRatingsMapped[movieId] !== undefined) continue;
-
-      if (!predictions[movieId]) {
-        predictions[movieId] = 0;
-        simSum[movieId] = 0;
+      rw1.innerHTML = '';
+      if (sortedIds.length === 0) {
+        DEFAULT_RECS.forEach(id => {
+          rw1.appendChild(buildCard(id));
+        });
+      } else {
+        sortedIds.forEach(id => {
+          rw1.appendChild(buildCard(id));
+        });
       }
-      predictions[movieId] += u.similarity * val;
-      simSum[movieId] += u.similarity;
+      requestAnimationFrame(() => makeRowInfinite(rw1));
     }
+  };
+
+  // Trigger calculation in background thread
+  recommendationWorker.postMessage({
+    type: 'CALCULATE',
+    myRatings: myRatingsMapped
   });
-
-  const finalRecs = {};
-  for (const movieId in predictions) {
-    if (simSum[movieId] > 0) {
-      finalRecs[movieId] = predictions[movieId] / simSum[movieId];
-    }
-  }
-
-  state.personalizedRecommendations = finalRecs;
-
-  const sortedIds = Object.entries(state.personalizedRecommendations)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(entry => parseInt(entry[0]));
-
-  if (sortedIds.length === 0) {
-    DEFAULT_RECS.forEach(id => {
-      rw1.appendChild(buildCard(id));
-    });
-  } else {
-    sortedIds.forEach(id => {
-      rw1.appendChild(buildCard(id));
-    });
-  }
-  requestAnimationFrame(() => makeRowInfinite(rw1));
 }
 
 export function loadDefaultRecs(container) {
@@ -209,6 +280,15 @@ export async function loadMovieLensDatabase() {
 
     state.movieLensData.loaded = true;
     updateDatabaseStatus('ratings', 'Loaded');
+
+    // Initialize worker and populate data
+    initRecommendationWorker();
+    if (recommendationWorker) {
+      recommendationWorker.postMessage({
+        type: 'INIT_DATA',
+        ratings: ratingsMap
+      });
+    }
 
     renderRows();
     buildTrending();
