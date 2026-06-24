@@ -3286,10 +3286,10 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Click outside the panel → close dropdown
+  // Click anywhere outside the panel → close the whole search panel
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('#tt-search-panel')) {
-      closeSuggestionsDropdown();
+    if (!e.target.closest('#tt-search-panel') && !e.target.closest('.tiktok-nav .tt-item[onclick*="openSearchTab"]')) {
+      window.closeSearchPanel();
     }
   });
 });
