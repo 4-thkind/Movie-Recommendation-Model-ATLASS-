@@ -1673,6 +1673,8 @@ function openModalContent(movie) {
   state.currentModalMovie = movie;
   hidePopup();
   
+  let directorList = [];
+  let castList = [];
   const isSeries = movie.type === 'series';
   const backdropEl = document.getElementById('m-backdrop');
   const posterEl = document.getElementById('m-poster');
@@ -1715,7 +1717,7 @@ function openModalContent(movie) {
     document.getElementById('m-reasons').innerHTML = `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>Trending</span>`;
     
     // Render Director
-    const directorList = (movie.director && movie.director.length > 0) ? movie.director : [
+    directorList = (movie.director && movie.director.length > 0) ? movie.director : [
       { name: "Creator", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }
     ];
     document.getElementById('m-director').innerHTML = directorList.map((d, idx) => `
@@ -1726,7 +1728,7 @@ function openModalContent(movie) {
     `).join('');
 
     // Render Cast
-    const castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
+    castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
       { name: "Lead Actor", character: "Main Character", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" },
       { name: "Supporting Cast", character: "Sidekick", img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&q=80" }
     ];
@@ -1769,7 +1771,7 @@ function openModalContent(movie) {
     ).join('');
 
     // Render Director
-    const directorList = (movie.director && movie.director.length > 0) ? movie.director : [
+    directorList = (movie.director && movie.director.length > 0) ? movie.director : [
       { name: "Director N/A", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }
     ];
     document.getElementById('m-director').innerHTML = directorList.map((d, idx) => `
@@ -1780,7 +1782,7 @@ function openModalContent(movie) {
     `).join('');
 
     // Render Cast
-    const castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
+    castList = (movie.cast && movie.cast.length > 0) ? movie.cast : [
       { name: "Lead Actor", character: "Protagonist", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" },
       { name: "Supporting Cast", character: "Co-Star", img: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=80&q=80" }
     ];
@@ -1848,6 +1850,27 @@ function openModalContent(movie) {
       playBtn.style.display = 'none';
     }
   }
+
+  // Attach click listeners to cast and director profiles for searching
+  document.querySelectorAll('.m-director-person').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.directorIndex);
+      const director = directorList[idx];
+      if (director && director.name && director.name !== 'Director N/A' && director.name !== 'Creator') {
+        triggerPersonSearch(director.name);
+      }
+    });
+  });
+
+  document.querySelectorAll('.m-cast-person').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.castIndex);
+      const actor = castList[idx];
+      if (actor && actor.name && actor.name !== 'Lead Actor' && actor.name !== 'Supporting Cast') {
+        triggerPersonSearch(actor.name);
+      }
+    });
+  });
 
   // Populate Similar Movies
   populateSimilar(movie);
@@ -4539,3 +4562,25 @@ window.toggleTasteTuner = function() {
     }
   }
 };
+
+export function triggerPersonSearch(name) {
+  closeModal();
+  
+  if (typeof activeViewState !== 'undefined' && activeViewState !== 'home') {
+    activeViewState = 'home';
+    showHomePage();
+  }
+
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.value = name;
+    searchInput.dispatchEvent(new Event('input'));
+    searchInput.focus();
+
+    const searchContainer = document.querySelector('.homepage-search-container');
+    if (searchContainer) {
+      searchContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+}
+window.triggerPersonSearch = triggerPersonSearch;
