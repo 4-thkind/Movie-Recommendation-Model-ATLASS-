@@ -94,7 +94,8 @@
   <div class="hero-fade"></div>
   <div class="hero-side"></div>
   <div class="hero-content">
-    <h1 class="hero-title">Dune: Part Two</h1>
+    <div class="match-chip"><i class="fa-solid fa-circle-check" style="font-size:10px"></i> 98% Match For You</div>
+    <h1 class="hero-title">Dune<br>Part Two</h1>
     <p class="hero-sub">2024 &nbsp;·&nbsp; 2h 46m &nbsp;·&nbsp; Sci-Fi &nbsp;·&nbsp; PG-13</p>
     <p class="hero-synopsis">Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family — love and fate collide on an impossible scale.</p>
     <div class="why-tag"><i class="fa-solid fa-brain" style="font-size:10px;color:var(--vl)"></i> Epic Sci-Fi · Narrative Depth · Denis Villeneuve</div>
@@ -108,6 +109,81 @@
 
 <!-- ═══ MAIN ═══ -->
 <main>
+  <!-- Global Search Bar on Homepage -->
+  <div class="homepage-search-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;">
+    <div style="display: flex; gap: 12px; align-items: center; width: 100%; max-width: 600px;">
+      <div class="tt-search-wrapper" style="flex-grow: 1; margin-bottom: 0;">
+        <i class="fa-solid fa-magnifying-glass tt-search-icon"></i>
+        <input type="text" id="search-input" placeholder="Type to search movies..." autocomplete="off" class="tt-search-input" onkeydown="if(event.key==='Enter'){window.commitSearch && window.commitSearch()}"/>
+        <div id="search-suggestions" class="search-suggestions-dropdown" style="display:none;"></div>
+      </div>
+      <button class="tuner-toggle-btn" id="tuner-toggle-btn" onclick="toggleTasteTuner()" title="Tune Taste Weights">
+        <i class="fa-solid fa-sliders"></i>
+      </button>
+    </div>
+
+    <!-- Taste Tuner Drawer -->
+    <div id="taste-tuner-drawer" class="taste-tuner-drawer" style="display: none;">
+      <div class="tuner-title">Tweak Recommendations Weight</div>
+      <div class="tuner-sliders">
+        <div class="tuner-item">
+          <label>Action & Thriller</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-action" oninput="updateTastePreference('Action', this.value)"/>
+          <span class="tuner-val" id="val-Action">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Sci-Fi & Fantasy</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-scifi" oninput="updateTastePreference('SciFi', this.value)"/>
+          <span class="tuner-val" id="val-SciFi">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Romance & Drama</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-romance" oninput="updateTastePreference('Romance', this.value)"/>
+          <span class="tuner-val" id="val-Romance">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Comedy & Family</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-comedy" oninput="updateTastePreference('Comedy', this.value)"/>
+          <span class="tuner-val" id="val-Comedy">50%</span>
+        </div>
+        <div class="tuner-item">
+          <label>Horror & Mystery</label>
+          <input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-horror" oninput="updateTastePreference('Horror', this.value)"/>
+          <span class="tuner-val" id="val-Horror">50%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Results Section -->
+  <section id="search-section" style="display:none;padding-top:44px">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title" id="search-section-title">
+          Search Results
+          <span class="sec-tag tag-violet" id="search-count" style="display:none"></span>
+        </div>
+        <p class="sec-sub" id="search-sub">Results matching your search query</p>
+      </div>
+      <button onclick="clearSearch()" style="background:transparent;border:none;color:var(--t2);cursor:pointer;font-size:12px;font-weight:600">Clear</button>
+    </div>
+    <!-- Genre mode: multi-row grid with Load More -->
+    <div id="genre-grid-wrap" style="display:none">
+      <div class="genre-results-grid" id="genre-results-grid"></div>
+      <div id="genre-load-more-wrap" style="display:none;text-align:center;padding:32px 0 8px">
+        <button id="genre-load-more-btn" class="genre-load-more-btn">
+          <i class="fa-solid fa-circle-plus"></i> Load More
+        </button>
+      </div>
+    </div>
+    <!-- Search mode: horizontal row (unchanged) -->
+    <div id="search-row-wrap" class="row-wrap">
+      <div class="arr L" onclick="scrollRow('search-results',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="search-results"></div>
+      <div class="arr R" onclick="scrollRow('search-results',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
 
   <!-- ROW 1: Top Picks -->
   <section style="padding-top:44px" class="reveal">

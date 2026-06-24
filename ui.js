@@ -2953,9 +2953,29 @@ export function updateHeroUI(movie) {
       heroImg.style.backgroundImage = `url('${movie.backdrop}')`;
     }
   
+  const chip = heroSection.querySelector('.match-chip');
+  if (chip) {
+    const starCount = movie.match >= 90 ? 5 : (movie.match >= 75 ? 4 : (movie.match >= 60 ? 3 : (movie.match >= 40 ? 2 : 1)));
+    const starsStr = '★'.repeat(starCount) + '☆'.repeat(5 - starCount);
+    chip.innerHTML = `<span style="color:#FFD700;margin-right:6px;letter-spacing:-0.5px">${starsStr}</span> ${movie.match}% Match For You`;
+  }
+  
   const title = heroSection.querySelector('.hero-title');
   if (title) {
-    title.textContent = movie.title;
+    if (movie.title.includes(':')) {
+      const parts = movie.title.split(':');
+      title.innerHTML = `${parts[0]}<br><span style="font-size: 0.6em; font-weight: 700;">${parts.slice(1).join(':').trim()}</span>`;
+    } else if (movie.title.length > 15) {
+      const words = movie.title.split(' ');
+      if (words.length > 1) {
+        const mid = Math.ceil(words.length / 2);
+        title.innerHTML = `${words.slice(0, mid).join(' ')}<br>${words.slice(mid).join(' ')}`;
+      } else {
+        title.textContent = movie.title;
+      }
+    } else {
+      title.textContent = movie.title;
+    }
   }
   
   const sub = heroSection.querySelector('.hero-sub');
@@ -3562,6 +3582,7 @@ export function showHomePage() {
   
   const homeElements = [
     document.getElementById('hero'),
+    document.querySelector('.homepage-search-container'),
     // Exclude #search-section — it is controlled solely by search/genre logic
     ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#search-section)'))
   ].filter(Boolean);
@@ -4639,6 +4660,13 @@ export function liveUpdateAllCardScores() {
       badge.innerHTML = `<span class="m-stars-inline">${starsStr}</span> ${match}%`;
     }
   });
+
+  const heroChip = document.querySelector('#hero .match-chip');
+  if (heroChip && state.currentHeroMovie) {
+    state.currentHeroMovie.match = calculateMatchScore(state.currentHeroMovie.id);
+    applyMatchScorePreferencesBoost(state.currentHeroMovie);
+    heroChip.innerHTML = `<i class="fa-solid fa-circle-check" style="font-size:10px"></i> ${state.currentHeroMovie.match}% Match For You`;
+  }
 }
 
 window.toggleTasteTuner = function() {
