@@ -436,42 +436,37 @@ body.light-theme .pd-item:hover {
   background:linear-gradient(to bottom,rgba(5,5,8,.1) 0%,rgba(5,5,8,.0) 30%,rgba(5,5,8,.65) 68%,var(--b0) 100%);
 }
 .hero-side{position:absolute;inset:0;background:linear-gradient(to right,rgba(5,5,8,.88) 0%,rgba(5,5,8,.25) 55%,transparent 100%)}
-.hero-content{position:absolute;bottom:90px;left:64px;max-width:500px;animation:hfade .9s var(--expo) both;}
+.hero-content{position:absolute;bottom:90px;left:64px;max-width:520px;animation:hfade .9s var(--expo) both;overflow:visible;}
 @keyframes hfade{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
-.match-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(124, 58, 237, 0.12);
-  border: 1px solid rgba(124, 58, 237, 0.35);
-  border-radius: 6px;
-  padding: 4px 11px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--vl);
-  letter-spacing: .04em;
-  margin-bottom: 18px;
-  font-family: 'Syne', sans-serif;
-  animation: chip-pulse 3s ease-in-out infinite;
-}
-@keyframes chip-pulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(124, 58, 237, 0.15); }
-  50% { box-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
-}
 .hero-title {
-  font-size: clamp(44px, 6.5vw, 76px);
+  font-size: clamp(32px, 4.8vw, 62px);
   font-weight: 800;
-  letter-spacing: -2.5px;
-  line-height: .93;
+  letter-spacing: -2px;
+  line-height: 1;
   margin-bottom: 14px;
   font-family: 'Syne', sans-serif;
   background: linear-gradient(135deg, #ffffff 20%, #c4c0e8 65%, var(--vl) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 4px 30px rgba(124, 58, 237, 0.15);
+  /* Always wrap within the container — never clip */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
 }
-.hero-sub{font-size:13px;color:var(--t2);margin-bottom:14px;letter-spacing:.02em}
-.hero-synopsis{font-size:14px;line-height:1.75;color:#c4c0e8;margin-bottom:22px;max-width:420px}
+.hero-sub{font-size:13px;color:var(--t2);margin-bottom:12px;letter-spacing:.02em}
+.hero-synopsis{
+  font-size:14px;
+  line-height:1.65;
+  color:#c4c0e8;
+  margin-bottom:18px;
+  max-width:420px;
+  /* Hard cap at 3 lines — truncate with ellipsis */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .why-tag{
   display:inline-flex;align-items:center;gap:6px;
   background:var(--v2);border:1px solid rgba(124, 58, 237,.35);
