@@ -2962,19 +2962,14 @@ export function updateHeroUI(movie) {
   
   const title = heroSection.querySelector('.hero-title');
   if (title) {
+    // Render each word on its own line; multi-word tokens (split by space) each get a block span
     if (movie.title.includes(':')) {
       const parts = movie.title.split(':');
-      title.innerHTML = `${parts[0]}<br><span style="font-size: 0.6em; font-weight: 700;">${parts.slice(1).join(':').trim()}</span>`;
-    } else if (movie.title.length > 15) {
-      const words = movie.title.split(' ');
-      if (words.length > 1) {
-        const mid = Math.ceil(words.length / 2);
-        title.innerHTML = `${words.slice(0, mid).join(' ')}<br>${words.slice(mid).join(' ')}`;
-      } else {
-        title.textContent = movie.title;
-      }
+      const mainWords = parts[0].trim().split(' ').map(w => `<span class="title-word">${w}</span>`).join('');
+      title.innerHTML = `${mainWords}<span class="title-word" style="font-size:0.6em;font-weight:700">${parts.slice(1).join(':').trim()}</span>`;
     } else {
-      title.textContent = movie.title;
+      const words = movie.title.split(' ');
+      title.innerHTML = words.map(w => `<span class="title-word">${w}</span>`).join('');
     }
   }
   
