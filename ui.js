@@ -1866,7 +1866,7 @@ function openModalContent(movie) {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.castIndex);
       const actor = castList[idx];
-      if (actor && actor.name && actor.name !== 'Lead Actor' && actor.name !== 'Supporting Cast') {
+      if (actor && actor.name && actor.name !== 'Lead Actor' && actor.name !== 'Supporting Cast' && actor.name !== 'Cast N/A') {
         triggerPersonSearch(actor.name);
       }
     });
@@ -4282,7 +4282,8 @@ function renderSuggestionsList(items, container) {
       year = (item.release_date || item.first_air_date || '').split('-')[0] || 'N/A';
       poster = item.poster_path ? `https://image.tmdb.org/t/p/w92${item.poster_path}` : 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=80&q=120';
       match = item.match ? item.match : Math.floor(Math.random() * 15) + 85;
-      cardId = `tmdb-movie-${item.id}`;
+      const mediaType = item.mediaType || item.media_type || 'movie';
+      cardId = `tmdb-${mediaType}-${item.id}`;
       if (state.movieLensData.loaded) {
         const mlMovie = Object.values(state.movieLensData.movies).find(m => m.tmdbId == item.id);
         if (mlMovie) {
