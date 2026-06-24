@@ -8,7 +8,8 @@ export const MOVIES = [
    reasons:["Epic Sci-Fi","Narrative Depth","Denis Villeneuve","World-Building"],
    cast:[{name:"T. Chalamet",img:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80"},
          {name:"Zendaya",img:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80"},
-         {name:"R. Ferguson",img:"https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&q=80"}]},
+         {name:"R. Ferguson",img:"https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&q=80"}],
+   director:[{name:"Denis Villeneuve",img:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80"}]},
 
   {id:2,title:"Oppenheimer",year:"2023",match:96,rating:"8.9",runtime:"3h 0m",genre:"Drama · History",tmdbId:872585,
    synopsis:"The story of J. Robert Oppenheimer's role in the development of the atomic bomb and the moral reckoning that followed.",
@@ -17,7 +18,8 @@ export const MOVIES = [
    platforms:["Peacock","Prime Video"],
    reasons:["Christopher Nolan","Historical Drama","Oscar Winner","Complex Narrative"],
    cast:[{name:"C. Murphy",img:"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80"},
-         {name:"Emily Blunt",img:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80"}]},
+         {name:"Emily Blunt",img:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80"}],
+   director:[{name:"Christopher Nolan",img:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80"}]},
 
   {id:3,title:"Past Lives",year:"2023",match:94,rating:"8.0",runtime:"1h 46m",genre:"Romance · Drama",tmdbId:940721,
    synopsis:"Two childhood sweethearts separated by emigration reunite in New York two decades later, confronting questions of love, fate and the life unlived.",
@@ -26,7 +28,8 @@ export const MOVIES = [
    platforms:["Max","MUBI"],
    reasons:["A24","Emotional Depth","Character Study","Arthouse"],
    cast:[{name:"Greta Lee",img:"https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?w=80&q=80"},
-         {name:"Teo Yoo",img:"https://images.unsplash.com/photo-1488161628813-04466f872be2?w=80&q=80"}]},
+         {name:"Teo Yoo",img:"https://images.unsplash.com/photo-1488161628813-04466f872be2?w=80&q=80"}],
+   director:[{name:"Celine Song",img:"https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80"}]},
 
   {id:4,title:"Poor Things",year:"2023",match:91,rating:"8.0",runtime:"2h 21m",genre:"Sci-Fi · Comedy",tmdbId:792307,
    synopsis:"Bella Baxter, brought back to life by an unorthodox scientist, embarks on an adventure of self-discovery across Europe.",
@@ -35,7 +38,8 @@ export const MOVIES = [
    platforms:["Disney+","Hulu"],
    reasons:["Yorgos Lanthimos","Emma Stone","Surreal Visuals","Golden Globe Winner"],
    cast:[{name:"Emma Stone",img:"https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=80&q=80"},
-         {name:"M. Ruffalo",img:"https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&q=80"}]},
+         {name:"M. Ruffalo",img:"https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&q=80"}],
+   director:[{name:"Yorgos Lanthimos",img:"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80"}]},
 
   {id:5,title:"Killers of the Flower Moon",year:"2023",match:93,rating:"7.7",runtime:"3h 26m",genre:"Crime · History",tmdbId:466420,
    synopsis:"In 1920s Oklahoma, members of the Osage Nation are murdered under mysterious circumstances, sparking a foundational FBI investigation.",
@@ -44,7 +48,8 @@ export const MOVIES = [
    platforms:["Apple TV+"],
    reasons:["Scorsese","Period Drama","Epic Scale","Leonardo DiCaprio"],
    cast:[{name:"L. DiCaprio",img:"https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?w=80&q=80"},
-         {name:"R. De Niro",img:"https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&q=80"}]},
+         {name:"R. De Niro",img:"https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&q=80"}],
+   director:[{name:"Martin Scorsese",img:"https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&q=80"}]},
 
   {id:6,title:"Anatomy of a Fall",year:"2023",match:89,rating:"7.7",runtime:"2h 31m",genre:"Thriller · Drama",tmdbId:915935,
    synopsis:"A woman suspected of her husband's death must face trial while her partially blind son becomes a key witness.",
@@ -52,7 +57,8 @@ export const MOVIES = [
    backdrop:"https://images.unsplash.com/photo-1542261777448-23d2a9e529b2?w=1200&q=85",
    platforms:["MUBI","Prime Video"],
    reasons:["Palme d'Or","Legal Thriller","French Cinema","Psychological Drama"],
-   cast:[{name:"S. Hüller",img:"https://images.unsplash.com/photo-1580489944761-15a19d654956?w=80&q=80"}]},
+   cast:[{name:"S. Hüller",img:"https://images.unsplash.com/photo-1580489944761-15a19d654956?w=80&q=80"}],
+   director:[{name:"Justine Triet",img:"https://images.unsplash.com/photo-1580489944761-15a19d654956?w=80&q=80"}]},
 
   {id:7,title:"Interstellar",year:"2014",match:99,rating:"8.7",runtime:"2h 49m",genre:"Sci-Fi · Drama",tmdbId:157336,
    synopsis:"A team of astronauts travel through a wormhole in search of a new home for humanity as Earth faces extinction.",
@@ -61,7 +67,8 @@ export const MOVIES = [
    platforms:["Netflix","Paramount+"],
    reasons:["Christopher Nolan","Hans Zimmer","Space","Emotional Sci-Fi"],
    cast:[{name:"M. McConaughey",img:"https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=80&q=80"},
-         {name:"A. Hathaway",img:"https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=80&q=80"}]},
+         {name:"A. Hathaway",img:"https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=80&q=80"}],
+   director:[{name:"Christopher Nolan",img:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80"}]},
 
   {id:8,title:"Arrival",year:"2016",match:97,rating:"7.9",runtime:"1h 56m",genre:"Sci-Fi · Thriller",tmdbId:329865,
    synopsis:"A linguist must decode an alien language to prevent a global catastrophe — and discovers something unexpected about time itself.",
@@ -70,7 +77,8 @@ export const MOVIES = [
    platforms:["Netflix","Max"],
    reasons:["Denis Villeneuve","Non-linear","Emotional Depth","Language & Time"],
    cast:[{name:"Amy Adams",img:"https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=80&q=80"},
-         {name:"J. Renner",img:"https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=80&q=80"}]},
+         {name:"J. Renner",img:"https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=80&q=80"}],
+   director:[{name:"Denis Villeneuve",img:"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80"}]},
 
   {id:9,title:"Gravity",year:"2013",match:92,rating:"7.7",runtime:"1h 31m",genre:"Sci-Fi · Thriller",tmdbId:49047,
    synopsis:"Two astronauts must survive after debris destroys their shuttle, leaving them stranded in the silence of space.",
@@ -79,7 +87,8 @@ export const MOVIES = [
    platforms:["Netflix"],
    reasons:["Alfonso Cuarón","Visual Spectacle","Space Survival","Sandra Bullock"],
    cast:[{name:"S. Bullock",img:"https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&q=80"},
-         {name:"G. Clooney",img:"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80"}]},
+         {name:"G. Clooney",img:"https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80"}],
+   director:[{name:"Alfonso Cuarón",img:"https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=80&q=80"}]},
 
   {id:10,title:"The Zone of Interest",year:"2023",match:88,rating:"7.4",runtime:"1h 45m",genre:"History · Drama",tmdbId:467244,
    synopsis:"The commandant of Auschwitz and his wife attempt to build a dream life for their family right beside the camp walls.",
@@ -87,7 +96,8 @@ export const MOVIES = [
    backdrop:"https://images.unsplash.com/photo-1520209268518-aec60b8bb5ca?w=1200&q=85",
    platforms:["MUBI","Criterion"],
    reasons:["Jonathan Glazer","Oscar Best International","Harrowing","Arthouse"],
-   cast:[{name:"C. Friedel",img:"https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?w=80&q=80"}]},
+   cast:[{name:"C. Friedel",img:"https://images.unsplash.com/photo-1564564321837-a57b7070ac4f?w=80&q=80"}],
+   director:[{name:"Jonathan Glazer",img:"https://images.unsplash.com/photo-1560250097-0b93528c311a?w=80&q=80"}]},
 
   {id:11,title:"2001: A Space Odyssey",year:"1968",match:95,rating:"8.3",runtime:"2h 29m",genre:"Sci-Fi",tmdbId:62,
    synopsis:"Humanity uncovers a mysterious monolith on the moon and embarks on a philosophical journey through space with the AI HAL 9000.",
@@ -95,7 +105,8 @@ export const MOVIES = [
    backdrop:"https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=1200&q=85",
    platforms:["Max","Criterion"],
    reasons:["Stanley Kubrick","Foundational Sci-Fi","HAL 9000","Visual Pioneer"],
-   cast:[{name:"Keir Dullea",img:"https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&q=80"}]},
+   cast:[{name:"Keir Dullea",img:"https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&q=80"}],
+   director:[{name:"Stanley Kubrick",img:"https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&q=80"}]},
 
   {id:12,title:"Asteroid City",year:"2023",match:86,rating:"6.6",runtime:"1h 45m",genre:"Comedy · Drama",tmdbId:747188,
    synopsis:"A stargazer competition in a remote desert town is upended by otherworldly events in this Wes Anderson meta-fable.",
@@ -104,6 +115,7 @@ export const MOVIES = [
    platforms:["Netflix","Prime Video"],
    reasons:["Wes Anderson","Ensemble Cast","Visual Storytelling","Deadpan Humor"],
    cast:[{name:"J. Schwartzman",img:"https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=80&q=80"},
-         {name:"S. Johansson",img:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=80&q=80"}]},
+         {name:"S. Johansson",img:"https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=80&q=80"}],
+   director:[{name:"Wes Anderson",img:"https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=80&q=80"}]},
 ];
 
