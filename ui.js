@@ -3182,17 +3182,73 @@ export function initScrollReveal() {
 }
 
 // ── Search input wiring ──────────────────────────────────────────────────────
-const searchInput = document.getElementById('search-input');
+// Deferred until DOM is ready — the input lives inside #tt-search-panel
+// which is injected into the HTML, so we must wait for DOMContentLoaded.
 
-// Track whether the user has committed a search (Enter / suggestion click).
-// While true, focus events must NOT reopen the dropdown.
 let _searchCommitted = false;
 
-if (searchInput) {
+/** Open the search panel above the tiktok-nav */
+window.openSearchPanel = function() {
+  const panel = document.getElementById('tt-search-panel');
+  if (!panel) return;
+  _searchCommitted = false;
+  panel.style.display = 'flex';
+  // Mark Search tab active in tiktok-nav
+  document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => el.classList.remove('active'));
+  const searchTabEl = document.querySelector('.tiktok-nav .tt-item[onclick*="openSearchTab"]');
+  if (searchTabEl) searchTabEl.classList.add('active');
+  // Focus the input after the panel animates in
+  const si = document.getElementById('search-input');
+  if (si) requestAnimationFrame(() => { requestAnimationFrame(() => si.focus()); });
+};
 
-  // Every keystroke: show suggestions + queue full-results render
-  searchInput.addEventListener('input', (e) => {
-    // Any new typing always clears the committed state
+/** Close the search panel (keeps results visible in main) */
+window.closeSearchPanel = function() {
+  const panel = document.getElementById('tt-search-panel');
+  if (panel) panel.style.display = 'none';
+  closeSuggestionsDropdown();
+};
+
+/** Clear the search input inside the panel */
+window.clearSearchPanel = function() {
+  const si = document.getElementById('search-input');
+  if (!si) return;
+  si.value = '';
+  si.dispatchEvent(new Event('input'));
+  si.focus();
+};
+
+/** Close the autocomplete dropdown only — never touches the results grid */
+function closeSuggestionsDropdown() {
+  const sd = document.getElementById('search-suggestions');
+  if (sd) { sd.style.display = 'none'; sd.innerHTML = ''; }
+  if (typeof suggestionsDebounce !== 'undefined') clearTimeout(suggestionsDebounce);
+}
+
+/** Called by the inline onkeydown="commitSearch()" on the input */
+window.commitSearch = function() {
+  _searchCommitted = true;
+  closeSuggestionsDropdown();
+  window.closeSearchPanel();
+  const searchSec = document.getElementById('search-section');
+  if (searchSec && searchSec.style.display !== 'none') {
+    setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  }
+};
+
+// Wire listeners once DOM is ready
+window.addEventListener('DOMContentLoaded', () => {
+  const si = document.getElementById('search-input');
+  if (!si) return;
+
+  // Show/hide clear button
+  si.addEventListener('input', () => {
+    const clearBtn = document.getElementById('tt-search-clear');
+    if (clearBtn) clearBtn.style.display = si.value.trim() ? 'block' : 'none';
+  });
+
+  // Every keystroke: show suggestions + render full results
+  si.addEventListener('input', (e) => {
     _searchCommitted = false;
     const q = e.target.value.trim();
     if (q) {
@@ -3203,19 +3259,20 @@ if (searchInput) {
     handleSearchInput(e);
   });
 
-  // Focus: only reopen suggestions if the user hasn't committed yet
-  searchInput.addEventListener('focus', () => {
-    if (_searchCommitted) return;           // committed — keep dropdown closed
-    const q = searchInput.value.trim();
+  // Focus: reopen suggestions unless just committed
+  si.addEventListener('focus', () => {
+    if (_searchCommitted) return;
+    const q = si.value.trim();
     if (q) updateSearchSuggestions(q.toLowerCase());
   });
 
-  // Enter key: commit — close dropdown, scroll to results, do NOT reopen on focus
-  searchInput.addEventListener('keydown', (e) => {
+  // Keyboard: Enter commits, Escape closes panel
+  si.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       _searchCommitted = true;
       closeSuggestionsDropdown();
-      searchInput.blur();
+      si.blur();
+      window.closeSearchPanel();
       const searchSec = document.getElementById('search-section');
       if (searchSec && searchSec.style.display !== 'none') {
         setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
@@ -3224,39 +3281,18 @@ if (searchInput) {
     if (e.key === 'Escape') {
       _searchCommitted = true;
       closeSuggestionsDropdown();
-      searchInput.blur();
+      si.blur();
+      window.closeSearchPanel();
     }
   });
 
-  // Click anywhere outside the search wrapper → close dropdown
+  // Click outside the panel → close dropdown
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.tt-search-wrapper') && !e.target.closest('.tuner-toggle-btn')) {
+    if (!e.target.closest('#tt-search-panel')) {
       closeSuggestionsDropdown();
     }
   });
-}
-
-/** Close the autocomplete dropdown cleanly — never touches the results grid */
-function closeSuggestionsDropdown() {
-  const sd = document.getElementById('search-suggestions');
-  if (sd) {
-    sd.style.display = 'none';
-    sd.innerHTML = '';
-  }
-  // Cancel any in-flight debounce so a delayed render can't reopen it
-  if (typeof suggestionsDebounce !== 'undefined') clearTimeout(suggestionsDebounce);
-}
-
-/** Called by the inline onkeydown="commitSearch()" on the input */
-window.commitSearch = function() {
-  _searchCommitted = true;
-  closeSuggestionsDropdown();
-  if (searchInput) searchInput.blur();
-  const searchSec = document.getElementById('search-section');
-  if (searchSec && searchSec.style.display !== 'none') {
-    setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-  }
-};
+});
 
 // Expose scrollRow, scrollPlat, and modal utilities to window for legacy inline HTML attributes compatibility
 window.clearSearch = clearSearch;
@@ -3504,7 +3540,7 @@ export function showWatchlistPage() {
 
   const homeElements = [
     document.getElementById('hero'),
-    document.querySelector('.homepage-search-container'),
+    // homepage-search-container removed — search is now in tiktok-nav panel
     ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section)'))
   ].filter(Boolean);
   
@@ -3582,7 +3618,7 @@ export function showHomePage() {
   
   const homeElements = [
     document.getElementById('hero'),
-    document.querySelector('.homepage-search-container'),
+    // homepage-search-container removed — search is now in tiktok-nav panel
     // Exclude #search-section — it is controlled solely by search/genre logic
     ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#search-section)'))
   ].filter(Boolean);
@@ -4714,12 +4750,9 @@ export function triggerPersonSearch(name) {
   if (searchInput) {
     searchInput.value = name;
     searchInput.dispatchEvent(new Event('input'));
-    searchInput.focus();
-
-    const searchContainer = document.querySelector('.homepage-search-container');
-    if (searchContainer) {
-      searchContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    // Open the search panel so the user sees the results
+    if (typeof window.openSearchPanel === 'function') window.openSearchPanel();
+    else searchInput.focus();
   }
 }
 window.triggerPersonSearch = triggerPersonSearch;
