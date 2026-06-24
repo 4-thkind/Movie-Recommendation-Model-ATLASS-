@@ -2321,6 +2321,11 @@ export function clearSearch(skipHashUpdate = false) {
   if (searchInput) {
     searchInput.value = '';
   }
+  const suggestionsDiv = document.getElementById('search-suggestions');
+  if (suggestionsDiv) {
+    suggestionsDiv.innerHTML = '';
+    suggestionsDiv.style.display = 'none';
+  }
   const searchSec = document.getElementById('search-section');
   if (searchSec) {
     searchSec.style.display = 'none';
@@ -2403,6 +2408,11 @@ export function handleSearchInput(e) {
   searchDebounce = setTimeout(() => {
     if (!searchResults) return;
     searchResults.innerHTML = '';
+    
+    const suggestionsDiv = document.getElementById('search-suggestions');
+    if (suggestionsDiv) {
+      suggestionsDiv.style.display = 'none';
+    }
 
     if (TMDB_API_KEY) {
       if (countEl) countEl.textContent = "Searching...";
@@ -3077,6 +3087,10 @@ if (searchInput) {
   searchInput.addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase();
     updateSearchSuggestions(q);
+  });
+  searchInput.addEventListener('focus', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    if (q) updateSearchSuggestions(q);
   });
   // Close suggestions dropdown when clicking outside
   document.addEventListener('click', (e) => {

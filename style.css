@@ -374,6 +374,7 @@ body.light-theme .pd-item:hover {
   position: relative;
   margin-bottom: 24px;
   max-width: 600px;
+  z-index: 1000;
 }
 .tt-search-icon {
   position: absolute;
