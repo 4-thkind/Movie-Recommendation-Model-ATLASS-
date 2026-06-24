@@ -2371,6 +2371,7 @@ export function clearSearch(skipHashUpdate = false) {
   if (lmWrap)   { lmWrap.style.display = 'none'; }
 
   document.body.classList.remove('search-active');
+  closeSuggestionsDropdown();
   
   const genreBtn = document.getElementById('dock-genre-btn');
   if (genreBtn) {
@@ -2394,9 +2395,7 @@ let searchDebounce;
 export function handleSearchInput(e) {
   state.isShowingGenre = false;
   const genreBtn = document.getElementById('dock-genre-btn');
-  if (genreBtn) {
-    genreBtn.classList.remove('active');
-  }
+  if (genreBtn) genreBtn.classList.remove('active');
 
   // Text search always uses the horizontal row, not the genre grid
   const gridWrap = document.getElementById('genre-grid-wrap');
@@ -2405,14 +2404,18 @@ export function handleSearchInput(e) {
   if (rowWrap)  rowWrap.style.display  = 'block';
 
   const q = e.target.value.trim().toLowerCase();
-  const searchSec = document.getElementById('search-section');
+  const searchSec     = document.getElementById('search-section');
   const searchResults = document.getElementById('search-results');
-  const countEl = document.getElementById('search-count');
+  const countEl       = document.getElementById('search-count');
+  const quickResults  = document.getElementById('search-quick-results');
+  const divider       = document.getElementById('search-results-divider');
 
   if (!q) {
-    if (searchSec) searchSec.style.display = 'none';
+    if (searchSec)    searchSec.style.display = 'none';
+    if (quickResults) { quickResults.innerHTML = ''; quickResults.style.display = 'none'; }
+    if (divider)      divider.style.display = 'none';
     document.body.classList.remove('search-active');
-    
+    closeSuggestionsDropdown();
     if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
       window.location.hash = '#watchlist-section';
     } else {
@@ -2422,192 +2425,215 @@ export function handleSearchInput(e) {
   }
 
   document.body.classList.add('search-active');
-
-  // Make count badge visible for text search
-  const countTag = document.getElementById('search-count');
-  if (countTag) countTag.style.display = '';
+  if (countEl) countEl.style.display = '';
 
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
+  searchDebounce = setTimeout(async () => {
     if (!searchResults) return;
     searchResults.innerHTML = '';
-    
-    const suggestionsDiv = document.getElementById('search-suggestions');
-    if (suggestionsDiv) {
-      suggestionsDiv.style.display = 'none';
-    }
+    if (quickResults) { quickResults.innerHTML = ''; quickResults.style.display = 'none'; }
+    if (divider)      divider.style.display = 'none';
 
     if (TMDB_API_KEY) {
-      if (countEl) countEl.textContent = "Searching...";
-      const movieP1 = fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`)
-        .then(r => r.json()).catch(() => ({ results: [] }));
-      const movieP2 = fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=2`)
-        .then(r => r.json()).catch(() => ({ results: [] }));
-      const tvP1 = fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`)
-        .then(r => r.json()).catch(() => ({ results: [] }));
-      const tvP2 = fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=2`)
-        .then(r => r.json()).catch(() => ({ results: [] }));
-      const personP = fetch(`https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`)
-        .then(r => r.json()).catch(() => ({ results: [] }));
+      if (countEl) countEl.textContent = 'Searching…';
 
-      Promise.all([movieP1, movieP2, tvP1, tvP2, personP]).then(async ([m1, m2, t1, t2, p]) => {
-        if (e.target.value.trim().toLowerCase() !== q) return;
-        
-        searchResults.innerHTML = '';
-        const movies = [
-          ...(m1.results || []).map(item => ({ ...item, mediaType: 'movie' })),
-          ...(m2.results || []).map(item => ({ ...item, mediaType: 'movie' }))
-        ];
-        const tvs = [
-          ...(t1.results || []).map(item => ({ ...item, mediaType: 'tv' })),
-          ...(t2.results || []).map(item => ({ ...item, mediaType: 'tv' }))
-        ];
-        
-        let personTitles = [];
-        if (p.results && p.results.length > 0) {
-          const topPeople = p.results.slice(0, 2);
-          const creditsPromises = topPeople.map(person => 
+      const [m1, m2, t1, t2, p] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`).then(r=>r.json()).catch(()=>({results:[]})),
+        fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=2`).then(r=>r.json()).catch(()=>({results:[]})),
+        fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`).then(r=>r.json()).catch(()=>({results:[]})),
+        fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=2`).then(r=>r.json()).catch(()=>({results:[]})),
+        fetch(`https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`).then(r=>r.json()).catch(()=>({results:[]})),
+      ]);
+
+      if (e.target.value.trim().toLowerCase() !== q) return;
+
+      const movies = [
+        ...(m1.results||[]).map(i=>({...i,mediaType:'movie'})),
+        ...(m2.results||[]).map(i=>({...i,mediaType:'movie'})),
+      ];
+      const tvs = [
+        ...(t1.results||[]).map(i=>({...i,mediaType:'tv'})),
+        ...(t2.results||[]).map(i=>({...i,mediaType:'tv'})),
+      ];
+
+      // Person credits → attach personReason to matched titles
+      let personTitles = [];
+      if (p.results && p.results.length > 0) {
+        const creditsResults = await Promise.all(
+          p.results.slice(0,2).map(person =>
             fetch(`https://api.themoviedb.org/3/person/${person.id}/combined_credits?api_key=${TMDB_API_KEY}`)
-              .then(r => r.json())
-              .then(credits => ({ person, credits }))
-              .catch(() => null)
+              .then(r=>r.json()).then(credits=>({person,credits})).catch(()=>null)
+          )
+        );
+        creditsResults.forEach(res => {
+          if (!res) return;
+          const {person, credits} = res;
+          (credits.crew||[]).filter(i=>i.job==='Director').forEach(i =>
+            personTitles.push({...i, mediaType:i.media_type||'movie', personReason:{name:person.name,role:'Director'}})
           );
-          const creditsResults = await Promise.all(creditsPromises);
-          creditsResults.forEach(res => {
-            if (!res) return;
-            const { person, credits } = res;
-            
-            if (credits.crew) {
-              credits.crew.forEach(item => {
-                if (item.job === 'Director') {
-                  personTitles.push({
-                    ...item,
-                    mediaType: item.media_type || 'movie',
-                    personReason: { name: person.name, role: 'Director' }
-                  });
-                }
-              });
-            }
-            if (credits.cast) {
-              credits.cast.forEach(item => {
-                personTitles.push({
-                  ...item,
-                  mediaType: item.media_type || 'movie',
-                  personReason: { name: person.name, role: 'Cast' }
-                });
-              });
-            }
-          });
-        }
-        
-        const combined = [...movies, ...tvs, ...personTitles];
-        
-        // Filter duplicates by id
-        const seen = new Set();
-        const uniqueCombined = [];
-        combined.forEach(item => {
-          const key = `${item.mediaType}-${item.id}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            uniqueCombined.push(item);
-          } else if (item.personReason) {
-            const existing = uniqueCombined.find(x => `${x.mediaType}-${x.id}` === key);
-            if (existing && !existing.personReason) {
-              existing.personReason = item.personReason;
-            }
-          }
+          (credits.cast||[]).forEach(i =>
+            personTitles.push({...i, mediaType:i.media_type||'movie', personReason:{name:person.name,role:'Cast'}})
+          );
         });
-
-        // Filter out low vote counts for better rating quality, fallback to keeping all if zero results
-        let filtered = uniqueCombined.filter(item => (item.vote_count || 0) > 2);
-        if (filtered.length === 0) {
-          filtered = uniqueCombined;
-        }
-
-        // Sort descending by vote_average with popularity as tie-breaker
-        filtered.sort((a, b) => {
-          const diff = (b.vote_average || 0) - (a.vote_average || 0);
-          if (Math.abs(diff) > 0.001) return diff;
-          return (b.popularity || 0) - (a.popularity || 0);
-        });
-
-        const finalResults = filtered.slice(0, 60);
-          
-        if (countEl) countEl.textContent = `${finalResults.length} found`;
-        
-        if (finalResults.length === 0) {
-          searchResults.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No results found matching that query.</div>';
-        } else {
-          finalResults.forEach(item => {
-            let cardId = `tmdb-${item.mediaType}-${item.id}`;
-            if (item.mediaType === 'movie' && state.movieLensData.loaded) {
-              const mlMovie = Object.values(state.movieLensData.movies).find(m => m.tmdbId == item.id);
-              if (mlMovie) {
-                cardId = mlMovie.movieId;
-              }
-            }
-            searchResults.appendChild(buildCard(cardId, item));
-          });
-        }
-        if (searchSec) searchSec.style.display = 'block';
-      });
-    } else {
-      let matches = [];
-      if (state.movieLensData.loaded) {
-        const matchedMovies = Object.values(state.movieLensData.movies)
-          .filter(m => m.title.toLowerCase().includes(q));
-
-        const scored = matchedMovies.map(m => {
-          const ratings = state.movieLensData.movieRatings[m.movieId] || {};
-          const count = Object.keys(ratings).length;
-          let avg = 0;
-          if (count > 0) {
-            avg = Object.values(ratings).reduce((a, b) => a + b, 0) / count;
-          }
-          const score = (count * avg + 5 * 3.5) / (count + 5);
-          return { movieId: m.movieId, score };
-        });
-
-        scored.sort((a, b) => b.score - a.score);
-        matches = scored.slice(0, 60).map(item => item.movieId);
-      } else {
-        const matched = MOVIES.filter(m => {
-          const titleMatch = m.title.toLowerCase().includes(q);
-          const castMatch = m.cast && m.cast.some(c => c.name.toLowerCase().includes(q));
-          const directorMatch = m.director && m.director.some(d => d.name.toLowerCase().includes(q));
-          return titleMatch || castMatch || directorMatch;
-        });
-
-        const mapped = matched.map(m => {
-          const item = { ...m };
-          const matchingCast = m.cast && m.cast.find(c => c.name.toLowerCase().includes(q));
-          const matchingDirector = m.director && m.director.find(d => d.name.toLowerCase().includes(q));
-          if (matchingDirector) {
-            item.personReason = { name: matchingDirector.name, role: 'Director' };
-          } else if (matchingCast) {
-            item.personReason = { name: matchingCast.name, role: 'Cast' };
-          }
-          return item;
-        });
-
-        mapped.sort((a, b) => parseFloat(b.rating || 0) - parseFloat(a.rating || 0));
-        matches = mapped.slice(0, 60);
       }
-      
-      if (countEl) countEl.textContent = `${matches.length} found`;
-      
-      if (matches.length === 0) {
-        searchResults.innerHTML = '<div style="padding: 24px; color: var(--t3); font-size: 13px;">No movies found matching that query.</div>';
+
+      // Deduplicate
+      const seen = new Set();
+      const uniqueCombined = [];
+      [...movies, ...tvs, ...personTitles].forEach(item => {
+        const key = `${item.mediaType}-${item.id}`;
+        if (!seen.has(key)) { seen.add(key); uniqueCombined.push(item); }
+        else if (item.personReason) {
+          const ex = uniqueCombined.find(x => `${x.mediaType}-${x.id}` === key);
+          if (ex && !ex.personReason) ex.personReason = item.personReason;
+        }
+      });
+
+      // Discard very low-vote results (noise) but keep all if it leaves nothing
+      let filtered = uniqueCombined.filter(i => (i.vote_count||0) > 2);
+      if (!filtered.length) filtered = uniqueCombined;
+
+      // ── Relevance sort ────────────────────────────────────────────────────
+      // 1. Exact title match first
+      // 2. Title starts-with match
+      // 3. Then by vote_average (match score proxy) descending
+      // 4. Popularity as tiebreaker
+      filtered.sort((a, b) => {
+        const aTitle = (a.title || a.name || '').toLowerCase();
+        const bTitle = (b.title || b.name || '').toLowerCase();
+        const aExact = aTitle === q ? 2 : aTitle.startsWith(q) ? 1 : 0;
+        const bExact = bTitle === q ? 2 : bTitle.startsWith(q) ? 1 : 0;
+        if (bExact !== aExact) return bExact - aExact;
+        const ratingDiff = (b.vote_average||0) - (a.vote_average||0);
+        if (Math.abs(ratingDiff) > 0.001) return ratingDiff;
+        return (b.popularity||0) - (a.popularity||0);
+      });
+
+      const finalResults = filtered.slice(0, 60);
+      if (countEl) countEl.textContent = `${finalResults.length} found`;
+
+      // Quick top-5 list above the grid (only shown before overlay dismissed)
+      if (quickResults && finalResults.length > 0) {
+        renderQuickResults(finalResults.slice(0, 5), quickResults);
+        quickResults.style.display = 'block';
+        if (divider && finalResults.length > 5) divider.style.display = 'block';
+      }
+
+      // Full grid
+      if (finalResults.length === 0) {
+        searchResults.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">No results found matching that query.</div>';
       } else {
-        matches.forEach(item => {
-          const id = typeof item === 'object' ? item.id : item;
-          const initialData = typeof item === 'object' ? item : null;
-          searchResults.appendChild(buildCard(id, initialData));
+        finalResults.forEach(item => {
+          let cardId = `tmdb-${item.mediaType}-${item.id}`;
+          if (item.mediaType === 'movie' && state.movieLensData.loaded) {
+            const mlMovie = Object.values(state.movieLensData.movies).find(m => m.tmdbId == item.id);
+            if (mlMovie) cardId = mlMovie.movieId;
+          }
+          searchResults.appendChild(buildCard(cardId, item));
+        });
+      }
+      if (searchSec) searchSec.style.display = 'block';
+
+    } else {
+      // ── Offline path ──────────────────────────────────────────────────────
+      let rawMatches = [];
+      if (state.movieLensData.loaded) {
+        const scored = Object.values(state.movieLensData.movies)
+          .filter(m => m.title.toLowerCase().includes(q))
+          .map(m => {
+            const ratings = state.movieLensData.movieRatings[m.movieId] || {};
+            const count = Object.keys(ratings).length;
+            const avg = count > 0 ? Object.values(ratings).reduce((a,b)=>a+b,0)/count : 0;
+            const score = (count * avg + 5 * 3.5) / (count + 5);
+            const title = m.title.toLowerCase().replace(/\s\(\d{4}\)$/,'');
+            const exact = title === q ? 2 : title.startsWith(q) ? 1 : 0;
+            return { id: m.movieId, score, exact };
+          });
+        scored.sort((a,b) => b.exact !== a.exact ? b.exact - a.exact : b.score - a.score);
+        rawMatches = scored.slice(0, 60).map(s => s.id);
+      } else {
+        const mapped = MOVIES.filter(m => m.title.toLowerCase().includes(q))
+          .map(m => {
+            const title = m.title.toLowerCase();
+            const exact = title === q ? 2 : title.startsWith(q) ? 1 : 0;
+            return { ...m, _exact: exact };
+          })
+          .sort((a,b) => b._exact !== a._exact ? b._exact - a._exact : parseFloat(b.rating||0) - parseFloat(a.rating||0))
+          .slice(0, 60);
+        rawMatches = mapped;
+      }
+
+      if (countEl) countEl.textContent = `${rawMatches.length} found`;
+
+      // Quick list
+      if (quickResults && rawMatches.length > 0) {
+        const topFive = rawMatches.slice(0,5).map(item => {
+          if (typeof item === 'number') {
+            const m = MOVIES.find(mv=>mv.id===item) || {id:item,title:'Movie',year:'',poster:'',rating:'7.0'};
+            return {id:m.id,title:m.title,year:m.year||'',poster:m.poster||'',vote_average:parseFloat(m.rating||7),mediaType:'movie'};
+          }
+          return {id:item.id||item.movieId,title:item.title||'',year:item.year||'',poster:item.poster||'',vote_average:parseFloat(item.rating||7),mediaType:'movie'};
+        });
+        renderQuickResults(topFive, quickResults);
+        quickResults.style.display = 'block';
+        if (divider && rawMatches.length > 5) divider.style.display = 'block';
+      }
+
+      if (rawMatches.length === 0) {
+        searchResults.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">No movies found matching that query.</div>';
+      } else {
+        rawMatches.forEach(item => {
+          const id = typeof item === 'object' ? (item.id||item.movieId) : item;
+          searchResults.appendChild(buildCard(id, typeof item === 'object' ? item : null));
         });
       }
       if (searchSec) searchSec.style.display = 'block';
     }
-  }, 300);
+  }, 280);
+}
+
+/**
+ * Compact top-match list rendered inside #search-section above the card grid.
+ * Clicking a row opens the modal and dismisses the overlay.
+ */
+function renderQuickResults(items, container) {
+  container.innerHTML = '';
+  items.forEach(item => {
+    const title  = item.title || item.name || '';
+    const year   = (item.release_date||item.first_air_date||'').split('-')[0] || item.year || '';
+    const rating = item.vote_average ? parseFloat(item.vote_average).toFixed(1) : null;
+    const poster = item.poster_path
+      ? `https://image.tmdb.org/t/p/w92${item.poster_path}`
+      : (item.poster||'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=80&q=80');
+    const isTV   = item.mediaType === 'tv';
+    const cardId = item.mediaType
+      ? `tmdb-${item.mediaType}-${item.id}`
+      : (item.id||item.movieId);
+    const match  = item.vote_average ? Math.min(99, Math.round(item.vote_average * 10)) : 85;
+
+    const row = document.createElement('div');
+    row.className = 'sq-row';
+    row.innerHTML = `
+      <img class="sq-thumb" src="${poster}" alt="${title}"
+           onerror="this.src='https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=80&q=80'"/>
+      <div class="sq-body">
+        <div class="sq-title">${title}</div>
+        <div class="sq-meta">
+          <span class="sq-badge ${isTV?'tv':'movie'}">${isTV?'TV Show':'Movie'}</span>
+          ${year?`<span class="sq-dot">·</span><span>${year}</span>`:''}
+          ${rating?`<span class="sq-dot">·</span><span class="sq-rating"><i class="fa-solid fa-star" style="font-size:9px"></i> ${rating}</span>`:''}
+        </div>
+      </div>
+      <span class="sq-match">${match}% Match</span>`;
+
+    row.addEventListener('click', () => {
+      // Commit: close dropdown, open modal
+      _searchCommitted = true;
+      closeSuggestionsDropdown();
+      fetchTMDBDetails(cardId).then(details => { if (details) openModal(details); });
+    });
+    container.appendChild(row);
+  });
 }
 
 // Logo click listener — always navigate home regardless of current view
@@ -2918,10 +2944,14 @@ export function updateHeroUI(movie) {
   const heroSection = document.getElementById('hero');
   if (!heroSection) return;
 
+  // Fade out the hero content, swap data, then fade back in
+  const heroContent = heroSection.querySelector('.hero-content');
   const heroImg = heroSection.querySelector('.hero-img');
-  if (heroImg) {
-    heroImg.style.backgroundImage = `url('${movie.backdrop}')`;
-  }
+
+  const doUpdate = () => {
+    if (heroImg) {
+      heroImg.style.backgroundImage = `url('${movie.backdrop}')`;
+    }
   
   const chip = heroSection.querySelector('.match-chip');
   if (chip) {
@@ -2997,21 +3027,55 @@ export function updateHeroUI(movie) {
       }
     };
   }
+  }; // end doUpdate
+
+  // If hero content is already visible, crossfade; otherwise just update directly
+  if (heroContent && heroContent.style.opacity !== '0' && state.currentHeroMovie) {
+    gsap.to(heroContent, {
+      opacity: 0, y: 10, duration: 0.3, ease: 'power2.in',
+      onComplete: () => {
+        doUpdate();
+        gsap.fromTo(heroContent,
+          { opacity: 0, y: -10 },
+          { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }
+        );
+      }
+    });
+  } else {
+    doUpdate();
+  }
 }
 
 export async function initHero() {
   let heroMovie = null;
-  
+
   if (TMDB_API_KEY && (!state.movieLensData.loaded || Object.keys(state.movieLensData.movies || {}).length === 0)) {
     try {
-      const res = await fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=${TMDB_API_KEY}`);
-      const data = await res.json();
-      if (data.results && data.results.length > 0) {
-        const movie = data.results[Math.floor(Math.random() * Math.min(5, data.results.length))];
-        heroMovie = await fetchTMDBDetails(movie.id);
+      // Fetch both now_playing and popular to get a wide, varied pool
+      const [npRes, popRes] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=${TMDB_API_KEY}&page=1`),
+        fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&page=1`)
+      ]);
+      const [npData, popData] = await Promise.all([npRes.json(), popRes.json()]);
+
+      // Merge, deduplicate, filter to movies with backdrops (hero looks best with one)
+      const seen = new Set();
+      const pool = [];
+      [...(npData.results || []), ...(popData.results || [])].forEach(m => {
+        if (!seen.has(m.id) && m.backdrop_path) { seen.add(m.id); pool.push(m); }
+      });
+
+      if (pool.length > 0) {
+        // Avoid repeating the movie that was last shown
+        const lastId = state.currentHeroMovie && state.currentHeroMovie.id;
+        const candidates = pool.filter(m => String(m.id) !== String(lastId));
+        const pick = candidates.length > 0
+          ? candidates[Math.floor(Math.random() * candidates.length)]
+          : pool[Math.floor(Math.random() * pool.length)];
+        heroMovie = await fetchTMDBDetails(pick.id);
       }
     } catch(e) {
-      console.warn("Hero fetch now playing error, fallback used:", e);
+      console.warn("Hero fetch error, using fallback:", e);
     }
   } else if (state.movieLensData.loaded) {
     const myRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
@@ -3020,19 +3084,29 @@ export async function initHero() {
         .sort((a, b) => b[1] - a[1])
         .map(entry => parseInt(entry[0]));
       if (sortedIds.length > 0) {
-        const candidates = sortedIds.slice(0, 3);
-        const randomId = candidates[Math.floor(Math.random() * candidates.length)];
+        // Use top 10 candidates to get variety
+        const lastId = state.currentHeroMovie && state.currentHeroMovie.id;
+        const candidates = sortedIds.slice(0, 10).filter(id => String(id) !== String(lastId));
+        const randomId = candidates.length > 0
+          ? candidates[Math.floor(Math.random() * candidates.length)]
+          : sortedIds[0];
         heroMovie = await fetchTMDBDetails(randomId);
       }
     }
   }
 
   if (!heroMovie) {
-    const randomId = DEFAULT_RECS[Math.floor(Math.random() * DEFAULT_RECS.length)];
+    // Fallback pool — avoid repeating the current one
+    const lastId = state.currentHeroMovie && state.currentHeroMovie.id;
+    const fallbackPool = DEFAULT_RECS.filter(id => String(id) !== String(lastId));
+    const randomId = fallbackPool.length > 0
+      ? fallbackPool[Math.floor(Math.random() * fallbackPool.length)]
+      : DEFAULT_RECS[Math.floor(Math.random() * DEFAULT_RECS.length)];
     heroMovie = await fetchTMDBDetails(randomId);
   }
-  
+
   if (heroMovie) {
+    state.currentHeroMovie = heroMovie;
     updateHeroUI(heroMovie);
   }
 }
@@ -3100,29 +3174,89 @@ export function initScrollReveal() {
       }
     });
   }, { threshold: 0.07 });
-  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  document.querySelectorAll('.reveal').forEach(el => {
+    // Never auto-reveal search-section — it's shown/hidden programmatically
+    if (el.id === 'search-section') return;
+    io.observe(el);
+  });
 }
 
-// Attach listeners to input search element
+// ── Search input wiring ──────────────────────────────────────────────────────
 const searchInput = document.getElementById('search-input');
+
+// Track whether the user has committed a search (Enter / suggestion click).
+// While true, focus events must NOT reopen the dropdown.
+let _searchCommitted = false;
+
 if (searchInput) {
-  searchInput.addEventListener('input', handleSearchInput);
+
+  // Every keystroke: show suggestions + queue full-results render
   searchInput.addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    updateSearchSuggestions(q);
+    // Any new typing always clears the committed state
+    _searchCommitted = false;
+    const q = e.target.value.trim();
+    if (q) {
+      updateSearchSuggestions(q.toLowerCase());
+    } else {
+      closeSuggestionsDropdown();
+    }
+    handleSearchInput(e);
   });
-  searchInput.addEventListener('focus', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    if (q) updateSearchSuggestions(q);
+
+  // Focus: only reopen suggestions if the user hasn't committed yet
+  searchInput.addEventListener('focus', () => {
+    if (_searchCommitted) return;           // committed — keep dropdown closed
+    const q = searchInput.value.trim();
+    if (q) updateSearchSuggestions(q.toLowerCase());
   });
-  // Close suggestions dropdown when clicking outside
+
+  // Enter key: commit — close dropdown, scroll to results, do NOT reopen on focus
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      _searchCommitted = true;
+      closeSuggestionsDropdown();
+      searchInput.blur();
+      const searchSec = document.getElementById('search-section');
+      if (searchSec && searchSec.style.display !== 'none') {
+        setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      }
+    }
+    if (e.key === 'Escape') {
+      _searchCommitted = true;
+      closeSuggestionsDropdown();
+      searchInput.blur();
+    }
+  });
+
+  // Click anywhere outside the search wrapper → close dropdown
   document.addEventListener('click', (e) => {
-    const suggestionsDiv = document.getElementById('search-suggestions');
-    if (suggestionsDiv && !e.target.closest('.tt-search-wrapper')) {
-      suggestionsDiv.style.display = 'none';
+    if (!e.target.closest('.tt-search-wrapper') && !e.target.closest('.tuner-toggle-btn')) {
+      closeSuggestionsDropdown();
     }
   });
 }
+
+/** Close the autocomplete dropdown cleanly — never touches the results grid */
+function closeSuggestionsDropdown() {
+  const sd = document.getElementById('search-suggestions');
+  if (sd) {
+    sd.style.display = 'none';
+    sd.innerHTML = '';
+  }
+  // Cancel any in-flight debounce so a delayed render can't reopen it
+  if (typeof suggestionsDebounce !== 'undefined') clearTimeout(suggestionsDebounce);
+}
+
+/** Called by the inline onkeydown="commitSearch()" on the input */
+window.commitSearch = function() {
+  _searchCommitted = true;
+  closeSuggestionsDropdown();
+  if (searchInput) searchInput.blur();
+  const searchSec = document.getElementById('search-section');
+  if (searchSec && searchSec.style.display !== 'none') {
+    setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  }
+};
 
 // Expose scrollRow, scrollPlat, and modal utilities to window for legacy inline HTML attributes compatibility
 window.clearSearch = clearSearch;
@@ -3443,12 +3577,18 @@ export function showWatchlistPage() {
 export function showHomePage() {
   clearSearch(true);
   updateNavbarActiveLink('hero');
+  // Refresh the hero banner every time we navigate home
+  initHero();
   
   const homeElements = [
     document.getElementById('hero'),
-    document.querySelector('.homepage-search-container'),
-    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section)'))
+    // Exclude #search-section — it is controlled solely by search/genre logic
+    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#search-section)'))
   ].filter(Boolean);
+
+  // Always keep search-section hidden when showing home
+  const searchSec = document.getElementById('search-section');
+  if (searchSec) searchSec.style.setProperty('display', 'none', 'important');
 
   const watchlistSection = document.getElementById('watchlist-section');
   if (!watchlistSection) return;
@@ -4317,15 +4457,12 @@ function renderSuggestionsList(items, container) {
 
     div.addEventListener('click', (e) => {
       e.stopPropagation();
-      container.style.display = 'none';
-      const searchInput = document.getElementById('search-input');
-      if (searchInput) searchInput.value = '';
-      
+      // Commit: close dropdown, keep query in input, open modal
+      _searchCommitted = true;
+      closeSuggestionsDropdown();
       fetchTMDBDetails(cardId).then(details => {
         if (details) {
-          if (item.personReason) {
-            details.personReason = item.personReason;
-          }
+          if (item.personReason) details.personReason = item.personReason;
           openModal(details);
         }
       });
