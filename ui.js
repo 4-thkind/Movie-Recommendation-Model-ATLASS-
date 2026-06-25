@@ -402,6 +402,13 @@ let expandTimer = null;
 let collapseTimer = null;
 let currentExpandedCard = null;
 
+/* ─── HERO AUTO-ROTATION ─── */
+let heroRotationInterval = null;
+let heroProgressTimer = null;
+let heroRotationPool = []; // filled by startHeroRotation
+let heroRotationIndex = 0;
+const HERO_ROTATION_DURATION = 8000; // ms per slide
+
 export function schedulePopup(movie, cardEl) {
   if (!cardEl) return;
   clearTimeout(expandTimer);
@@ -774,18 +781,23 @@ export function renderRows() {
   rw2._infiniteInit = false;
 
   if (TMDB_API_KEY) {
-    fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}`)
+    // Pick a random page 1–5 so the popular row shows different movies each visit
+    const randomPage = Math.floor(Math.random() * 5) + 1;
+    fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&page=${randomPage}`)
       .then(res => res.json())
       .then(data => {
         if (data.results) {
-          data.results.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
+          // Shuffle results so even within the same page order varies
+          const shuffled = data.results.sort(() => Math.random() - 0.5);
+          shuffled.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
           requestAnimationFrame(() => makeRowInfinite(rw2));
         }
       });
     return;
   }
 
-  const popularRecs = [296, 356, 318, 593, 260, 480, 110, 589];
+  // Offline fallback — use second half of DEFAULT_RECS so rw1 and rw2 don't overlap
+  const popularRecs = DEFAULT_RECS.slice(Math.floor(DEFAULT_RECS.length / 2));
   popularRecs.forEach(id => {
     rw2.appendChild(buildCard(id));
   });
@@ -3106,6 +3118,138 @@ export async function initHero() {
   }
 }
 
+/* ─── HERO AUTO-ROTATION ─── */
+
+async function buildRotationPool() {
+  const seen = new Set();
+  const ids = [];
+
+  if (TMDB_API_KEY) {
+    try {
+      // Fetch 3 pages each of now_playing and popular for a wide varied pool (~120 candidates)
+      const pages = [1, 2, 3];
+      const fetches = [
+        ...pages.map(p => fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=${TMDB_API_KEY}&page=${p}`)),
+        ...pages.map(p => fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&page=${p}`)),
+        fetch(`https://api.themoviedb.org/3/movie/top_rated?api_key=${TMDB_API_KEY}&page=1`),
+      ];
+      const responses = await Promise.all(fetches);
+      const jsons = await Promise.all(responses.map(r => r.json()));
+
+      jsons.forEach(data => {
+        (data.results || []).forEach(m => {
+          if (!seen.has(m.id) && m.backdrop_path) {
+            seen.add(m.id);
+            ids.push(m.id);
+          }
+        });
+      });
+    } catch(e) { /* fall through */ }
+  }
+
+  // Always pad with DEFAULT_RECS so offline mode has enough variety
+  DEFAULT_RECS.forEach(id => {
+    if (!seen.has(id)) { seen.add(id); ids.push(id); }
+  });
+
+  // Fisher-Yates shuffle for true randomness every visit
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+
+  // Pre-fetch details for up to 10 entries so first several transitions are instant
+  const details = await Promise.all(ids.slice(0, 10).map(id => fetchTMDBDetails(id)));
+  return details.filter(Boolean);
+}
+
+function _updateHeroDots(total, active) {
+  const dotsEl = document.getElementById('hero-dots');
+  if (!dotsEl) return;
+
+  // If count changed, rebuild; otherwise just toggle classes — preserves CSS transitions
+  if (dotsEl.children.length !== total) {
+    dotsEl.innerHTML = '';
+    for (let i = 0; i < total; i++) {
+      const dot = document.createElement('button');
+      dot.className = 'hero-dot' + (i === active ? ' active' : '');
+      dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+      dot.addEventListener('click', () => {
+        heroRotationIndex = i;
+        _showHeroSlide(i);
+        _updateHeroDots(heroRotationPool.length, i);
+        _restartProgress();
+      });
+      dotsEl.appendChild(dot);
+    }
+  } else {
+    // Just swap the active class — no DOM rebuild, so CSS transition fires cleanly
+    Array.from(dotsEl.children).forEach((dot, i) => {
+      dot.classList.toggle('active', i === active);
+    });
+  }
+}
+
+function _startProgress() {
+  const fill = document.querySelector('.hero-progress-fill');
+  if (!fill) return;
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  // Force reflow so the transition reset takes effect
+  fill.getBoundingClientRect();
+  fill.style.transition = `width ${HERO_ROTATION_DURATION}ms linear`;
+  fill.style.width = '100%';
+}
+
+function _restartProgress() {
+  clearInterval(heroRotationInterval);
+  // Guard: need at least 2 slides to rotate
+  if (heroRotationPool.length < 2) return;
+  _startProgress();
+  heroRotationInterval = setInterval(() => {
+    if (heroRotationPool.length < 2) return;
+    heroRotationIndex = (heroRotationIndex + 1) % heroRotationPool.length;
+    _showHeroSlide(heroRotationIndex);
+    _updateHeroDots(heroRotationPool.length, heroRotationIndex);
+    _startProgress();
+  }, HERO_ROTATION_DURATION);
+}
+
+function _showHeroSlide(index) {
+  const movie = heroRotationPool[index];
+  if (!movie) return;
+  state.currentHeroMovie = movie;
+  updateHeroUI(movie);
+}
+
+export async function startHeroRotation() {
+  stopHeroRotation();
+
+  // Always rebuild pool on each home visit for fresh content
+  heroRotationPool = await buildRotationPool();
+  if (heroRotationPool.length === 0) return;
+
+  // Match pool position to whatever initHero already showed
+  const currentId = state.currentHeroMovie && state.currentHeroMovie.id;
+  const idx = heroRotationPool.findIndex(m => String(m.id) === String(currentId));
+  heroRotationIndex = idx >= 0 ? idx : 0;
+
+  // If the pool's first entry wasn't what initHero showed, update the hero now
+  if (idx < 0) _showHeroSlide(0);
+
+  _updateHeroDots(heroRotationPool.length, heroRotationIndex);
+  _restartProgress();
+}
+
+export function stopHeroRotation() {
+  clearInterval(heroRotationInterval);
+  heroRotationInterval = null;
+  const fill = document.querySelector('.hero-progress-fill');
+  if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
+  const dotsEl = document.getElementById('hero-dots');
+  if (dotsEl) dotsEl.innerHTML = '';
+}
+
 // Wire See All buttons grid toggle immediately
 export function initSeeAllButtons() {
   document.querySelectorAll('.see-all').forEach(link => {
@@ -3530,6 +3674,7 @@ export function handleHashChange() {
 
 export function showWatchlistPage() {
   clearSearch(true);
+  stopHeroRotation();
   updateNavbarActiveLink('watchlist-section');
   closeModal(true);
 
@@ -3609,7 +3754,7 @@ export function showHomePage() {
   clearSearch(true);
   updateNavbarActiveLink('hero');
   // Refresh the hero banner every time we navigate home
-  initHero();
+  initHero().then(() => startHeroRotation());
   
   const homeElements = [
     document.getElementById('hero'),
