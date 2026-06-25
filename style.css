@@ -1513,6 +1513,9 @@ body.search-active main > section:not(#search-section) {
 .search-results-grid .movie-card.entering {
   animation: card-fade-in .35s var(--expo) both;
 }
+.search-results-grid .movie-card {
+  opacity: 1;
+}
 #search-load-more-wrap {
   padding: 28px 0 12px;
 }
