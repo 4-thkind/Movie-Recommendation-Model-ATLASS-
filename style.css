@@ -1494,11 +1494,33 @@ body.search-active main > section:not(#search-section) {
   display: none !important;
 }
 
-/* ─── GRID MODE STYLING (SEE ALL & SEARCH RESULTS) ─── */
+/* ─── SEARCH RESULTS GRID ─── */
+.search-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 18px 12px;
+  padding: 4px 0 8px;
+}
+.search-results-grid .movie-card {
+  flex: unset;
+  width: 100%;
+}
+.search-results-grid .card-thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+.search-results-grid .movie-card.entering {
+  animation: card-fade-in .35s var(--expo) both;
+}
+#search-load-more-wrap {
+  padding: 28px 0 12px;
+}
+
+/* ─── GRID MODE STYLING (SEE ALL) ─── */
 .grid-active .row-scroll, 
 .grid-active .trend-row, 
 .grid-active .plat-row,
-#search-results,
 #wl-strip {
   display: grid !important;
   grid-template-columns: repeat(6, 1fr) !important;
@@ -1512,20 +1534,17 @@ body.search-active main > section:not(#search-section) {
 .grid-active .plat-arr,
 .grid-active .plat-arr.L, 
 .grid-active .plat-arr.R,
-.grid-active .plat-wrap .plat-arr,
-#search-results-wrap .arr {
+.grid-active .plat-wrap .plat-arr {
   display: none !important;
 }
 .grid-active .movie-card, 
 .grid-active .trend-card, 
 .grid-active .plat-card,
-#search-results .movie-card,
 #wl-strip .movie-card {
   flex: 1 1 auto !important;
   width: 100% !important;
 }
 .grid-active .card-thumb,
-#search-results .card-thumb,
 #wl-strip .card-thumb {
   width: 100% !important;
   height: auto !important;
@@ -1541,19 +1560,24 @@ body.search-active main > section:not(#search-section) {
 }
 
 @media(max-width:992px){
+  .search-results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
   .grid-active .row-scroll, 
   .grid-active .trend-row, 
   .grid-active .plat-row,
-  #search-results,
   #wl-strip {
     grid-template-columns: repeat(3, 1fr) !important;
   }
 }
 @media(max-width:576px){
+  .search-results-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 8px;
+  }
   .grid-active .row-scroll, 
   .grid-active .trend-row, 
   .grid-active .plat-row,
-  #search-results,
   #wl-strip {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
