@@ -102,19 +102,38 @@ export function initializeRecommender() {
   rw1._infiniteInit = false;
 
   if (TMDB_API_KEY) {
-    // Online TMDB recommendations based on watchlist seed
     if (state.watchlist.length > 0) {
-      const seedId = state.watchlist[0].id;
-      fetch(`https://api.themoviedb.org/3/movie/${seedId}/recommendations?api_key=${TMDB_API_KEY}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.results && data.results.length > 0) {
-            data.results.slice(0, 15).forEach(m => rw1.appendChild(buildCard(m.id, m)));
-          } else {
-            loadDefaultRecs(rw1);
-          }
-          requestAnimationFrame(() => makeRowInfinite(rw1));
-        }).catch(() => { loadDefaultRecs(rw1); requestAnimationFrame(() => makeRowInfinite(rw1)); });
+      // Use up to 3 different watchlist items as seeds and merge results — deduped
+      const seeds = state.watchlist
+        .slice()
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3)
+        .map(m => m.id);
+
+      Promise.all(
+        seeds.map(seedId =>
+          fetch(`https://api.themoviedb.org/3/movie/${seedId}/recommendations?api_key=${TMDB_API_KEY}`)
+            .then(r => r.json())
+            .catch(() => ({ results: [] }))
+        )
+      ).then(allData => {
+        const seen = new Set();
+        const merged = [];
+        // Interleave results from each seed so variety comes first
+        const maxLen = Math.max(...allData.map(d => (d.results || []).length));
+        for (let i = 0; i < maxLen; i++) {
+          allData.forEach(data => {
+            const m = (data.results || [])[i];
+            if (m && !seen.has(m.id)) { seen.add(m.id); merged.push(m); }
+          });
+        }
+        if (merged.length > 0) {
+          merged.slice(0, 20).forEach(m => rw1.appendChild(buildCard(m.id, m)));
+        } else {
+          loadDefaultRecs(rw1);
+        }
+        requestAnimationFrame(() => makeRowInfinite(rw1));
+      }).catch(() => { loadDefaultRecs(rw1); requestAnimationFrame(() => makeRowInfinite(rw1)); });
     } else {
       loadDefaultRecs(rw1);
     }
@@ -127,7 +146,8 @@ export function initializeRecommender() {
 
   if (Object.keys(myRatings).length === 0) {
     state.personalizedRecommendations = {};
-    DEFAULT_RECS.forEach(id => {
+    // Use first half of DEFAULT_RECS for rw1 (rw2 uses second half — no overlap)
+    DEFAULT_RECS.slice(0, Math.ceil(DEFAULT_RECS.length / 2)).forEach(id => {
       rw1.appendChild(buildCard(id));
     });
     requestAnimationFrame(() => makeRowInfinite(rw1));
@@ -175,11 +195,14 @@ export function initializeRecommender() {
 }
 
 export function loadDefaultRecs(container) {
-  fetch(`https://api.themoviedb.org/3/movie/top_rated?api_key=${TMDB_API_KEY}`)
+  // Pick a random page from top_rated so "For You" row doesn't always show the same movies
+  const randomPage = Math.floor(Math.random() * 4) + 1;
+  fetch(`https://api.themoviedb.org/3/movie/top_rated?api_key=${TMDB_API_KEY}&page=${randomPage}`)
     .then(res => res.json())
     .then(data => {
       if (data.results) {
-        data.results.slice(0, 15).forEach(m => container.appendChild(buildCard(m.id, m)));
+        const shuffled = data.results.sort(() => Math.random() - 0.5);
+        shuffled.slice(0, 15).forEach(m => container.appendChild(buildCard(m.id, m)));
         requestAnimationFrame(() => makeRowInfinite(container));
       }
     });
