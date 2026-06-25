@@ -133,11 +133,14 @@
         </button>
       </div>
     </div>
-    <!-- Search mode: horizontal row (unchanged) -->
-    <div id="search-row-wrap" class="row-wrap">
-      <div class="arr L" onclick="scrollRow('search-results',-1)"><i class="fa-solid fa-chevron-left"></i></div>
-      <div class="row-scroll" id="search-results"></div>
-      <div class="arr R" onclick="scrollRow('search-results',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    <!-- Search mode: full results grid with load-more -->
+    <div id="search-row-wrap">
+      <div class="search-results-grid" id="search-results"></div>
+      <div id="search-load-more-wrap" style="display:none;text-align:center;padding:32px 0 8px">
+        <button id="search-load-more-btn" class="genre-load-more-btn">
+          <i class="fa-solid fa-circle-plus"></i> Load More Results
+        </button>
+      </div>
     </div>
   </section>
 
@@ -552,36 +555,6 @@
 </div>
 
 <!-- ═══ SEARCH MODAL OVERLAY ═══ -->
-<div id="search-overlay" onclick="handleSearchOverlay(event)">
-  <div id="search-modal">
-    <div class="sm-header">
-      <h2 class="sm-title">Search</h2>
-      <div class="sm-header-right">
-        <div class="sm-dropdown-wrap">
-          <select id="search-category" class="sm-dropdown">
-            <option value="all">Movies & TV Shows</option>
-            <option value="movie">Movies</option>
-            <option value="tv">TV Shows</option>
-          </select>
-          <i class="fa-solid fa-chevron-down sm-dropdown-arrow"></i>
-        </div>
-        <button class="sm-close-btn" onclick="closeSearchModal()"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-    </div>
-    
-    <div class="sm-input-wrapper">
-      <i class="fa-solid fa-magnifying-glass sm-search-icon"></i>
-      <input type="text" id="sm-search-input" placeholder="Search by title..." autocomplete="off" />
-      <button id="sm-clear-btn" class="sm-clear-btn" onclick="clearSearchModalInput()"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    
-    <div class="sm-results-container">
-      <div id="sm-results-list" class="sm-results-list">
-        <div class="sm-placeholder">Type something to search...</div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ═══ GENRE POPOVER ═══ -->
 <div id="genre-popover" class="genre-popover">
@@ -677,6 +650,6 @@
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script type="module" src="app.js?v=10"></script>
+<script type="module" src="app.js?v=12"></script>
 </body>
 </html>
