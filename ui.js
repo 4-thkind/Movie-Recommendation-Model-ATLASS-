@@ -1,8 +1,8 @@
-import { state, saveWatchlistToStorage } from './state.js?v=12';
-import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=12';
-import { MOVIES } from './data.js?v=12';
-import { initializeRecommender, calculateMatchScore } from './recommender.js?v=12';
-import { createCircularGallery } from './CircularGallery.js?v=12';
+import { state, saveWatchlistToStorage } from './state.js?v=15';
+import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=15';
+import { MOVIES } from './data.js?v=15';
+import { initializeRecommender, calculateMatchScore } from './recommender.js?v=15';
+import { createCircularGallery } from './CircularGallery.js?v=15';
 
 const sessionStart = Date.now();
 
@@ -2659,6 +2659,7 @@ export function handleSearchInput(e) {
 
 /** Merge movies + TV + person titles, deduplicate, and sort by composite relevance */
 function _mergeAndSort(movies, tvs, personTitles, q) {
+  // Deduplicate
   const seen = new Set();
   const combined = [];
   [...movies, ...tvs, ...personTitles].forEach(item => {
@@ -2672,37 +2673,69 @@ function _mergeAndSort(movies, tvs, personTitles, q) {
     }
   });
 
-  // Drop noise (< 3 votes) but keep everything if that leaves nothing
-  let filtered = combined.filter(i => (i.vote_count||0) > 2);
-  if (!filtered.length) filtered = combined;
+  // Split query into individual keywords for partial matching
+  const words = q.split(/\s+/).filter(Boolean);
 
-  // Composite relevance score:
-  // +300 exact title match, +200 starts-with, +100 contains
-  // + normalised popularity (0–50) + normalised rating (0–50)
-  filtered.forEach(item => {
+  // Score every result by relevance
+  combined.forEach(item => {
     const t = (item.title || item.name || '').toLowerCase();
     let titleScore = 0;
-    if (t === q)             titleScore = 300;
-    else if (t.startsWith(q)) titleScore = 200;
-    else if (t.includes(q))   titleScore = 100;
-    const popScore    = Math.min(50, ((item.popularity||0) / 200) * 50);
-    const ratingScore = ((item.vote_average||0) / 10) * 50;
-    item._relevance   = titleScore + popScore + ratingScore;
+    if (t === q) {
+      titleScore = 300;                                    // exact phrase
+    } else if (t.startsWith(q)) {
+      titleScore = 250;                                    // phrase at start
+    } else if (t.includes(q)) {
+      titleScore = 200;                                    // phrase anywhere
+    } else {
+      // keyword match — score by fraction of words found
+      const matched = words.filter(w => t.includes(w));
+      titleScore = matched.length > 0
+        ? Math.round((matched.length / words.length) * 150)
+        : 0;
+    }
+
+    // Popularity: log-scale so trending/popular titles stand out clearly
+    // TMDB popularity ranges roughly 1–5000+
+    const pop = item.popularity || 0;
+    const popScore = pop > 0
+      ? Math.min(100, Math.round((Math.log(pop + 1) / Math.log(5001)) * 100))
+      : 0;
+
+    // Rating: scale 0–10 to 0–80, weighted by vote count
+    // A 8.0 with 1000 votes beats a 9.5 with 3 votes
+    const rating     = item.vote_average || 0;
+    const votes      = item.vote_count   || 0;
+    const voteWeight = Math.min(1, votes / 300);   // fully trusted at 300+ votes
+    const ratingScore = Math.round((rating / 10) * 80 * voteWeight);
+
+    // Obscurity penalty — buries unknown/no-poster junk entries that have almost
+    // no votes and near-zero popularity so they never steal the top spots
+    const obscurityPenalty = (votes < 5 && pop < 2)  ? 250
+                           : (votes < 20 && pop < 5) ? 120
+                           : 0;
+
+    item._relevance = titleScore + popScore + ratingScore - obscurityPenalty;
   });
 
-  filtered.sort((a, b) => b._relevance - a._relevance);
+  // Keep only items where at least one keyword matched the title (remove API noise)
+  // Also keep person-reason items (cast/director matches)
+  const relevant = combined.filter(item => {
+    if (item.personReason) return true;
+    const t = (item.title || item.name || '').toLowerCase();
+    return words.some(w => t.includes(w));
+  });
+  const list = relevant.length > 0 ? relevant : combined;
 
-  // Assign descending match percentages based on rank so card badges reflect sort order.
-  // Top result gets 99%, last gets at least 70%, spread evenly between.
-  const total = filtered.length;
-  filtered.forEach((item, idx) => {
-    const pct = total <= 1
-      ? 99
-      : Math.round(99 - ((idx / (total - 1)) * 29)); // 99 → 70
-    item.match = pct;
+  // Sort by relevance descending
+  list.sort((a, b) => b._relevance - a._relevance);
+
+  // Assign descending match % (99 → 70) based on rank position
+  const total = list.length;
+  list.forEach((item, idx) => {
+    item.match = total <= 1 ? 99 : Math.round(99 - (idx / (total - 1)) * 29);
   });
 
-  return filtered;
+  return list;
 }
 
 /** Append a batch of TMDB items to the grid, skipping already-rendered keys */
@@ -3321,7 +3354,6 @@ window.commitSearch = function() {
       }
       const card = buildCard(cardId, item);
       if (item.match) card.dataset.searchMatch = item.match;
-      card.classList.add('entering');
       searchResults.appendChild(card);
     });
     const hasMore = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
@@ -3831,7 +3863,7 @@ export function updateNavbarActiveLink(activeId) {
 
 /* ─── LANDING PAGE: AUTHENTICATION & PROFILE ─── */
 
-import { saveAuthState } from './state.js?v=12';
+import { saveAuthState } from './state.js?v=15';
 
 window.switchLoginTab = function(tab) {
   const loginTab = document.getElementById('tab-login');

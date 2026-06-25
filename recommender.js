@@ -1,6 +1,6 @@
-import { state } from './state.js?v=12';
-import { TMDB_API_KEY, DEFAULT_RECS } from './config.js?v=12';
-import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite } from './ui.js?v=12';
+import { state } from './state.js?v=15';
+import { TMDB_API_KEY, DEFAULT_RECS } from './config.js?v=15';
+import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite } from './ui.js?v=15';
 
 /* ─── RECOMMENDATION ENGINE WORKER CODE ─── */
 const workerCode = `
