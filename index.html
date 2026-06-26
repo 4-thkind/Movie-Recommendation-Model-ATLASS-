@@ -60,6 +60,11 @@
     <span class="logo-text">ATLASS</span>
   </a>
   <div class="nav-right">
+    <button id="watched-btn" class="watched-nav-btn" title="Already Watched" onclick="window.showAlreadyWatched && window.showAlreadyWatched()">
+      <i class="fa-solid fa-eye"></i>
+      <span class="watched-nav-label">Watched</span>
+      <span class="watched-nav-badge" id="watched-nav-badge" style="display:none"></span>
+    </button>
     <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme" onclick="toggleTheme()">
       <span class="toggle-track">
         <i class="fa-solid fa-moon moon-icon"></i>
@@ -111,6 +116,33 @@
 
 <!-- ═══ MAIN ═══ -->
 <main>
+
+  <!-- ═══ ALREADY WATCHED ═══ -->
+  <section id="watched-section" style="display:none;padding:56px 0 0">
+    <div class="sec-head" style="margin-bottom:24px">
+      <div>
+        <div class="sec-title">
+          <i class="fa-solid fa-eye" style="color:var(--y);font-size:15px"></i>
+          Already Watched
+          <span class="sec-tag tag-violet" id="watched-count-badge" style="display:none"></span>
+        </div>
+        <p class="sec-sub" id="watched-sub">Movies you've rated — sorted by your score</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <select id="watched-sort-select" class="watched-sort-select" onchange="window.sortWatchedGrid && window.sortWatchedGrid(this.value)">
+          <option value="recent" selected>Recently Added</option>
+          <option value="rating-desc">My Rating ↓</option>
+          <option value="rating-asc">My Rating ↑</option>
+        </select>
+        <button onclick="window.showHomePage && window.showHomePage()" style="background:transparent;border:none;color:var(--t2);cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-arrow-left" style="font-size:10px"></i> Back</button>
+      </div>
+    </div>
+    <div id="watched-empty" class="watched-empty" style="display:none">
+      <i class="fa-regular fa-eye-slash"></i>
+      <p>No rated movies yet — open any movie and give it stars to track it here</p>
+    </div>
+    <div class="genre-results-grid" id="watched-grid"></div>
+  </section>
 
   <!-- Search Results Section -->
   <section id="search-section" style="display:none;padding-top:44px">
@@ -174,6 +206,277 @@
       <div class="arr L" onclick="scrollRow('rw2',-1)"><i class="fa-solid fa-chevron-left"></i></div>
       <div class="row-scroll" id="rw2" onmouseleave="hidePopup()"></div>
       <div class="arr R" onclick="scrollRow('rw2',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: New Releases -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-calendar-days" style="color:#f59e0b;font-size:15px"></i> New Releases <span class="sec-tag tag-hot">2024–2025</span></div>
+        <p class="sec-sub">Fresh out — the latest movies hitting screens now</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-new-releases',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-new-releases" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-new-releases',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+  <!-- ROW: Hidden Gems -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-gem" style="color:#a78bfa;font-size:15px"></i> Hidden Gems</div>
+        <p class="sec-sub">Critically loved, underrated — you probably haven't seen these</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-hidden-gems',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-hidden-gems" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-hidden-gems',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Genres You Love -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-heart" style="color:#f87171;font-size:15px"></i> Genres You Love</div>
+        <p class="sec-sub">Curated picks from your favorite categories</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-genres-you-love',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-genres-you-love" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-genres-you-love',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Classics -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-film" style="color:#fbbf24;font-size:15px"></i> Classics</div>
+        <p class="sec-sub">Timeless films every cinephile should see</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-classics',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-classics" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-classics',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Award-Winning Movies & TV Shows -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-trophy" style="color:#f59e0b;font-size:15px"></i> Award-Winning Movies &amp; TV Shows</div>
+        <p class="sec-sub">Oscar, Emmy, and Golden Globe decorated titles</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-award-winning',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-award-winning" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-award-winning',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Critically Acclaimed -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-star" style="color:#facc15;font-size:15px"></i> Critically Acclaimed</div>
+        <p class="sec-sub">Titles that earned universal praise from critics</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-critically-acclaimed',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-critically-acclaimed" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-critically-acclaimed',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Sci-Fi Essentials -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-rocket" style="color:#818cf8;font-size:15px"></i> Sci-Fi Essentials</div>
+        <p class="sec-sub">Mind-bending futures and galaxies far, far away</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-scifi',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-scifi" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-scifi',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Action Blockbusters -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-explosion" style="color:#ef4444;font-size:15px"></i> Action Blockbusters</div>
+        <p class="sec-sub">High-octane thrills and spectacular set pieces</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-action',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-action" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-action',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Comedy Picks -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-face-laugh-squint" style="color:#34d399;font-size:15px"></i> Comedy Picks</div>
+        <p class="sec-sub">Laugh-out-loud favorites for any mood</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-comedy',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-comedy" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-comedy',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Thriller & Mystery -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-magnifying-glass-chart" style="color:#fb923c;font-size:15px"></i> Thriller &amp; Mystery</div>
+        <p class="sec-sub">Keep you guessing until the very last scene</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-thriller',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-thriller" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-thriller',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Family Favorites -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-house-chimney-heart" style="color:#f472b6;font-size:15px"></i> Family Favorites</div>
+        <p class="sec-sub">Fun for everyone — movie nights made easy</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-family',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-family" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-family',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Animation Collection -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-paintbrush" style="color:#a78bfa;font-size:15px"></i> Animation Collection</div>
+        <p class="sec-sub">Stunning animated worlds for all ages</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-animation',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-animation" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-animation',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Binge-Worthy TV Shows -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-tv" style="color:#38bdf8;font-size:15px"></i> Binge-Worthy TV Shows</div>
+        <p class="sec-sub">Series you won't be able to stop watching</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-binge-tv',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-binge-tv" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-binge-tv',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Recently Added -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-circle-plus" style="color:#4ade80;font-size:15px"></i> Recently Added</div>
+        <p class="sec-sub">New to streaming — just added across platforms</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-recently-added',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-recently-added" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-recently-added',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Most Rewatched -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-repeat" style="color:#fb923c;font-size:15px"></i> Most Rewatched</div>
+        <p class="sec-sub">Titles so good people keep coming back</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-most-rewatched',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-most-rewatched" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-most-rewatched',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Editor's Picks -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-pen-nib" style="color:#e879f9;font-size:15px"></i> Editor's Picks</div>
+        <p class="sec-sub">Hand-curated selections from our film editors</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-editors-picks',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-editors-picks" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-editors-picks',1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
+  <!-- ROW: Popular on Atlass -->
+  <section style="padding-top:44px" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><i class="fa-solid fa-chart-line" style="color:var(--vl);font-size:15px"></i> Popular on Atlass <span class="sec-tag tag-violet">Top Watched</span></div>
+        <p class="sec-sub">What Atlass members are watching most right now</p>
+      </div>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="row-wrap">
+      <div class="arr L" onclick="scrollRow('hs-popular-atlass',-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="row-scroll" id="hs-popular-atlass" onmouseleave="hidePopup()"></div>
+      <div class="arr R" onclick="scrollRow('hs-popular-atlass',1)"><i class="fa-solid fa-chevron-right"></i></div>
     </div>
   </section>
 
@@ -518,14 +821,29 @@
       </div>
 
       <!-- User Rating Stars Box -->
-      <div class="user-rating-box" style="margin: 15px 0 22px; background: var(--b3); border: 1px solid rgba(255,255,255,.05); border-radius: 10px; padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 15px">
-        <div style="font-size: 11px; font-weight: 700; color: var(--t2); text-transform: uppercase; letter-spacing: .1em"><i class="fa-solid fa-star" style="color:var(--y);margin-right:6px"></i>Your Rating</div>
-        <div class="user-stars" style="display: flex; gap: 6px; font-size: 18px; color: var(--t3); cursor: pointer">
-          <i class="fa-regular fa-star" data-value="1"></i>
-          <i class="fa-regular fa-star" data-value="2"></i>
-          <i class="fa-regular fa-star" data-value="3"></i>
-          <i class="fa-regular fa-star" data-value="4"></i>
-          <i class="fa-regular fa-star" data-value="5"></i>
+      <div class="user-rating-box" id="urb-root">
+        <!-- Initial state: centered "Watched?" pill -->
+        <div class="urb-inner">
+          <button class="urb-watched-pill" id="m-watched-pill" onclick="window._toggleModalWatched && window._toggleModalWatched()">
+            <span class="urb-icon-wrap">
+              <!-- Question mark shown before click, eye shown after -->
+              <i class="urb-icon-q fa-regular fa-circle-question"></i>
+              <i class="urb-icon-eye fa-regular fa-eye"></i>
+            </span>
+            <span class="urb-watched-label">Watched?</span>
+          </button>
+          <!-- Rating side — hidden until watched -->
+          <div class="urb-rating-side" id="urb-rating-side">
+            <div class="urb-divider"></div>
+            <span class="urb-give-label">Give Your Rating</span>
+            <div class="user-stars" id="modal-user-stars">
+              <i class="fa-regular fa-star" data-value="1"></i>
+              <i class="fa-regular fa-star" data-value="2"></i>
+              <i class="fa-regular fa-star" data-value="3"></i>
+              <i class="fa-regular fa-star" data-value="4"></i>
+              <i class="fa-regular fa-star" data-value="5"></i>
+            </div>
+          </div>
         </div>
       </div>
 
