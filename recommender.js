@@ -1,6 +1,6 @@
 import { state } from './state.js?v=15';
 import { TMDB_API_KEY, DEFAULT_RECS } from './config.js?v=15';
-import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite } from './ui.js?v=15';
+import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite, renderHomeSections } from './ui.js?v=15';
 
 /* ─── RECOMMENDATION ENGINE WORKER CODE ─── */
 const workerCode = `
@@ -220,6 +220,7 @@ export async function loadMovieLensDatabase() {
     buildTrending();
     buildPlatforms();
     initHero();
+    renderHomeSections();
     return;
   }
 
@@ -317,6 +318,7 @@ export async function loadMovieLensDatabase() {
     buildTrending();
     buildPlatforms();
     initHero();
+    renderHomeSections();
 
   } catch (err) {
     console.error("Database load error:", err);
