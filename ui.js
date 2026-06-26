@@ -804,6 +804,314 @@ export function renderRows() {
   requestAnimationFrame(() => makeRowInfinite(rw2));
 }
 
+/* ─── HOME SECTIONS RENDERER ──────────────────────────────────────────────────
+   Renders 16 personalized content rows on the home page. Each section uses
+   the same buildCard() + makeRowInfinite() engine as the rest of the app.
+   TMDB mode: distinct endpoints + page offsets so each row has unique content.
+   Offline mode: genre-accurate, hand-curated TMDB IDs per section.
+──────────────────────────────────────────────────────────────────────────── */
+
+export function renderHomeSections() {
+  // Cross-section deduplication — IDs seen in earlier (higher-priority) rows
+  // are pushed to the end of later rows rather than shown first.
+  const globalSeenIds = new Set();
+
+  // TMDB genre IDs
+  const GENRE = {
+    action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
+    drama: 18, family: 10751, fantasy: 14, history: 36, horror: 27,
+    mystery: 9648, romance: 10749, scifi: 878, thriller: 53,
+  };
+
+  // Helper: populate a row element with TMDB discover results
+  // Any ID already in globalSeenIds is pushed to the END of the row (not front)
+  async function _fillRowTMDB(rowId, url, limit = 20) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    row.innerHTML = '';
+    row._infiniteInit = false;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('TMDB fetch failed');
+      const data = await res.json();
+      const all = (data.results || []).slice(0, limit + 10);
+      const fresh = [];
+      const repeats = [];
+      all.forEach(item => {
+        if (globalSeenIds.has(item.id)) {
+          repeats.push(item);
+        } else {
+          globalSeenIds.add(item.id);
+          fresh.push(item);
+        }
+      });
+      // Show fresh items first, repeats appended at end — stays within limit
+      const toShow = [...fresh, ...repeats].slice(0, limit);
+      if (toShow.length === 0) return;
+      toShow.forEach(item => row.appendChild(buildCard(item.id, item)));
+      requestAnimationFrame(() => makeRowInfinite(row));
+    } catch (e) {
+      console.warn(`[renderHomeSections] ${rowId} fetch error:`, e);
+    }
+  }
+
+  // Helper: populate a row element with TV show cards
+  async function _fillRowTMDBTV(rowId, url, limit = 20) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    row.innerHTML = '';
+    row._infiniteInit = false;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('TMDB TV fetch failed');
+      const data = await res.json();
+      const all = (data.results || []).slice(0, limit + 10);
+      const fresh = [];
+      const repeats = [];
+      all.forEach(item => {
+        const key = `tv-${item.id}`;
+        if (globalSeenIds.has(key)) {
+          repeats.push(item);
+        } else {
+          globalSeenIds.add(key);
+          fresh.push(item);
+        }
+      });
+      const toShow = [...fresh, ...repeats].slice(0, limit);
+      if (toShow.length === 0) return;
+      toShow.forEach(item => {
+        const normalised = { ...item, id: `tmdb-tv-${item.id}`, title: item.name || item.title, release_date: item.first_air_date };
+        row.appendChild(buildCard(normalised.id, normalised));
+      });
+      requestAnimationFrame(() => makeRowInfinite(row));
+    } catch (e) {
+      console.warn(`[renderHomeSections] ${rowId} TV fetch error:`, e);
+    }
+  }
+
+  // Helper: populate a row from a static list of numeric/TMDB IDs
+  function _fillRowOffline(rowId, ids) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    row.innerHTML = '';
+    row._infiniteInit = false;
+    ids.forEach(id => row.appendChild(buildCard(id)));
+    requestAnimationFrame(() => makeRowInfinite(row));
+  }
+
+  if (TMDB_API_KEY) {
+    const K = TMDB_API_KEY;
+    const base = 'https://api.themoviedb.org/3';
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+    (async () => {
+      // Each section uses a structurally different TMDB endpoint or filter combination
+      // so the server itself returns a distinct result set � not just page offsets of the same list.
+
+      // 1. New Releases � movies currently in theatres (now_playing endpoint)
+      //    Completely separate endpoint; zero overlap with discover-based rows.
+      _fillRowTMDB('hs-new-releases',
+        `${base}/movie/now_playing?api_key=${K}&page=1`);
+
+      await delay(100);
+
+      // 2. Hidden Gems � genuinely obscure quality films
+      //    popularity.lte=15 removes every mainstream title.
+      //    vote_count 200�3000 = beloved by those who found it, ignored by the masses.
+      _fillRowTMDB('hs-hidden-gems',
+        `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&vote_average.gte=7.8&vote_count.gte=200&vote_count.lte=3000&popularity.lte=15&page=1`);
+
+      await delay(100);
+
+      // 3. Genres You Love � user's saved genre, popularity-sorted page 2
+      //    popularity sort (not vote_average) gives a different ranked order
+      //    than all quality-sorted genre rows below.
+      const favGenresRaw = localStorage.getItem('fav_genres');
+      let favGenreId = GENRE.drama;
+      try {
+        const fg = JSON.parse(favGenresRaw || '[]');
+        const gm = { action:28, adventure:12, animation:16, comedy:35, crime:80, drama:18, fantasy:14, horror:27, romance:10749, 'sci-fi':878, thriller:53 };
+        if (fg.length > 0) favGenreId = gm[fg[0].toLowerCase()] || 18;
+      } catch(e) {}
+      _fillRowTMDB('hs-genres-you-love',
+        `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=${favGenreId}&vote_count.gte=500&page=2`);
+
+      await delay(100);
+
+      // 4. Classics � released before 1990, enormous vote counts = stood the test of time
+      //    Hard date ceiling guarantees zero overlap with any modern-era section.
+      _fillRowTMDB('hs-classics',
+        `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&vote_count.gte=5000&primary_release_date.lte=1989-12-31&page=1`);
+
+      await delay(100);
+
+      // 5. Award-Winning � certified cultural landmarks
+      //    vote_avg >= 8.0 + vote_count >= 10000 = universally beloved AND widely seen.
+      //    revenue sort = box-office / prestige proxy (Oscars go to big films).
+      _fillRowTMDB('hs-award-winning',
+        `${base}/discover/movie?api_key=${K}&sort_by=revenue.desc&vote_average.gte=8.0&vote_count.gte=10000&page=1`);
+
+      await delay(100);
+
+      // 6. Critically Acclaimed � pure editorial quality signal, NO genre filter, NO revenue sort
+      //    vote_avg desc + high vote floor (8000+) = critical consensus across all genres.
+      //    Structurally different from Award-Winning (different sort + different vote threshold).
+      _fillRowTMDB('hs-critically-acclaimed',
+        `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&vote_count.gte=8000&primary_release_date.gte=1990-01-01&page=1`);
+
+      await delay(100);
+
+      // 7. Sci-Fi Essentials � hard-locked to genre 878, quality-sorted
+      _fillRowTMDB('hs-scifi',
+        `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&with_genres=${GENRE.scifi}&vote_count.gte=1500&page=1`);
+
+      await delay(100);
+
+      // 8. Action Blockbusters � hard-locked to genre 28, revenue-sorted
+      //    Revenue sort = only the biggest cultural spectacles surface here.
+      _fillRowTMDB('hs-action',
+        `${base}/discover/movie?api_key=${K}&sort_by=revenue.desc&with_genres=${GENRE.action}&vote_count.gte=3000&page=1`);
+
+      await delay(100);
+
+      // 9. Comedy Picks � hard-locked to genre 35, quality-sorted, page 2
+      //    Page 2 offsets away from the most obvious top-20 comedies.
+      _fillRowTMDB('hs-comedy',
+        `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&with_genres=${GENRE.comedy}&vote_count.gte=1000&page=2`);
+
+      await delay(100);
+
+      // 10. Thriller & Mystery � genre 53, popularity-sorted (different metric from vote_avg rows)
+      _fillRowTMDB('hs-thriller',
+        `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=${GENRE.thriller}&vote_count.gte=1500&page=1`);
+
+      await delay(100);
+
+      // 11. Family Favorites � hard-locked to genre 10751, quality-sorted
+      _fillRowTMDB('hs-family',
+        `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&with_genres=${GENRE.family}&vote_count.gte=800&page=1`);
+
+      await delay(100);
+
+      // 12. Animation Collection � hard-locked to genre 16, quality-sorted
+      _fillRowTMDB('hs-animation',
+        `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&with_genres=${GENRE.animation}&vote_count.gte=2000&page=1`);
+
+      await delay(100);
+
+      // 13. Binge-Worthy TV Shows � TV endpoint, entirely separate content type
+      _fillRowTMDBTV('hs-binge-tv',
+        `${base}/tv/top_rated?api_key=${K}&page=${1 + Math.floor(Math.random()*3)}`);
+
+      await delay(100);
+
+      // 14. Recently Added � upcoming pipeline (pre-release, not yet on now_playing)
+      _fillRowTMDB('hs-recently-added',
+        `${base}/movie/upcoming?api_key=${K}&page=1`);
+
+      await delay(100);
+
+      // 15. Most Rewatched � pure popularity signal, pages 5-10
+      //     sort_by=popularity.desc on deeper pages = popular but not trending right now.
+      _fillRowTMDB('hs-most-rewatched',
+        `${base}/movie/popular?api_key=${K}&page=${5 + Math.floor(Math.random()*6)}`);
+
+      await delay(100);
+
+      // 16. Editor's Picks � balanced art + commerce, 2000�2019 window
+      //     Date range is the hard differentiator: excludes Classics (pre-1990),
+      //     New Releases & Upcoming, and Recent (post-2020).
+      _fillRowTMDB('hs-editors-picks',
+        `${base}/discover/movie?api_key=${K}&sort_by=revenue.desc&vote_average.gte=7.5&vote_count.gte=5000&primary_release_date.gte=2000-01-01&primary_release_date.lte=2019-12-31&page=1`);
+
+      await delay(100);
+
+      // 17. Popular on Atlass � weekly trending (time-decayed velocity signal)
+      //     Trending uses a different ranking algorithm from popularity or vote_average.
+      _fillRowTMDB('hs-popular-atlass',
+        `${base}/trending/movie/week?api_key=${K}&page=1`);
+    })();
+  } else {
+    // ── Offline fallback — genre-accurate, hand-curated TMDB IDs ──
+    // IDs are real TMDB movie IDs matching each section's theme.
+    // Any title that genuinely belongs in multiple sections appears only at
+    // the END of the repeat section (first-seen section gets priority position).
+
+    const sets = {
+      // New Releases — 2023-2025 releases (Dune 2, Oppenheimer, Poor Things, Killers…)
+      'hs-new-releases':         [968051, 872585, 792307, 940721, 466420, 507089, 609681, 848326, 634649, 786892, 447365, 447277, 565770, 933131, 569094, 615777],
+
+      // Hidden Gems — critically loved but underseen (Anatomy of a Fall, Zone of Interest, Past Lives…)
+      'hs-hidden-gems':          [915935, 467244, 940721, 385687, 346698, 299534, 286217, 337167, 395990, 391713, 258480, 205596, 290098, 293660, 337167, 361743],
+
+      // Genres You Love — broad drama/romance/character-driven picks
+      'hs-genres-you-love':      [238, 346, 389, 129, 598, 19404, 372058, 348, 783, 807, 38, 274, 637, 769, 745, 599],
+
+      // Classics — pre-2000 cinematic greats (Shawshank, Godfather, Schindler's…)
+      'hs-classics':             [278, 240, 424, 389, 129, 13, 122, 311, 637, 769, 745, 429, 599, 510, 857, 11, 76],
+
+      // Award-Winning — Oscar / Golden Globe decorated (different IDs from Critically Acclaimed)
+      'hs-award-winning':        [424, 389, 129, 274, 510, 637, 769, 857, 429, 599, 348, 598, 783, 19404, 372058, 807],
+
+      // Critically Acclaimed — universal critical praise / near-perfect scores
+      'hs-critically-acclaimed': [278, 238, 240, 680, 155, 122, 346, 13, 50, 807, 120, 12477, 539, 949, 396535, 862],
+
+      // Sci-Fi Essentials — space, AI, time, aliens (Interstellar, 2001, Arrival, Gravity…)
+      'hs-scifi':                [157336, 329865, 49047, 62, 1891, 1892, 76, 603, 245891, 271110, 9806, 299534, 438631, 329865, 508442, 300671],
+
+      // Action Blockbusters — iconic high-octane spectacles (Dark Knight, Avengers, Mad Max…)
+      'hs-action':               [155, 24428, 49026, 299537, 1891, 1893, 1894, 118340, 127380, 102382, 56292, 49047, 76341, 10138, 99861, 284054],
+
+      // Comedy Picks — best comedies across eras (Toy Story, Home Alone, Bridesmaids…)
+      'hs-comedy':               [862, 11, 14, 105, 120, 538, 12445, 1091, 2062, 949, 539, 745, 1892, 2109, 2300, 97020],
+
+      // Thriller & Mystery — keep-you-guessing films (Se7en, Prestige, Parasite…)
+      'hs-thriller':             [680, 9806, 297761, 315162, 438631, 274, 807, 194, 587, 629, 12160, 22970, 539, 694, 12, 38],
+
+      // Family Favorites — wholesome for all ages (Lion King, Toy Story, Up, Coco…)
+      'hs-family':               [8587, 10681, 585, 364, 508442, 12, 920, 597, 10193, 12429, 863, 9806, 268, 9479, 270946, 14836],
+
+      // Animation Collection — Pixar, Ghibli, DreamWorks masterworks
+      'hs-animation':            [10681, 808, 862, 14, 9806, 150540, 508442, 12429, 920, 129, 420817, 568124, 10193, 863, 615, 81188],
+
+      // Binge-Worthy TV Shows — series-adjacent epic movies for binge mood
+      'hs-binge-tv':             [278, 238, 389, 807, 155, 348, 346, 13, 424, 240, 129, 19404, 274, 769, 637, 680],
+
+      // Recently Added — simulate "just hit platforms" (recent & popular)
+      'hs-recently-added':       [634649, 786892, 569094, 615777, 507089, 609681, 848326, 447277, 565770, 933131, 299534, 508442, 440161, 718789, 399566, 460465],
+
+      // Most Rewatched — timeless rewatchables (Star Wars, LOTR, Shawshank…)
+      'hs-most-rewatched':       [11, 122, 120, 1891, 278, 238, 862, 13, 550, 10138, 157336, 680, 1892, 1893, 329865, 49047],
+
+      // Editor's Picks — cultural landmarks balancing art + box office (Inception, Parasite…)
+      'hs-editors-picks':        [27205, 496243, 157336, 329865, 872585, 466420, 792307, 49047, 155, 122, 24428, 238, 278, 968051, 940721, 915935],
+
+      // Popular on Atlass — trending variety mix (different from top picks & new releases)
+      'hs-popular-atlass':       [680, 155, 122, 24428, 299537, 346, 238, 157336, 329865, 49026, 872585, 792307, 466420, 968051, 940721, 915935],
+    };
+
+    // Cross-section deduplication for offline: same as live mode logic —
+    // IDs seen in earlier sections appear at the END of later ones, not the start.
+    const offlineSeen = new Set();
+    Object.entries(sets).forEach(([rowId, ids]) => {
+      const seen = new Set();
+      const fresh = [];
+      const repeats = [];
+      ids.forEach(id => {
+        if (seen.has(id)) return; // intra-row duplicate, skip entirely
+        seen.add(id);
+        if (offlineSeen.has(id)) {
+          repeats.push(id);
+        } else {
+          offlineSeen.add(id);
+          fresh.push(id);
+        }
+      });
+      _fillRowOffline(rowId, [...fresh, ...repeats]);
+    });
+  }
+}
+
 /* ─── INFINITE SCROLL ENGINE ─────────────────────────────────────────────────
    Strategy: pre-fill a large buffer (3 copies each side) so the user never
    reaches the edge during normal scrolling. A scroll listener silently tops
@@ -1638,7 +1946,7 @@ function revealSurpriseResult(movie) {
 
 /* ─── STAR RATING LOGIC ─── */
 export function highlightStars(rating) {
-  const stars = document.querySelectorAll('.user-stars i');
+  const stars = document.querySelectorAll('#modal-user-stars i');
   stars.forEach((star, idx) => {
     if (idx < rating) {
       star.classList.remove('fa-regular');
@@ -1806,12 +2114,22 @@ function openModalContent(movie) {
       </div>
     `).join('');
 
-    // Set user stars
+    // Set user stars + sync "Already Watched" pill
     const userRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
     const myRating = userRatings[movie.id] || 0;
     highlightStars(myRating);
+
+    // Sync pill + rating reveal based on existing rating
+    const watchedPill  = document.getElementById('m-watched-pill');
+    const urbInner     = watchedPill ? watchedPill.closest('.urb-inner') : null;
+    const urbLabel     = watchedPill ? watchedPill.querySelector('.urb-watched-label') : null;
+    const isWatched    = myRating > 0;
+
+    if (watchedPill) watchedPill.classList.toggle('active', isWatched);
+    if (urbInner)    urbInner.classList.toggle('watched', isWatched);
+    if (urbLabel)    urbLabel.textContent = isWatched ? 'Already Watched' : 'Watched?';
     
-    const starsContainer = document.querySelector('.user-stars');
+    const starsContainer = document.getElementById('modal-user-stars');
     if (starsContainer) {
       starsContainer.onmouseleave = () => {
         const currentRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
@@ -1819,7 +2137,7 @@ function openModalContent(movie) {
       };
     }
     
-    document.querySelectorAll('.user-stars i').forEach(star => {
+    document.querySelectorAll('#modal-user-stars i').forEach(star => {
       star.onmouseenter = () => {
         const val = parseInt(star.dataset.value);
         highlightStars(val);
@@ -1829,11 +2147,31 @@ function openModalContent(movie) {
         const currentRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
         if (currentRatings[movie.id] === val) {
           delete currentRatings[movie.id];
+          // Remove timestamp when un-rating via stars
+          const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
+          delete ts[movie.id];
+          localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
         } else {
           currentRatings[movie.id] = val;
+          // Record timestamp only on first rating
+          const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
+          if (!ts[movie.id]) ts[movie.id] = Date.now();
+          localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
         }
         localStorage.setItem('user_movie_ratings', JSON.stringify(currentRatings));
         highlightStars(currentRatings[movie.id] || 0);
+        // Keep pill + rating side in sync when stars are clicked directly
+        const _pill  = document.getElementById('m-watched-pill');
+        const _inner = _pill ? _pill.closest('.urb-inner') : null;
+        const _lbl   = _pill ? _pill.querySelector('.urb-watched-label') : null;
+        const _rated = !!currentRatings[movie.id];
+        if (_pill)  _pill.classList.toggle('active', _rated);
+        if (_inner) _inner.classList.toggle('watched', _rated);
+        if (_lbl)   _lbl.textContent = _rated ? 'Already Watched' : 'Watched?';
+        // Update pill active state live
+        const pill = document.getElementById('m-watched-pill');
+        if (pill) pill.classList.toggle('active', !!currentRatings[movie.id]);
+        _syncWatchedBadge();
         if (state.movieLensData.loaded) {
           initializeRecommender();
           initHero();
@@ -3726,11 +4064,15 @@ export function showWatchlistPage() {
   const homeElements = [
     document.getElementById('hero'),
     // homepage-search-container removed — search is now in tiktok-nav panel
-    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section)'))
+    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#watched-section)'))
   ].filter(Boolean);
-  
+
   const watchlistSection = document.getElementById('watchlist-section');
   if (!watchlistSection) return;
+
+  // Hide watched section too
+  const watchedSection2 = document.getElementById('watched-section');
+  if (watchedSection2) watchedSection2.style.setProperty('display', 'none', 'important');
 
   document.body.classList.add('watchlist-active');
 
@@ -3795,6 +4137,183 @@ export function showWatchlistPage() {
   }
 }
 
+/* ─── ALREADY WATCHED PAGE ─────────────────────────────────────────────────
+   Shows every movie the user has rated (via the in-modal star widget).
+   Each card gets a user-rating badge overlay instead of the match % badge.
+   Sorted by user rating desc by default; user can change via the dropdown.
+──────────────────────────────────────────────────────────────────────────── */
+
+export function showAlreadyWatched() {
+  clearSearch(true);
+  stopHeroRotation();
+  updateNavbarActiveLink('watched-section');
+
+  const watchedSection  = document.getElementById('watched-section');
+  const watchedGrid     = document.getElementById('watched-grid');
+  const emptyMsg        = document.getElementById('watched-empty');
+  const countBadge      = document.getElementById('watched-nav-badge');
+  const sectionBadge    = document.getElementById('watched-count-badge');
+  const subEl           = document.getElementById('watched-sub');
+  if (!watchedSection || !watchedGrid) return;
+
+  // Hide home + search views
+  const homeElements = [
+    document.getElementById('hero'),
+    ...Array.from(document.querySelectorAll('main > section:not(#watched-section):not(#watchlist-section)'))
+  ].filter(Boolean);
+
+  const watchlistSection = document.getElementById('watchlist-section');
+
+  closeModal(true);
+
+  gsap.killTweensOf(homeElements);
+  gsap.to(homeElements, {
+    opacity: 0, y: -12, scale: 0.98, duration: 0.28, ease: 'power2.inOut',
+    onComplete: () => {
+      homeElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
+      if (watchlistSection) watchlistSection.style.setProperty('display', 'none', 'important');
+
+      watchedSection.style.removeProperty('display');
+      _renderWatchedGrid('recent');
+
+      gsap.fromTo(watchedSection,
+        { opacity: 0, y: 14, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.38, ease: 'power2.out' }
+      );
+      window.scrollTo(0, 0);
+    }
+  });
+}
+
+function _renderWatchedGrid(sortMode = 'recent') {
+  const watchedGrid  = document.getElementById('watched-grid');
+  const emptyMsg     = document.getElementById('watched-empty');
+  const sectionBadge = document.getElementById('watched-count-badge');
+  const subEl        = document.getElementById('watched-sub');
+  if (!watchedGrid) return;
+
+  const userRatings  = JSON.parse(localStorage.getItem('user_movie_ratings')      || '{}');
+  const timestamps   = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
+  const entries = Object.entries(userRatings); // [ [movieId, starValue], … ]
+
+  // Update nav badge
+  const navBadge = document.getElementById('watched-nav-badge');
+  if (navBadge) {
+    navBadge.textContent = entries.length;
+    navBadge.style.display = entries.length > 0 ? 'flex' : 'none';
+  }
+
+  if (entries.length === 0) {
+    watchedGrid.innerHTML = '';
+    if (emptyMsg)     emptyMsg.style.display = 'flex';
+    if (sectionBadge) sectionBadge.style.display = 'none';
+    if (subEl)        subEl.textContent = 'No rated movies yet — open any movie and give it stars';
+    return;
+  }
+
+  if (emptyMsg)     emptyMsg.style.display = 'none';
+  if (sectionBadge) { sectionBadge.textContent = `${entries.length} rated`; sectionBadge.style.display = ''; }
+  if (subEl)        subEl.textContent = `${entries.length} movie${entries.length !== 1 ? 's' : ''} you've rated — your personal scores`;
+
+  // Sort using real timestamps for "recent"; ratings for the other modes
+  let sorted = [...entries];
+  if (sortMode === 'recent') {
+    // Latest watched first — fall back to movieId order for entries without a timestamp
+    sorted.sort((a, b) => {
+      const ta = timestamps[a[0]] || 0;
+      const tb = timestamps[b[0]] || 0;
+      return tb - ta; // descending: newest first
+    });
+  } else if (sortMode === 'rating-desc') {
+    sorted.sort((a, b) => b[1] - a[1] || (timestamps[b[0]] || 0) - (timestamps[a[0]] || 0));
+  } else if (sortMode === 'rating-asc') {
+    sorted.sort((a, b) => a[1] - b[1] || (timestamps[a[0]] || 0) - (timestamps[b[0]] || 0));
+  }
+
+  watchedGrid.innerHTML = '';
+
+  sorted.forEach(([movieId, starVal], idx) => {
+    const numId = isNaN(Number(movieId)) ? movieId : Number(movieId);
+
+    // Build a standard card then overlay it with the user rating badge
+    const card = buildCard(numId);
+    card.classList.add('watched-card', 'entering');
+    card.style.animationDelay = `${Math.min(idx, 20) * 28}ms`;
+
+    // Replace the match badge with the user's own star rating
+    const matchBadge = card.querySelector('.m-badge');
+    if (matchBadge) {
+      const starsHtml = '★'.repeat(starVal) + '<span style="opacity:.3">' + '★'.repeat(5 - starVal) + '</span>';
+      matchBadge.innerHTML = `<span class="watched-star-badge">${starsHtml} <em>${starVal}/5</em></span>`;
+      matchBadge.className = 'watched-user-rating-badge';
+    }
+
+    watchedGrid.appendChild(card);
+  });
+}
+
+// Expose to window so the HTML sort dropdown and nav button can call it
+window.showAlreadyWatched = showAlreadyWatched;
+window.sortWatchedGrid = function(mode) { _renderWatchedGrid(mode); };
+
+/* ─── Keep the watched nav badge in sync whenever a rating changes ── */
+function _syncWatchedBadge() {
+  const userRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
+  const count = Object.keys(userRatings).length;
+  const badge = document.getElementById('watched-nav-badge');
+  if (badge) {
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'flex' : 'none';
+  }
+}
+
+/* ─── "Already Watched" pill toggle in modal ──────────────────────────────
+   Initial state: pill centred, label "Watched?", question-mark icon, rating hidden.
+   After click:   pill slides left, label → "Already Watched", eye icon, rating revealed.
+   Click again:   reverts to initial state, clears rating.
+──────────────────────────────────────────────────────────────────────────── */
+window._toggleModalWatched = function() {
+  const movie = state.currentModalMovie;
+  if (!movie) return;
+
+  const pill   = document.getElementById('m-watched-pill');
+  const inner  = pill ? pill.closest('.urb-inner') : null;
+  const label  = pill ? pill.querySelector('.urb-watched-label') : null;
+  const ratings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
+  const hasRating = ratings[movie.id] > 0;
+
+  if (hasRating) {
+    // ── Un-watch: revert to initial state ──
+    delete ratings[movie.id];
+    localStorage.setItem('user_movie_ratings', JSON.stringify(ratings));
+    // Remove timestamp too so re-adding gives a fresh entry at the top
+    const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
+    delete ts[movie.id];
+    localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
+    highlightStars(0);
+    if (pill)  pill.classList.remove('active');
+    if (inner) inner.classList.remove('watched');
+    if (label) label.textContent = 'Watched?';
+  } else {
+    // ── Mark as watched: slide pill left, reveal rating ──
+    ratings[movie.id] = 3; // default 3-star; user can refine via stars
+    localStorage.setItem('user_movie_ratings', JSON.stringify(ratings));
+    // Record timestamp only on first watch (don't overwrite if re-adding)
+    const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
+    if (!ts[movie.id]) ts[movie.id] = Date.now();
+    localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
+    highlightStars(3);
+    if (pill)  pill.classList.add('active');
+    if (inner) inner.classList.add('watched');
+    if (label) label.textContent = 'Already Watched';
+  }
+
+  _syncWatchedBadge();
+  if (state.movieLensData.loaded) {
+    initializeRecommender();
+  }
+};
+
 export function showHomePage() {
   clearSearch(true);
   updateNavbarActiveLink('hero');
@@ -3805,12 +4324,16 @@ export function showHomePage() {
     document.getElementById('hero'),
     // homepage-search-container removed — search is now in tiktok-nav panel
     // Exclude #search-section — it is controlled solely by search/genre logic
-    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#search-section)'))
+    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#search-section):not(#watched-section)'))
   ].filter(Boolean);
 
   // Always keep search-section hidden when showing home
   const searchSec = document.getElementById('search-section');
   if (searchSec) searchSec.style.setProperty('display', 'none', 'important');
+
+  // Hide the watched section when going home
+  const watchedSection = document.getElementById('watched-section');
+  if (watchedSection) watchedSection.style.setProperty('display', 'none', 'important');
 
   const watchlistSection = document.getElementById('watchlist-section');
   if (!watchlistSection) return;
@@ -4159,6 +4682,15 @@ export function showGenreMovies(genreId, genreName) {
   if (lmWrap) lmWrap.style.display = 'none';
   searchSec.style.display = 'block';
 
+  // Show loading skeletons immediately so there's no black screen while TMDB fetches
+  const SKELETON_COUNT = 20;
+  for (let s = 0; s < SKELETON_COUNT; s++) {
+    const sk = document.createElement('div');
+    sk.className = 'movie-card genre-skeleton';
+    sk.innerHTML = `<div class="card-thumb genre-skeleton-thumb"></div>`;
+    grid.appendChild(sk);
+  }
+
   // ── Pagination state ──────────────────────────────────────────────────────
   const ROWS_INITIAL = 10; // first load  — 10 complete rows
   const ROWS_MORE    =  6; // each Load More — 6 complete rows
@@ -4230,7 +4762,7 @@ export function showGenreMovies(genreId, genreName) {
       renderedIds.add(cardId);
 
       const card = buildCard(
-        typeof item === 'number' ? item : `tmdb-movie-${item.id}`,
+        typeof item === 'number' ? item : item.id,
         typeof item === 'object' ? item : null
       );
       card.classList.add('entering');
@@ -4253,7 +4785,7 @@ export function showGenreMovies(genreId, genreName) {
         if (renderedIds.has(cardId)) continue;
         renderedIds.add(cardId);
         const card = buildCard(
-          typeof item === 'number' ? item : `tmdb-movie-${item.id}`,
+          typeof item === 'number' ? item : item.id,
           typeof item === 'object' ? item : null
         );
         card.classList.add('entering');
@@ -4340,6 +4872,8 @@ export function showGenreMovies(genreId, genreName) {
         });
       } catch(e) { console.warn('TMDb initial genre fetch error', e); }
       fetching = false;
+      // Clear skeletons before rendering real cards
+      grid.querySelectorAll('.genre-skeleton').forEach(el => el.remove());
       renderBatch(ROWS_INITIAL);
     })();
 
@@ -4349,6 +4883,9 @@ export function showGenreMovies(genreId, genreName) {
       allItems = pool;
       const countTag = document.getElementById('search-count');
       if (countTag) countTag.textContent = `${pool.length} found`;
+
+      // Clear skeletons before rendering real cards
+      grid.querySelectorAll('.genre-skeleton').forEach(el => el.remove());
 
       if (pool.length === 0) {
         grid.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">No movies found in this genre.</div>';
@@ -4404,6 +4941,9 @@ function buildGenrePoolOffline(genreName, callback) {
 }
 
 export function initGenrePopover() {
+  // Sync the "Watched" nav badge count on startup
+  _syncWatchedBadge();
+
   const container = document.getElementById('gp-pills-container');
   if (container) {
     container.innerHTML = GENRES.map(g => `
