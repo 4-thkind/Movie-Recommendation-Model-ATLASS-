@@ -1430,16 +1430,198 @@ footer{background:var(--b1);border-top:1px solid rgba(255,255,255,.04);padding:4
 }
 #settings-overlay.on #settings-modal{transform:scale(1) translateY(0)}
 
-/* ─── STARS RATING ─── */
-.user-stars i{
-  transition:color .2s var(--smooth), transform .2s var(--spring);
+/* ─── STARS RATING BOX (modal) — two-state interactive component ─── */
+
+/* Outer container */
+.user-rating-box {
+  margin: 15px 0 22px;
+  background: var(--b3);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px;
+  padding: 10px 14px;
+  min-height: 58px;
+  overflow: hidden;
 }
-.user-stars i:hover{
-  transform:scale(1.2);
+
+/* Inner flex row — starts with centered pill, expands to two sides */
+.urb-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;   /* default: pill centred */
+  gap: 0;
+  width: 100%;
+  transition: justify-content 0s;  /* layout switch is instant; animations handle visuals */
 }
-.user-stars i.active{
-  color:var(--y);
+
+/* ── Pill button ── */
+.urb-watched-pill {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 50px;
+  padding: 9px 20px 9px 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  /* smooth all colour / border changes */
+  transition:
+    background    .25s ease,
+    border-color  .25s ease,
+    padding       .25s ease,
+    transform     .28s cubic-bezier(.34,1.56,.64,1);
 }
+
+/* Hover — inactive state */
+.urb-watched-pill:not(.active):hover {
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.22);
+}
+
+/* Active (watched) state */
+.urb-watched-pill.active {
+  background: rgba(245,197,24,.12);
+  border-color: var(--y);
+}
+.urb-watched-pill.active:hover {
+  background: rgba(245,197,24,.2);
+}
+
+/* ── Icon circle ── */
+.urb-icon-wrap {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(255,255,255,.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    background     .25s ease,
+    border-color   .25s ease;
+}
+
+/* The two icons — only one visible at a time */
+.urb-icon-wrap i {
+  position: absolute;
+  font-size: 14px;
+  color: var(--t2);
+  transition: opacity .2s ease, transform .2s ease, color .2s ease;
+}
+
+/* Initial: question mark visible, eye hidden */
+.urb-icon-q   { opacity: 1; transform: scale(1); }
+.urb-icon-eye { opacity: 0; transform: scale(.6); }
+
+/* Active: swap icons */
+.urb-watched-pill.active .urb-icon-q   { opacity: 0; transform: scale(.6); }
+.urb-watched-pill.active .urb-icon-eye { opacity: 1; transform: scale(1); }
+
+/* Active icon circle */
+.urb-watched-pill.active .urb-icon-wrap {
+  background: var(--y);
+  border-color: var(--y);
+}
+.urb-watched-pill.active .urb-icon-wrap i {
+  color: #000;
+}
+
+/* ── Pill label text ── */
+.urb-watched-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--t1);
+  letter-spacing: .01em;
+  white-space: nowrap;
+  transition: color .22s ease;
+  font-family: 'Syne', sans-serif;
+}
+.urb-watched-pill.active .urb-watched-label {
+  color: var(--y);
+}
+
+/* ── Rating side (hidden → revealed) ── */
+.urb-rating-side {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* start hidden, collapsed to zero width */
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* slide + fade in */
+  transition:
+    max-width .3s cubic-bezier(.4,0,.2,1),
+    opacity   .25s ease .08s;        /* opacity lags slightly behind width */
+}
+
+/* Revealed state — driven by .urb-inner.watched on the parent */
+.urb-inner.watched .urb-rating-side {
+  max-width: 360px;
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* When rating side is visible, push pill to the left */
+.urb-inner.watched {
+  justify-content: flex-start;
+}
+
+/* Vertical divider */
+.urb-divider {
+  width: 1px;
+  height: 30px;
+  background: rgba(255,255,255,.1);
+  flex-shrink: 0;
+  margin: 0 4px 0 16px;
+}
+
+/* "Give Your Rating" label */
+.urb-give-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t3);
+  white-space: nowrap;
+}
+
+/* ── Stars ── */
+.user-stars {
+  display: flex;
+  gap: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.user-stars i {
+  font-size: 20px;
+  color: rgba(148,144,184,.4);
+  transition: color .16s ease, transform .16s var(--spring);
+}
+.user-stars i:hover {
+  transform: scale(1.2);
+  color: rgba(245,197,24,.85);
+}
+.user-stars i.active {
+  color: var(--y);
+}
+
+/* Light theme */
+body.light-theme .user-rating-box {
+  background: var(--b2);
+  border-color: rgba(0,0,0,.07);
+}
+body.light-theme .urb-watched-pill {
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.12);
+}
+body.light-theme .urb-watched-label { color: #1f2937; }
+body.light-theme .urb-icon-wrap { background: rgba(0,0,0,.05); border-color: rgba(0,0,0,.12); }
+body.light-theme .urb-icon-wrap i { color: #6b7280; }
+body.light-theme .urb-divider { background: rgba(0,0,0,.1); }
+body.light-theme .user-stars i { color: rgba(107,114,128,.38); }
 
 /* ─── CORS BANNER LAYOUT COMPENSATION ─── */
 body.has-cors-banner #hero {
@@ -3209,4 +3391,188 @@ body.watchlist-active .homepage-search-container {
 }
 .genre-results-grid .movie-card.entering {
   animation: card-fade-in .4s var(--expo) both;
+}
+
+/* ── Genre view: skeleton shimmer placeholders while TMDB loads ── */
+.genre-skeleton {
+  pointer-events: none;
+}
+.genre-skeleton-thumb {
+  width: 168px;
+  height: 240px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, var(--b3) 25%, var(--b4) 50%, var(--b3) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Genre view: search-section background so it's never transparent-black ── */
+body.search-active #search-section {
+  background: var(--b0);
+  min-height: 100vh;
+}
+
+/* ══════════════════════════════════════
+   ALREADY WATCHED — nav button, page, cards
+══════════════════════════════════════ */
+
+/* ── Nav button ── */
+.watched-nav-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 7px 14px;
+  color: var(--t2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: background .22s var(--smooth), border-color .22s var(--smooth), color .22s var(--smooth), transform .18s var(--smooth);
+  white-space: nowrap;
+}
+.watched-nav-btn:hover {
+  background: rgba(245,197,24,.1);
+  border-color: rgba(245,197,24,.4);
+  color: var(--y);
+  transform: translateY(-1px);
+}
+.watched-nav-btn i {
+  font-size: 14px;
+}
+.watched-nav-label {
+  letter-spacing: .01em;
+}
+.watched-nav-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: var(--y);
+  color: #000;
+  font-size: 9px;
+  font-weight: 800;
+  font-family: 'Syne', sans-serif;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+
+/* ── Sort dropdown ── */
+.watched-sort-select {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  color: var(--t2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .2s var(--smooth), color .2s var(--smooth);
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239490b8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+.watched-sort-select:hover,
+.watched-sort-select:focus {
+  border-color: rgba(245,197,24,.4);
+  color: var(--t1);
+}
+.watched-sort-select option {
+  background: var(--b2);
+  color: var(--t1);
+}
+
+/* ── Empty state ── */
+.watched-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 80px 24px;
+  color: var(--t3);
+  text-align: center;
+}
+.watched-empty i {
+  font-size: 42px;
+  opacity: .35;
+}
+.watched-empty p {
+  font-size: 14px;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+/* ── User-rating badge overlay on watched cards ── */
+.watched-user-rating-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  pointer-events: none;
+}
+.watched-star-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(245,197,24,.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--y);
+  letter-spacing: .5px;
+  line-height: 1;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+.watched-star-badge em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--t2);
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+/* ── Card enter animation (reuses genre grid animation) ── */
+.watched-card.entering {
+  animation: card-fade-in .4s var(--expo) both;
+}
+
+/* ── Light theme tweaks ── */
+body.light-theme .watched-nav-btn {
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.1);
+  color: #4b5563;
+}
+body.light-theme .watched-nav-btn:hover {
+  background: rgba(245,197,24,.12);
+  border-color: rgba(234,179,8,.5);
+  color: #92400e;
+}
+body.light-theme .watched-sort-select {
+  background: rgba(0,0,0,.03);
+  border-color: rgba(0,0,0,.12);
+  color: #374151;
 }
