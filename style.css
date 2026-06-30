@@ -554,22 +554,7 @@ body.light-theme .pd-item:hover {
 }
 .hero-btns{display:flex;gap:10px;flex-wrap:wrap}
 
-/* ── HERO AUTO-ROTATION: progress bar + dots ── */
-.hero-progress-bar {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 3px;
-  background: rgba(255,255,255,0.08);
-  z-index: 10;
-  overflow: hidden;
-}
-.hero-progress-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--vl), var(--y));
-  transition: width linear;
-  border-radius: 0 2px 2px 0;
-}
+/* ── HERO AUTO-ROTATION: dots ── */
 .hero-dots {
   position: absolute;
   bottom: 18px;
