@@ -2114,7 +2114,7 @@ function openModalContent(movie) {
       </div>
     `).join('');
 
-    // Set user stars + sync "Already Watched" pill
+    // Set user stars + sync "Already Watched" pill and Watchlist pill
     const userRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
     const myRating = userRatings[movie.id] || 0;
     highlightStars(myRating);
@@ -2124,10 +2124,23 @@ function openModalContent(movie) {
     const urbInner     = watchedPill ? watchedPill.closest('.urb-inner') : null;
     const urbLabel     = watchedPill ? watchedPill.querySelector('.urb-watched-label') : null;
     const isWatched    = myRating > 0;
+    
+    const watchlistWrap = document.getElementById('m-watchlist-wrap');
+    const ratingSide    = document.getElementById('urb-rating-side');
 
     if (watchedPill) watchedPill.classList.toggle('active', isWatched);
     if (urbInner)    urbInner.classList.toggle('watched', isWatched);
     if (urbLabel)    urbLabel.textContent = isWatched ? 'Already Watched' : 'Watched?';
+
+    // Sync watchlist wrap and rating side — instant on modal open (no animation)
+    if (isWatched) {
+      if (watchlistWrap) watchlistWrap.classList.add('hidden');
+      if (ratingSide)    ratingSide.classList.add('visible');
+    } else {
+      if (watchlistWrap) watchlistWrap.classList.remove('hidden');
+      if (ratingSide)    ratingSide.classList.remove('visible');
+      _updateModalWatchlistPill();
+    }
     
     const starsContainer = document.getElementById('modal-user-stars');
     if (starsContainer) {
@@ -2145,18 +2158,51 @@ function openModalContent(movie) {
       star.onclick = () => {
         const val = parseInt(star.dataset.value);
         const currentRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
+        const wasWatched = !!currentRatings[movie.id];
+        const watchlistWrap = document.getElementById('m-watchlist-wrap');
+        
         if (currentRatings[movie.id] === val) {
           delete currentRatings[movie.id];
           // Remove timestamp when un-rating via stars
           const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
           delete ts[movie.id];
           localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
+          
+          // Restore watchlist button
+          if (watchlistWrap) watchlistWrap.classList.remove('hidden');
+          const wasInWatchlistBefore = state.watchlistToRestore.includes(String(movie.id));
+          if (wasInWatchlistBefore) {
+            addToWatchlist(movie, null);
+            state.watchlistToRestore = state.watchlistToRestore.filter(id => String(id) !== String(movie.id));
+            saveWatchlistToStorage();
+            updateWatchlistUI();
+            updateWLCount();
+          }
+          // Update watchlist pill
+          _updateModalWatchlistPill();
         } else {
           currentRatings[movie.id] = val;
           // Record timestamp only on first rating
           const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
           if (!ts[movie.id]) ts[movie.id] = Date.now();
           localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
+          
+          // If wasn't watched before and now is watched, handle watchlist
+          if (!wasWatched) {
+            const movieInWatchlist = state.watchlist.find(x => String(x.id) === String(movie.id));
+            if (movieInWatchlist) {
+              state.watchlist = state.watchlist.filter(x => String(x.id) !== String(movie.id));
+              if (!state.watchlistToRestore.includes(String(movie.id))) {
+                state.watchlistToRestore.push(String(movie.id));
+              }
+              saveWatchlistToStorage();
+              updateWatchlistUI();
+              updateWLCount();
+            }
+            if (watchlistWrap) {
+              watchlistWrap.classList.add('hidden');
+            }
+          }
         }
         localStorage.setItem('user_movie_ratings', JSON.stringify(currentRatings));
         highlightStars(currentRatings[movie.id] || 0);
@@ -2175,6 +2221,10 @@ function openModalContent(movie) {
         if (state.movieLensData.loaded) {
           initializeRecommender();
           initHero();
+        }
+        // Close modal after a brief moment so the rating feels confirmed
+        if (currentRatings[movie.id]) {
+          setTimeout(() => closeModal(), 300);
         }
       };
     });
@@ -2909,8 +2959,6 @@ export function handleSearchInput(e) {
       _searchState.tmdbMovieTotalPages = movieTotalPages;
       _searchState.tmdbTvTotalPages    = tvTotalPages;
 
-      if (countEl) countEl.textContent = totalEstimate > 0 ? `${totalEstimate}+ results` : `${firstBatch.length} found`;
-
       // Quick top-5 above the grid
       if (quickResults && firstBatch.length > 0) {
         renderQuickResults(firstBatch.slice(0, 5), quickResults);
@@ -2920,8 +2968,14 @@ export function handleSearchInput(e) {
 
       if (firstBatch.length === 0) {
         searchResults.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">No results found matching that query.</div>';
+        if (countEl) countEl.textContent = '0 found';
       } else {
         _appendSearchCards(firstBatch, searchResults);
+        // Update count to reflect only cards with posters that were actually rendered
+        const actualCount = searchResults.querySelectorAll('.movie-card').length;
+        const hasMorePages = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
+                             _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
+        if (countEl) countEl.textContent = hasMorePages ? `${actualCount}+ results` : `${actualCount} found`;
       }
       if (searchSec) { searchSec.style.removeProperty('display'); searchSec.style.display = 'block'; }
 
@@ -3139,7 +3193,11 @@ function _mergeAndSort(movies, tvs, personTitles, q) {
 
 /** Append a batch of TMDB items to the grid, skipping already-rendered keys */
 function _appendSearchCards(items, container) {
+  let rendered = 0;
   items.forEach(item => {
+    // Skip items with no poster — they show as blank cards
+    if (!item.poster_path) return;
+
     const key = `${item.mediaType}-${item.id}`;
     if (_searchState.rendered.has(key)) return;
     _searchState.rendered.add(key);
@@ -3152,7 +3210,9 @@ function _appendSearchCards(items, container) {
     const card = buildCard(cardId, item);
     card.classList.add('entering');
     container.appendChild(card);
+    rendered++;
   });
+  return rendered;
 }
 
 /** Append a batch of offline IDs/objects to the grid */
@@ -4429,6 +4489,29 @@ function _syncWatchedBadge() {
   }
 }
 
+/* ─── Helper: show/hide rating side and watchlist wrap smoothly ─────────── */
+function _setWatchedState(isWatched) {
+  const pill          = document.getElementById('m-watched-pill');
+  const inner         = pill ? pill.closest('.urb-inner') : null;
+  const label         = pill ? pill.querySelector('.urb-watched-label') : null;
+  const watchlistWrap = document.getElementById('m-watchlist-wrap');
+  const ratingSide    = document.getElementById('urb-rating-side');
+
+  if (isWatched) {
+    if (pill)          pill.classList.add('active');
+    if (inner)         inner.classList.add('watched');
+    if (label)         label.textContent = 'Already Watched';
+    if (watchlistWrap) watchlistWrap.classList.add('hidden');
+    if (ratingSide)    ratingSide.classList.add('visible');
+  } else {
+    if (pill)          pill.classList.remove('active');
+    if (inner)         inner.classList.remove('watched');
+    if (label)         label.textContent = 'Watched?';
+    if (ratingSide)    ratingSide.classList.remove('visible');
+    if (watchlistWrap) watchlistWrap.classList.remove('hidden');
+  }
+}
+
 /* ─── "Already Watched" pill toggle in modal ──────────────────────────────
    Initial state: pill centred, label "Watched?", question-mark icon, rating hidden.
    After click:   pill slides left, label → "Already Watched", eye icon, rating revealed.
@@ -4438,9 +4521,6 @@ window._toggleModalWatched = function() {
   const movie = state.currentModalMovie;
   if (!movie) return;
 
-  const pill   = document.getElementById('m-watched-pill');
-  const inner  = pill ? pill.closest('.urb-inner') : null;
-  const label  = pill ? pill.querySelector('.urb-watched-label') : null;
   const ratings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
   const hasRating = ratings[movie.id] > 0;
 
@@ -4448,26 +4528,56 @@ window._toggleModalWatched = function() {
     // ── Un-watch: revert to initial state ──
     delete ratings[movie.id];
     localStorage.setItem('user_movie_ratings', JSON.stringify(ratings));
-    // Remove timestamp too so re-adding gives a fresh entry at the top
     const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
     delete ts[movie.id];
     localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
     highlightStars(0);
-    if (pill)  pill.classList.remove('active');
-    if (inner) inner.classList.remove('watched');
-    if (label) label.textContent = 'Watched?';
+
+    _setWatchedState(false);
+
+    // Restore the movie to watchlist if it was there before
+    const wasInWatchlistBefore = state.watchlistToRestore.includes(String(movie.id));
+    if (wasInWatchlistBefore) {
+      addToWatchlist(movie, null);
+      state.watchlistToRestore = state.watchlistToRestore.filter(id => String(id) !== String(movie.id));
+      saveWatchlistToStorage();
+    }
+    _updateModalWatchlistPill();
+    _syncWatchedBadge();
+
+    // If the Already Watched page is open, remove this card immediately
+    const watchedSection = document.getElementById('watched-section');
+    if (watchedSection && watchedSection.style.display !== 'none' && !watchedSection.style.getPropertyValue('display').includes('none')) {
+      const card = watchedSection.querySelector(`.movie-card[data-id="${movie.id}"]`);
+      if (card) {
+        card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.92)';
+        setTimeout(() => { if (card.parentNode) card.parentNode.removeChild(card); _renderWatchedGrid(); }, 320);
+      }
+    }
   } else {
     // ── Mark as watched: slide pill left, reveal rating ──
-    ratings[movie.id] = 3; // default 3-star; user can refine via stars
+    ratings[movie.id] = 3;
     localStorage.setItem('user_movie_ratings', JSON.stringify(ratings));
-    // Record timestamp only on first watch (don't overwrite if re-adding)
     const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
     if (!ts[movie.id]) ts[movie.id] = Date.now();
     localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
     highlightStars(3);
-    if (pill)  pill.classList.add('active');
-    if (inner) inner.classList.add('watched');
-    if (label) label.textContent = 'Already Watched';
+
+    // Remove from watchlist if present, remember to restore later
+    const movieInWatchlist = state.watchlist.find(x => String(x.id) === String(movie.id));
+    if (movieInWatchlist) {
+      state.watchlist = state.watchlist.filter(x => String(x.id) !== String(movie.id));
+      if (!state.watchlistToRestore.includes(String(movie.id))) {
+        state.watchlistToRestore.push(String(movie.id));
+      }
+      saveWatchlistToStorage();
+      updateWatchlistUI();
+      updateWLCount();
+    }
+
+    _setWatchedState(true);
   }
 
   _syncWatchedBadge();
@@ -4475,6 +4585,43 @@ window._toggleModalWatched = function() {
     initializeRecommender();
   }
 };
+
+/* ─── "Watchlist" pill toggle in modal ──────────────────────────────────── */
+window._toggleModalWatchlist = function() {
+  const movie = state.currentModalMovie;
+  if (!movie) return;
+  
+  const alreadyIn = state.watchlist.find(x => String(x.id) === String(movie.id));
+  if (alreadyIn) {
+    // Remove from watchlist
+    state.watchlist = state.watchlist.filter(x => String(x.id) !== String(movie.id));
+  } else {
+    // Add to watchlist
+    addToWatchlist(movie, null);
+  }
+  saveWatchlistToStorage();
+  updateWatchlistUI();
+  updateWLCount();
+  _updateModalWatchlistPill();
+};
+
+/* ─── Helper: sync watchlist pill in modal ───────────────────────────────── */
+function _updateModalWatchlistPill() {
+  const movie = state.currentModalMovie;
+  const watchlistPill = document.getElementById('m-watchlist-pill');
+  const watchlistLabel = watchlistPill ? watchlistPill.querySelector('.urb-watchlist-label') : null;
+  
+  if (!watchlistPill || !movie) return;
+  
+  const inWatchlist = state.watchlist.find(x => String(x.id) === String(movie.id));
+  if (inWatchlist) {
+    watchlistPill.classList.add('added');
+    if (watchlistLabel) watchlistLabel.textContent = 'In Watchlist';
+  } else {
+    watchlistPill.classList.remove('added');
+    if (watchlistLabel) watchlistLabel.textContent = 'Add to Watchlist';
+  }
+}
 
 export function showHomePage() {
   clearSearch(true);
