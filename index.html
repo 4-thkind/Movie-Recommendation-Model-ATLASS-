@@ -895,7 +895,8 @@
 
 <!-- ═══ BOTTOM NAV ═══ -->
 <!-- ═══ TIKTOK-NAV INLINE SEARCH PANEL ═══ -->
-<!-- Appears above the nav when Search tab is tapped. Hidden by default. -->
+<!-- Appears in center of screen with blurred overlay when Search tab is tapped. Hidden by default. -->
+<div id="tt-search-overlay" class="tt-search-overlay" style="display:none;"></div>
 <div id="tt-search-panel" class="tt-search-panel" style="display:none;">
   <div class="tt-search-panel-inner">
     <div class="tt-search-wrapper">
@@ -908,9 +909,6 @@
       </button>
       <div id="search-suggestions" class="search-suggestions-dropdown" style="display:none;"></div>
     </div>
-    <button class="tuner-toggle-btn" id="tuner-toggle-btn" onclick="toggleTasteTuner()" title="Tune Taste Weights">
-      <i class="fa-solid fa-sliders"></i>
-    </button>
     <button class="tt-search-panel-close" onclick="window.closeSearchPanel&&window.closeSearchPanel()">
       <i class="fa-solid fa-xmark"></i>
     </button>
@@ -963,8 +961,17 @@
     clickedEl.classList.add('active');
   }
   function openSearchTab() {
-    if (typeof window.openSearchPanel === 'function') {
-      window.openSearchPanel();
+    const panel = document.getElementById('tt-search-panel');
+    if (panel && panel.style.display !== 'none') {
+      // If already open, close it
+      if (typeof window.closeSearchPanel === 'function') {
+        window.closeSearchPanel();
+      }
+    } else {
+      // If not open, open it
+      if (typeof window.openSearchPanel === 'function') {
+        window.openSearchPanel();
+      }
     }
   }
   function toggleProfile() {

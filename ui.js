@@ -3779,11 +3779,13 @@ export function initScrollReveal() {
 
 let _searchCommitted = false;
 
-/** Open the search panel above the tiktok-nav */
+/** Open the search panel centered with overlay */
 window.openSearchPanel = function() {
   const panel = document.getElementById('tt-search-panel');
+  const overlay = document.getElementById('tt-search-overlay');
   if (!panel) return;
   _searchCommitted = false;
+  if (overlay) overlay.style.display = 'block';
   panel.style.display = 'flex';
   // Mark Search tab active in tiktok-nav
   document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => el.classList.remove('active'));
@@ -3797,7 +3799,9 @@ window.openSearchPanel = function() {
 /** Close the search panel (keeps results visible in main) */
 window.closeSearchPanel = function() {
   const panel = document.getElementById('tt-search-panel');
+  const overlay = document.getElementById('tt-search-overlay');
   if (panel) panel.style.display = 'none';
+  if (overlay) overlay.style.display = 'none';
   closeSuggestionsDropdown();
 };
 
@@ -4036,6 +4040,14 @@ window.addEventListener('DOMContentLoaded', () => {
       window.closeSearchPanel();
     }
   });
+  
+  // Click on search overlay to close
+  const searchOverlay = document.getElementById('tt-search-overlay');
+  if (searchOverlay) {
+    searchOverlay.addEventListener('click', () => {
+      window.closeSearchPanel();
+    });
+  }
 });
 
 // Expose scrollRow, scrollPlat, and modal utilities to window for legacy inline HTML attributes compatibility
