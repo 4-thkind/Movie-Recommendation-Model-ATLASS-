@@ -1425,20 +1425,21 @@ footer{background:var(--b1);border-top:1px solid rgba(255,255,255,.04);padding:4
   border-radius: 14px;
   padding: 10px 14px;
   min-height: 58px;
-  overflow: hidden;
 }
 
-/* Inner flex row — starts with centered pill, expands to two sides */
+/* Inner flex row */
 .urb-inner {
   display: flex;
   align-items: center;
-  justify-content: center;   /* default: pill centred */
-  gap: 0;
+  justify-content: space-between;
   width: 100%;
-  transition: justify-content 0s;  /* layout switch is instant; animations handle visuals */
 }
 
-/* ── Pill button ── */
+.urb-inner.watched {
+  justify-content: flex-start;
+}
+
+/* ── Watched pill ── */
 .urb-watched-pill {
   display: flex;
   align-items: center;
@@ -1449,128 +1450,142 @@ footer{background:var(--b1);border-top:1px solid rgba(255,255,255,.04);padding:4
   padding: 9px 20px 9px 9px;
   cursor: pointer;
   flex-shrink: 0;
-  /* smooth all colour / border changes */
   transition:
-    background    .25s ease,
-    border-color  .25s ease,
-    padding       .25s ease,
-    transform     .28s cubic-bezier(.34,1.56,.64,1);
+    background   0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Hover — inactive state */
-.urb-watched-pill:not(.active):hover {
-  background: rgba(255,255,255,.07);
-  border-color: rgba(255,255,255,.22);
-}
+.urb-watched-pill:not(.active):hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.22); }
+.urb-watched-pill.active             { background: rgba(245,197,24,.12); border-color: var(--y); }
+.urb-watched-pill.active:hover       { background: rgba(245,197,24,.2); }
 
-/* Active (watched) state */
-.urb-watched-pill.active {
-  background: rgba(245,197,24,.12);
-  border-color: var(--y);
-}
-.urb-watched-pill.active:hover {
-  background: rgba(245,197,24,.2);
-}
-
-/* ── Icon circle ── */
+/* ── Icon circle (watched pill) ── */
 .urb-icon-wrap {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 34px; height: 34px;
   border-radius: 50%;
   background: rgba(255,255,255,.06);
   border: 1.5px solid rgba(255,255,255,.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  transition:
-    background     .25s ease,
-    border-color   .25s ease;
+  transition: background 0.55s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.urb-watched-pill.active .urb-icon-wrap { background: var(--y); border-color: var(--y); }
 
-/* The two icons — only one visible at a time */
 .urb-icon-wrap i {
   position: absolute;
-  font-size: 14px;
-  color: var(--t2);
-  transition: opacity .2s ease, transform .2s ease, color .2s ease;
+  font-size: 14px; color: var(--t2);
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), color 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.urb-icon-q                          { opacity: 1; transform: scale(1) rotate(0deg); }
+.urb-icon-eye                        { opacity: 0; transform: scale(0.5) rotate(-15deg); }
+.urb-watched-pill.active .urb-icon-q   { opacity: 0; transform: scale(0.5) rotate(15deg); }
+.urb-watched-pill.active .urb-icon-eye { opacity: 1; transform: scale(1) rotate(0deg); }
+.urb-watched-pill.active .urb-icon-wrap i { color: #000; }
 
-/* Initial: question mark visible, eye hidden */
-.urb-icon-q   { opacity: 1; transform: scale(1); }
-.urb-icon-eye { opacity: 0; transform: scale(.6); }
-
-/* Active: swap icons */
-.urb-watched-pill.active .urb-icon-q   { opacity: 0; transform: scale(.6); }
-.urb-watched-pill.active .urb-icon-eye { opacity: 1; transform: scale(1); }
-
-/* Active icon circle */
-.urb-watched-pill.active .urb-icon-wrap {
-  background: var(--y);
-  border-color: var(--y);
-}
-.urb-watched-pill.active .urb-icon-wrap i {
-  color: #000;
-}
-
-/* ── Pill label text ── */
+/* ── Watched label ── */
 .urb-watched-label {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--t1);
-  letter-spacing: .01em;
-  white-space: nowrap;
-  transition: color .22s ease;
+  font-size: 14px; font-weight: 700; color: var(--t1);
+  letter-spacing: .01em; white-space: nowrap;
   font-family: 'Syne', sans-serif;
+  transition: color 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.urb-watched-pill.active .urb-watched-label {
-  color: var(--y);
+.urb-watched-pill.active .urb-watched-label { color: var(--y); }
+
+/* ══ Watchlist wrap — always in DOM, fades with transform ══ */
+.urb-watchlist-wrap {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+  transition:
+    opacity   0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.urb-watchlist-wrap.hidden {
+  opacity: 0;
+  transform: translateX(12px) scale(0.92);
+  pointer-events: none;
 }
 
-/* ── Rating side (hidden → revealed) ── */
+/* ── Watchlist pill ── */
+.urb-watchlist-pill {
+  display: flex; align-items: center; gap: 11px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 50px;
+  padding: 9px 20px 9px 9px;
+  cursor: pointer; flex-shrink: 0; white-space: nowrap;
+  transition:
+    background   0.3s ease,
+    border-color 0.3s ease,
+    transform    0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.urb-watchlist-pill:not(.added):hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.22); }
+.urb-watchlist-pill:active            { transform: scale(.95); }
+.urb-watchlist-pill.added             { background: rgba(167,139,250,.12); border-color: var(--vl); }
+.urb-watchlist-pill.added:hover       { background: rgba(167,139,250,.2); }
+
+/* ── Watchlist icon circle ── */
+.urb-watchlist-icon {
+  position: relative; width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.14);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: background .35s cubic-bezier(0.16, 1, 0.3, 1), border-color .35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.urb-watchlist-pill.added .urb-watchlist-icon { background: var(--vl); border-color: var(--vl); }
+.urb-watchlist-icon i {
+  position: absolute; font-size: 14px; color: var(--t2);
+  transition: opacity .3s ease, transform .3s cubic-bezier(0.34, 1.56, 0.64, 1), color .3s ease;
+}
+.urb-icon-plus  { opacity: 1; transform: scale(1) rotate(0deg); }
+.urb-icon-check { opacity: 0; transform: scale(0.5) rotate(-45deg); }
+.urb-watchlist-pill.added .urb-icon-plus  { opacity: 0; transform: scale(0.5) rotate(45deg); }
+.urb-watchlist-pill.added .urb-icon-check { opacity: 1; transform: scale(1) rotate(0deg); }
+.urb-watchlist-pill.added .urb-watchlist-icon i { color: #000; }
+
+/* ── Watchlist label ── */
+.urb-watchlist-label {
+  font-size: 14px; font-weight: 700; color: var(--t1);
+  letter-spacing: .01em; white-space: nowrap;
+  font-family: 'Syne', sans-serif;
+  transition: color .35s ease;
+}
+.urb-watchlist-pill.added .urb-watchlist-label { color: var(--vl); }
+
+/* ══ Rating side — always in DOM, fades with transform ══ */
 .urb-rating-side {
   display: flex;
   align-items: center;
   gap: 14px;
-  /* start hidden, collapsed to zero width */
-  max-width: 0;
+  margin-left: 4px;
   opacity: 0;
-  overflow: hidden;
+  transform: translateX(-16px);
   pointer-events: none;
-  /* slide + fade in */
   transition:
-    max-width .3s cubic-bezier(.4,0,.2,1),
-    opacity   .25s ease .08s;        /* opacity lags slightly behind width */
+    opacity   0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
 }
-
-/* Revealed state — driven by .urb-inner.watched on the parent */
-.urb-inner.watched .urb-rating-side {
-  max-width: 360px;
+.urb-rating-side.visible {
   opacity: 1;
-  pointer-events: all;
-}
-
-/* When rating side is visible, push pill to the left */
-.urb-inner.watched {
-  justify-content: flex-start;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 /* Vertical divider */
 .urb-divider {
-  width: 1px;
-  height: 30px;
+  width: 1px; height: 30px;
   background: rgba(255,255,255,.1);
-  flex-shrink: 0;
-  margin: 0 4px 0 16px;
+  flex-shrink: 0; margin: 0 4px 0 16px;
 }
 
 /* "Give Your Rating" label */
 .urb-give-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--t3);
-  white-space: nowrap;
+  font-size: 13px; font-weight: 500; color: var(--t3); white-space: nowrap;
 }
 
 /* ── Stars ── */
