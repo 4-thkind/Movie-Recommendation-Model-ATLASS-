@@ -1,6 +1,7 @@
 export const state = {
   tmdbCache: {},
   watchlist: [],
+  watchlistToRestore: [], // array of movie ids that were in watchlist before being marked as watched
   currentModalMovie: null,
   currentHeroMovie: null,
   currentSurpriseMovie: null,
@@ -21,6 +22,7 @@ export const state = {
 // LocalStorage helpers
 export function saveWatchlistToStorage() {
   localStorage.setItem('user_watchlist', JSON.stringify(state.watchlist));
+  localStorage.setItem('user_watchlist_to_restore', JSON.stringify(state.watchlistToRestore));
 }
 
 export function loadWatchlistFromStorage() {
@@ -33,6 +35,16 @@ export function loadWatchlistFromStorage() {
     }
   } else {
     state.watchlist = [];
+  }
+  const savedWLR = localStorage.getItem('user_watchlist_to_restore');
+  if (savedWLR) {
+    try {
+      state.watchlistToRestore = JSON.parse(savedWLR);
+    } catch(e) {
+      state.watchlistToRestore = [];
+    }
+  } else {
+    state.watchlistToRestore = [];
   }
 }
 
