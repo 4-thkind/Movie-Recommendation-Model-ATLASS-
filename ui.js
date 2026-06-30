@@ -2540,15 +2540,7 @@ export function toggleProviderCheckbox(event) {
 
 /* ─── SETTINGS MODAL OPERATORS ─── */
 export function openSettingsModal() {
-  document.getElementById('tmdb-key-input').value = localStorage.getItem('tmdb_api_key') || '';
-  
-  switchSettingsTab('api-integration');
-  
-  const runtimeMin = Math.round((Date.now() - sessionStart) / 60000);
-  const runtimeValEl = document.getElementById('session-runtime-val');
-  if (runtimeValEl) {
-    runtimeValEl.textContent = `${runtimeMin}m`;
-  }
+  switchSettingsTab('user-preferences');
   
   const favGenresStr = localStorage.getItem('fav_genres');
   let favGenres = [];
@@ -2598,18 +2590,6 @@ export function openSettingsModal() {
     bendValEl.textContent = bendVal.toFixed(1);
   }
 
-  const key = document.getElementById('tmdb-key-input').value.trim();
-  if (key) {
-    testTMDBConnection();
-  } else {
-    const dot = document.getElementById('connection-status-indicator');
-    const text = document.getElementById('connection-status-text');
-    const latencyValEl = document.getElementById('tmdb-latency-val');
-    if (dot) dot.className = 'status-dot';
-    if (text) text.textContent = 'API Key is not configured.';
-    if (latencyValEl) latencyValEl.textContent = 'N/A';
-  }
-  
   document.getElementById('settings-overlay').classList.add('on');
   document.body.style.overflow = 'hidden';
 }
@@ -2626,15 +2606,6 @@ export function handleSettingsOverlay(e) {
 }
 
 export function saveSettings() {
-  const oldKey = localStorage.getItem('tmdb_api_key') || '';
-  const newKey = document.getElementById('tmdb-key-input').value.trim();
-  
-  if (newKey) {
-    localStorage.setItem('tmdb_api_key', newKey);
-  } else {
-    localStorage.removeItem('tmdb_api_key');
-  }
-  
   const selectedPills = document.querySelectorAll('.genre-pill.selected');
   const favGenres = Array.from(selectedPills).map(pill => pill.dataset.genre);
   localStorage.setItem('fav_genres', JSON.stringify(favGenres));
