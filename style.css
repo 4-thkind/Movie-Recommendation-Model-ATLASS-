@@ -281,23 +281,42 @@ body.light-theme .pd-item:hover {
 .nav-search input::placeholder{color:var(--t3)}
 /* ─── TIKTOK STYLE BOTTOM NAV ─── */
 /* ── TIKTOK-NAV INLINE SEARCH PANEL ── */
-/* Sits just above the bottom nav — slides up when Search is tapped */
+/* Centered modal with blurred overlay when Search is tapped */
+.tt-search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1000;
+  animation: overlay-fade-in 0.25s ease-out both;
+}
+
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .tt-search-panel {
   position: fixed;
-  bottom: 100px; /* just above the nav (nav bottom=24 + nav height~56 = ~80px + gap) */
+  top: 30%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   width: 90%;
   max-width: 480px;
   z-index: 1001;
   display: flex;
   flex-direction: column;
   gap: 0;
-  animation: panel-slide-up 0.22s cubic-bezier(.34,1.3,.64,1) both;
+  animation: panel-scale-in 0.25s cubic-bezier(.34,1.3,.64,1) both;
 }
-@keyframes panel-slide-up {
-  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@keyframes panel-scale-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 .tt-search-panel-inner {
   display: flex;
@@ -320,8 +339,8 @@ body.light-theme .pd-item:hover {
 }
 /* Suggestions dropdown inside panel — positioned relative to the wrapper */
 .tt-search-panel .search-suggestions-dropdown {
-  bottom: calc(100% + 8px);
-  top: auto;
+  top: calc(100% + 8px);
+  bottom: auto;
   border-radius: 16px;
 }
 /* Clear button inside input */
