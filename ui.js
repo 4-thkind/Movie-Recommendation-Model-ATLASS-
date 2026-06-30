@@ -1,8 +1,8 @@
-import { state, saveWatchlistToStorage } from './state.js?v=15';
-import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=15';
-import { MOVIES } from './data.js?v=15';
-import { initializeRecommender, calculateMatchScore } from './recommender.js?v=15';
-import { createCircularGallery } from './CircularGallery.js?v=15';
+import { state, saveWatchlistToStorage } from './state.js?v=28';
+import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=28';
+import { MOVIES } from './data.js?v=28';
+import { initializeRecommender, calculateMatchScore } from './recommender.js?v=28';
+import { createCircularGallery } from './CircularGallery.js?v=28';
 
 const sessionStart = Date.now();
 
@@ -2772,7 +2772,9 @@ export function clearSearch(skipHashUpdate = false) {
 }
 
 let searchDebounce;
-const SEARCH_PAGE_SIZE = 20; // cards rendered per load-more click
+const SEARCH_INITIAL_SIZE = 72;  // initial render — ~9 rows at 8 columns
+const SEARCH_MORE_SIZE    = 48;  // each Load More click — ~6 rows at 8 columns
+const SEARCH_PAGE_SIZE = SEARCH_MORE_SIZE;
 
 export function handleSearchInput(e) {
   state.isShowingGenre = false;
@@ -2921,7 +2923,7 @@ export function handleSearchInput(e) {
       } else {
         _appendSearchCards(firstBatch, searchResults);
       }
-      if (searchSec) searchSec.style.display = 'block';
+      if (searchSec) { searchSec.style.removeProperty('display'); searchSec.style.display = 'block'; }
 
       const hasMore = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
                       _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
@@ -2995,12 +2997,46 @@ export function handleSearchInput(e) {
   }, 280);
 }
 
-/** Merge movies + TV + person titles, deduplicate, and sort by composite relevance */
+/** Merge movies + TV + person titles, deduplicate, and sort by composite relevance.
+ *
+ *  Scoring weights (all additive, higher = better rank):
+ *
+ *  TITLE RELEVANCE  — 0–500 pts  (highest weight — what you typed matters most)
+ *    500 : exact match  ("batman" → "Batman")
+ *    420 : title starts with query  ("bat" → "Batman Begins")
+ *    340 : query is a word inside the title  ("man" → "Batman")
+ *    200 : all query words present  ("dark knight" → "The Dark Knight")
+ *    100 : most query words present (partial keyword match)
+ *      0 : no meaningful match
+ *
+ *  YEAR (recency)   — 0–180 pts  (high weight — newer = more likely what user wants)
+ *    Linearly scaled: 2025 → 180, 2020 → 150, 2010 → 90, 2000 → 30, pre-1995 → 0
+ *    This ensures "The Batman (2022)" beats "Batman (1989)" for the query "batman"
+ *
+ *  RATING           — 0–80 pts   (medium weight)
+ *    vote_average (0–10) scaled to 0–80, dampened by vote count trust
+ *    (< 300 votes = partial trust so obscure 10/10 films don't cheat)
+ *
+ *  POPULARITY       — 0–60 pts   (medium-low weight)
+ *    log-scale of TMDb popularity score, capped at 60
+ *    Reflects current trending/cultural relevance
+ *
+ *  VOTE COUNT       — 0–20 pts   (low weight, tie-breaker)
+ *    log-scale so widely-seen films edge out obscure ones at equal rating
+ *
+ *  OBSCURITY PENALTY — up to −300 pts
+ *    Buries junk entries (< 5 votes, < 2 popularity)
+ *
+ *  PERSON BOOST     — +40 pts
+ *    Items from a person-credit search get a small bump so they surface above
+ *    unrelated title matches of the same name
+ */
 function _mergeAndSort(movies, tvs, personTitles, q) {
-  // Deduplicate
+  // Deduplicate — also drop items with no poster (grey placeholder cards)
   const seen = new Set();
   const combined = [];
   [...movies, ...tvs, ...personTitles].forEach(item => {
+    if (!item.poster_path && !item.poster) return;
     const key = `${item.mediaType}-${item.id}`;
     if (!seen.has(key)) {
       seen.add(key);
@@ -3011,63 +3047,88 @@ function _mergeAndSort(movies, tvs, personTitles, q) {
     }
   });
 
-  // Split query into individual keywords for partial matching
-  const words = q.split(/\s+/).filter(Boolean);
+  const words = q.trim().split(/\s+/).filter(Boolean);
+  const qNorm = q.trim().toLowerCase();
+  const currentYear = new Date().getFullYear();
 
-  // Score every result by relevance
   combined.forEach(item => {
-    const t = (item.title || item.name || '').toLowerCase();
+    const raw   = (item.title || item.name || '').trim();
+    const t     = raw.toLowerCase();
+
+    // ── 1. TITLE RELEVANCE (0–500) ────────────────────────────────────────
     let titleScore = 0;
-    if (t === q) {
-      titleScore = 300;                                    // exact phrase
-    } else if (t.startsWith(q)) {
-      titleScore = 250;                                    // phrase at start
-    } else if (t.includes(q)) {
-      titleScore = 200;                                    // phrase anywhere
-    } else {
-      // keyword match — score by fraction of words found
+    if (t === qNorm) {
+      titleScore = 500;                                      // exact
+    } else if (t.startsWith(qNorm)) {
+      titleScore = 420;                                      // starts with
+    } else if (t.includes(qNorm)) {
+      titleScore = 340;                                      // substring
+    } else if (words.length > 1) {
       const matched = words.filter(w => t.includes(w));
-      titleScore = matched.length > 0
-        ? Math.round((matched.length / words.length) * 150)
-        : 0;
+      const ratio   = matched.length / words.length;
+      titleScore = ratio === 1 ? 200                        // all words
+               : ratio >= 0.5 ? Math.round(ratio * 100)    // most words
+               : 0;
+    } else {
+      // Single word query — check if it appears as a standalone word in title
+      const wordBoundary = new RegExp(`\\b${qNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+      titleScore = wordBoundary.test(raw) ? 180 : 0;
     }
 
-    // Popularity: log-scale so trending/popular titles stand out clearly
-    // TMDB popularity ranges roughly 1–5000+
-    const pop = item.popularity || 0;
-    const popScore = pop > 0
-      ? Math.min(100, Math.round((Math.log(pop + 1) / Math.log(5001)) * 100))
+    // ── 2. YEAR / RECENCY (0–180) ─────────────────────────────────────────
+    const dateStr = item.release_date || item.first_air_date || '';
+    const year    = dateStr ? parseInt(dateStr.split('-')[0], 10) : 0;
+    // Linear: 2025 → 180, 1995 → 0, older → 0
+    const yearScore = year > 0
+      ? Math.max(0, Math.min(180, Math.round(((year - 1995) / (currentYear - 1995)) * 180)))
       : 0;
 
-    // Rating: scale 0–10 to 0–80, weighted by vote count
-    // A 8.0 with 1000 votes beats a 9.5 with 3 votes
+    // ── 3. RATING (0–80) ──────────────────────────────────────────────────
     const rating     = item.vote_average || 0;
     const votes      = item.vote_count   || 0;
-    const voteWeight = Math.min(1, votes / 300);   // fully trusted at 300+ votes
+    const voteWeight = Math.min(1, votes / 300);
     const ratingScore = Math.round((rating / 10) * 80 * voteWeight);
 
-    // Obscurity penalty — buries unknown/no-poster junk entries that have almost
-    // no votes and near-zero popularity so they never steal the top spots
-    const obscurityPenalty = (votes < 5 && pop < 2)  ? 250
-                           : (votes < 20 && pop < 5) ? 120
+    // ── 4. POPULARITY (0–60) ──────────────────────────────────────────────
+    const pop      = item.popularity || 0;
+    const popScore = pop > 0
+      ? Math.min(60, Math.round((Math.log(pop + 1) / Math.log(5001)) * 60))
+      : 0;
+
+    // ── 5. VOTE COUNT (0–20, tie-breaker) ────────────────────────────────
+    const voteScore = votes > 0
+      ? Math.min(20, Math.round((Math.log(votes + 1) / Math.log(100001)) * 20))
+      : 0;
+
+    // ── 6. PERSON BOOST ───────────────────────────────────────────────────
+    const personBoost = item.personReason ? 40 : 0;
+
+    // ── 7. OBSCURITY PENALTY ──────────────────────────────────────────────
+    const obscurityPenalty = (votes < 5  && pop < 2) ? 300
+                           : (votes < 20 && pop < 5) ? 150
                            : 0;
 
-    item._relevance = titleScore + popScore + ratingScore - obscurityPenalty;
+    item._relevance = titleScore + yearScore + ratingScore + popScore + voteScore + personBoost - obscurityPenalty;
+    item._titleScore = titleScore; // kept for tie-breaking
+    item._year       = year;
   });
 
-  // Keep only items where at least one keyword matched the title (remove API noise)
-  // Also keep person-reason items (cast/director matches)
+  // Keep only items with at least some title relevance (or a person reason)
   const relevant = combined.filter(item => {
     if (item.personReason) return true;
-    const t = (item.title || item.name || '').toLowerCase();
-    return words.some(w => t.includes(w));
+    return item._titleScore > 0;
   });
   const list = relevant.length > 0 ? relevant : combined;
 
-  // Sort by relevance descending
-  list.sort((a, b) => b._relevance - a._relevance);
+  // Primary sort: composite score descending
+  // Tie-break: if scores within 5pts, prefer newer release year
+  list.sort((a, b) => {
+    const diff = b._relevance - a._relevance;
+    if (Math.abs(diff) > 5) return diff;
+    return (b._year || 0) - (a._year || 0);
+  });
 
-  // Assign descending match % (99 → 70) based on rank position
+  // Assign descending match % (99 → 70)
   const total = list.length;
   list.forEach((item, idx) => {
     item.match = total <= 1 ? 99 : Math.round(99 - (idx / (total - 1)) * 29);
@@ -3110,43 +3171,113 @@ async function _loadMoreSearchResults(q, container, countEl, lmWrap, lmBtn) {
   _searchState.loading = true;
   if (lmBtn) { lmBtn.disabled = true; lmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading…'; }
 
+  // Helper: render exactly `target` new cards from a list, with stagger animation
+  function _renderItems(items, target) {
+    let added = 0;
+    for (const item of items) {
+      if (added >= target) break;
+      const key = `${item.mediaType||'movie'}-${item.id}`;
+      if (_searchState.rendered.has(key)) continue;
+      _searchState.rendered.add(key);
+      let cardId = `tmdb-${item.mediaType||'movie'}-${item.id}`;
+      if (item.mediaType === 'movie' && state.movieLensData && state.movieLensData.loaded) {
+        const ml = Object.values(state.movieLensData.movies).find(m => m.tmdbId == item.id);
+        if (ml) cardId = ml.movieId;
+      }
+      const card = buildCard(cardId, item);
+      card.classList.add('entering');
+      card.style.animationDelay = `${Math.min(added * 18, 400)}ms`;
+      container.appendChild(card);
+      added++;
+    }
+    return added;
+  }
+
+  // ── Step 1: try the local buffer first ──────────────────────────────────
+  const bufferSlice = _searchState.allResults.slice(_searchState.offlineOffset);
+  const fromBuffer  = _renderItems(bufferSlice, SEARCH_MORE_SIZE);
+  // Advance offset by how far we actually walked (including skipped dupes)
+  // Find new offset: walk again to count consumed positions
+  let consumed = 0, counted = 0;
+  for (const item of bufferSlice) {
+    if (counted >= fromBuffer && !_searchState.rendered.has(`${item.mediaType||'movie'}-${item.id}`)) break;
+    consumed++;
+    if (counted < fromBuffer) {
+      const key = `${item.mediaType||'movie'}-${item.id}`;
+      // Already rendered above — just count positions walked
+      counted = Math.min(fromBuffer, counted + (_searchState.rendered.has(key) ? 1 : 0));
+    }
+  }
+  _searchState.offlineOffset += consumed || bufferSlice.length;
+
+  // If we already got a full batch, done
+  if (fromBuffer >= SEARCH_MORE_SIZE) {
+    _searchState.loading = false;
+    const hasMoreBuffer = _searchState.offlineOffset < _searchState.allResults.length;
+    const hasMorePages  = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
+                          _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
+    if (lmWrap) lmWrap.style.display = (hasMoreBuffer || hasMorePages) ? 'block' : 'none';
+    if (lmBtn) { lmBtn.disabled = false; lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results'; }
+    return;
+  }
+
+  // ── Step 2: buffer didn't fill the batch — fetch 3 more TMDb pages ──────
+  const still = SEARCH_MORE_SIZE - fromBuffer;
   const fetches = [];
-  if (_searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages) {
-    const nextPage = _searchState.tmdbMoviePage + 1;
+
+  // Always fetch at least 3 pages (movie + tv) to guarantee enough new cards
+  for (let i = 0; i < 3; i++) {
+    const mp = _searchState.tmdbMoviePage + 1 + i;
+    const tp = _searchState.tmdbTvPage + 1 + i;
     fetches.push(
-      fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=${nextPage}`)
-        .then(r=>r.json()).then(d=>{ _searchState.tmdbMoviePage = nextPage; _searchState.tmdbMovieTotalPages = d.total_pages||1; return (d.results||[]).map(i=>({...i,mediaType:'movie'})); })
+      fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=${mp}`)
+        .then(r=>r.json())
+        .then(d => {
+          if (i === 2) _searchState.tmdbMoviePage = mp; // update after last batch
+          _searchState.tmdbMovieTotalPages = d.total_pages || _searchState.tmdbMovieTotalPages;
+          return (d.results||[]).map(x=>({...x, mediaType:'movie'}));
+        })
         .catch(()=>[])
     );
-  }
-  if (_searchState.tmdbTvPage < _searchState.tmdbTvTotalPages) {
-    const nextPage = _searchState.tmdbTvPage + 1;
     fetches.push(
-      fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=${nextPage}`)
-        .then(r=>r.json()).then(d=>{ _searchState.tmdbTvPage = nextPage; _searchState.tmdbTvTotalPages = d.total_pages||1; return (d.results||[]).map(i=>({...i,mediaType:'tv'})); })
+      fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=${tp}`)
+        .then(r=>r.json())
+        .then(d => {
+          if (i === 2) _searchState.tmdbTvPage = tp;
+          _searchState.tmdbTvTotalPages = d.total_pages || _searchState.tmdbTvTotalPages;
+          return (d.results||[]).map(x=>({...x, mediaType:'tv'}));
+        })
         .catch(()=>[])
     );
   }
 
   const batches = await Promise.all(fetches);
   const allNew  = batches.flat();
-  const sorted  = _mergeAndSort(
+
+  if (allNew.length === 0) {
+    _searchState.loading = false;
+    if (lmWrap) lmWrap.style.display = 'none';
+    if (lmBtn) { lmBtn.disabled = false; lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results'; }
+    return;
+  }
+
+  const sorted = _mergeAndSort(
     allNew.filter(i=>i.mediaType==='movie'),
     allNew.filter(i=>i.mediaType==='tv'),
-    [],
-    q
+    [], q
   );
 
-  _appendSearchCards(sorted, container);
+  // Append new items to buffer, then render remainder of the batch
+  _searchState.allResults = [..._searchState.allResults, ...sorted];
+  _renderItems(sorted, still);
+  _searchState.offlineOffset = _searchState.allResults.length; // consumed all new items
 
   _searchState.loading = false;
-  const hasMore = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
-                  _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
-  if (lmWrap) lmWrap.style.display = hasMore ? 'block' : 'none';
-  if (lmBtn)  {
-    lmBtn.disabled = false;
-    lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results';
-  }
+  // There are always more pages on TMDb for popular queries
+  const hasMorePages = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
+                       _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
+  if (lmWrap) lmWrap.style.display = hasMorePages ? 'block' : 'none';
+  if (lmBtn) { lmBtn.disabled = false; lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results'; }
 }
 
 /** Load the next page of offline results */
@@ -3467,28 +3598,15 @@ function _updateHeroDots(total, active) {
   }
 }
 
-function _startProgress() {
-  const fill = document.querySelector('.hero-progress-fill');
-  if (!fill) return;
-  fill.style.transition = 'none';
-  fill.style.width = '0%';
-  // Force reflow so the transition reset takes effect
-  fill.getBoundingClientRect();
-  fill.style.transition = `width ${HERO_ROTATION_DURATION}ms linear`;
-  fill.style.width = '100%';
-}
-
 function _restartProgress() {
   clearInterval(heroRotationInterval);
   // Guard: need at least 2 slides to rotate
   if (heroRotationPool.length < 2) return;
-  _startProgress();
   heroRotationInterval = setInterval(() => {
     if (heroRotationPool.length < 2) return;
     heroRotationIndex = (heroRotationIndex + 1) % heroRotationPool.length;
     _showHeroSlide(heroRotationIndex);
     _updateHeroDots(heroRotationPool.length, heroRotationIndex);
-    _startProgress();
   }, HERO_ROTATION_DURATION);
 }
 
@@ -3521,8 +3639,6 @@ export async function startHeroRotation() {
 export function stopHeroRotation() {
   clearInterval(heroRotationInterval);
   heroRotationInterval = null;
-  const fill = document.querySelector('.hero-progress-fill');
-  if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
   const dotsEl = document.getElementById('hero-dots');
   if (dotsEl) dotsEl.innerHTML = '';
 }
@@ -3664,16 +3780,18 @@ window.commitSearch = function() {
     searchResults.innerHTML = '';
     _searchState = {
       q,
-      tmdbMoviePage: 1,
-      tmdbTvPage: 1,
+      tmdbMoviePage: 3,  // pages 1-3 already fetched upfront
+      tmdbTvPage: 2,     // pages 1-2 already fetched upfront
       tmdbMovieTotalPages: _autocompleteCache.tmdbMovieTotalPages  || 1,
       tmdbTvTotalPages:    _autocompleteCache.tmdbTvTotalPages     || 1,
       rendered: new Set(),
-      allResults: [],
+      allResults: results, // full sorted list — Load More slices through this
       offlineOffset: 0,
       loading: false,
     };
     document.body.classList.add('search-active');
+    // Remove any !important display:none set by showHomePage before revealing
+    searchSec.style.removeProperty('display');
     searchSec.style.display = 'block';
     if (countEl) {
       countEl.style.display = '';
@@ -3681,7 +3799,10 @@ window.commitSearch = function() {
       countEl.textContent = total > 0 ? `${total}+ results` : `${results.length} found`;
     }
     if (lmWrap) lmWrap.style.display = 'none';
-    results.forEach(item => {
+
+    // Render only the first page of results — Load More handles the rest
+    const firstPage = results.slice(0, SEARCH_INITIAL_SIZE);
+    firstPage.forEach((item, idx) => {
       const key = `${item.mediaType||'movie'}-${item.id}`;
       if (_searchState.rendered.has(key)) return;
       _searchState.rendered.add(key);
@@ -3692,12 +3813,22 @@ window.commitSearch = function() {
       }
       const card = buildCard(cardId, item);
       if (item.match) card.dataset.searchMatch = item.match;
+      card.classList.add('entering');
+      card.style.animationDelay = `${Math.min(idx * 18, 400)}ms`;
       searchResults.appendChild(card);
     });
-    const hasMore = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
-                    _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
-    if (lmWrap) lmWrap.style.display = hasMore ? 'block' : 'none';
-    if (lmBtn)  lmBtn.onclick = () => _loadMoreSearchResults(q, searchResults, countEl, lmWrap, lmBtn);
+    _searchState.offlineOffset = SEARCH_INITIAL_SIZE; // cursor into allResults buffer
+
+    // Show Load More if buffer has more OR TMDb has more pages
+    const hasMoreBuffer = _searchState.offlineOffset < results.length;
+    const hasMorePages  = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
+                          _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
+    if (lmWrap) lmWrap.style.display = (hasMoreBuffer || hasMorePages) ? 'block' : 'none';
+    if (lmBtn) {
+      lmBtn.disabled = false;
+      lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results';
+      lmBtn.onclick = () => _loadMoreSearchResults(q, searchResults, countEl, lmWrap, lmBtn);
+    }
     setTimeout(() => {
       searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3713,6 +3844,7 @@ window.commitSearch = function() {
   // Cache not ready yet — fetch fresh with same logic as autocomplete
   if (countEl) { countEl.style.display = ''; countEl.textContent = 'Searching…'; }
   document.body.classList.add('search-active');
+  searchSec.style.removeProperty('display');
   searchSec.style.display = 'block';
   searchResults.innerHTML = '';
 
@@ -3724,7 +3856,7 @@ window.commitSearch = function() {
       fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`).then(r=>r.json()).catch(()=>({results:[],total_pages:1,total_results:0})),
       fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=2`).then(r=>r.json()).catch(()=>({results:[],total_pages:1,total_results:0})),
       fetch(`https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`).then(r=>r.json()).catch(()=>({results:[]})),
-    ]).then(([m1, m2, m3, tv1, tv2, p]) => {
+    ]).then(async ([m1, m2, m3, tv1, tv2, p]) => {
       const movieSeen = new Set();
       const allMovies = [];
       [m1, m2, m3].forEach(page => {
@@ -3735,12 +3867,42 @@ window.commitSearch = function() {
       [tv1, tv2].forEach(page => {
         (page.results||[]).forEach(i => { if (!tvSeen.has(i.id)) { tvSeen.add(i.id); allTv.push({...i,mediaType:'tv'}); } });
       });
+
+      // Fetch full combined_credits for top matched people (not just known_for which is capped at 3)
       let personTitles = [];
-      (p.results||[]).slice(0,2).forEach(person => {
-        (person.known_for||[]).forEach(item => {
-          personTitles.push({...item, mediaType: item.media_type||'movie', personReason:{name:person.name, role:person.known_for_department==='Directing'?'Director':'Cast'}});
+      const topPersons = (p.results||[]).slice(0, 2);
+      if (topPersons.length > 0) {
+        const creditsFetches = await Promise.all(
+          topPersons.map(person =>
+            fetch(`https://api.themoviedb.org/3/person/${person.id}/combined_credits?api_key=${TMDB_API_KEY}`)
+              .then(r => r.json())
+              .then(credits => ({ person, credits }))
+              .catch(() => null)
+          )
+        );
+        const personSeen = new Set();
+        creditsFetches.forEach(res => {
+          if (!res) return;
+          const { person, credits } = res;
+          (credits.crew||[]).filter(i => i.job === 'Director').forEach(i => {
+            const key = `${i.media_type||'movie'}-${i.id}`;
+            if (!personSeen.has(key)) {
+              personSeen.add(key);
+              personTitles.push({...i, mediaType: i.media_type||'movie', personReason:{name:person.name, role:'Director'}});
+            }
+          });
+          (credits.cast||[]).forEach(i => {
+            const key = `${i.media_type||'movie'}-${i.id}`;
+            if (!personSeen.has(key)) {
+              personSeen.add(key);
+              personTitles.push({...i, mediaType: i.media_type||'movie', personReason:{name:person.name, role:'Cast'}});
+            }
+          });
         });
-      });
+        // Sort person titles by popularity so best work shows first
+        personTitles.sort((a, b) => (b.popularity||0) - (a.popularity||0));
+      }
+
       const sorted = _mergeAndSort(allMovies, allTv, personTitles, q);
       _autocompleteCache = {
         q, results: sorted,
@@ -4386,7 +4548,7 @@ export function updateNavbarActiveLink(activeId) {
 
 /* ─── LANDING PAGE: AUTHENTICATION & PROFILE ─── */
 
-import { saveAuthState } from './state.js?v=15';
+import { saveAuthState } from './state.js?v=28';
 
 window.switchLoginTab = function(tab) {
   const loginTab = document.getElementById('tab-login');
@@ -4692,8 +4854,8 @@ export function showGenreMovies(genreId, genreName) {
   }
 
   // ── Pagination state ──────────────────────────────────────────────────────
-  const ROWS_INITIAL = 10; // first load  — 10 complete rows
-  const ROWS_MORE    =  6; // each Load More — 6 complete rows
+  const GENRE_INITIAL_SIZE = 72; // first load  — ~9 rows at 8 columns (matches search)
+  const GENRE_MORE_SIZE    = 48; // each Load More — ~6 rows at 8 columns (matches search)
   let allItems    = [];     // full deduplicated pool (by TMDb id / MovieLens id)
   let rendered    = 0;      // cursor into allItems — how far we've sliced
   let tmdbPage    = 1;      // next TMDb page to fetch (online mode)
@@ -4701,63 +4863,17 @@ export function showGenreMovies(genreId, genreName) {
   const renderedIds = new Set(); // absolute guard: tracks every card id put into the DOM
 
   /**
-   * Get the actual number of columns in the grid.
-   * Since columns are fixed at 168px with 10px gap, we use three methods
-   * in priority order — all should agree.
+   * Append exactly `count` cards from the allItems buffer.
+   * Matches the flat-count approach used by the search section.
+   * @param {number} count  Number of cards to add.
    */
-  function getColumnCount() {
-    if (!grid) return 7;
-
-    // Method 1: count resolved column tracks from computed style
-    // With fixed 168px columns this returns "168px 168px 168px ..." — 100% accurate
-    try {
-      const tpl = getComputedStyle(grid).gridTemplateColumns;
-      if (tpl && tpl !== 'none' && tpl !== '') {
-        const cols = tpl.trim().split(/\s+/).length;
-        if (cols > 0) return cols;
-      }
-    } catch (_) {}
-
-    // Method 2: measure from actual first rendered card
-    const firstCard = grid.querySelector('.movie-card');
-    if (firstCard) {
-      const cardW = firstCard.getBoundingClientRect().width || firstCard.offsetWidth;
-      const gridW = grid.getBoundingClientRect().width || grid.offsetWidth;
-      if (cardW > 0 && gridW > 0) {
-        return Math.max(1, Math.round(gridW / cardW));
-      }
-    }
-
-    // Method 3: pure math — 168px card + 10px gap
-    const gridWidth = grid.offsetWidth || grid.getBoundingClientRect().width;
-    if (gridWidth > 0) {
-      return Math.max(1, Math.floor((gridWidth + 10) / (168 + 10)));
-    }
-
-    return 7;
-  }
-
-  /**
-   * Append exactly (rows × cols) cards, always completing any partial last row first.
-   * @param {number} rows  Number of COMPLETE new rows to add.
-   */
-  function renderBatch(rows) {
-    const cols = getColumnCount();
-
-    // Cards already in DOM
-    const currentCount = grid.children.length;
-
-    // If the last row is partial, fill it first before adding new rows
-    const remainder = currentCount % cols;
-    const fillLast = remainder === 0 ? 0 : (cols - remainder);
-
-    const total = fillLast + (rows * cols);
-
+  function renderBatch(count) {
     let added = 0;
-    while (added < total && rendered < allItems.length) {
+    while (added < count && rendered < allItems.length) {
       const item   = allItems[rendered];
       rendered++;
       const cardId = typeof item === 'number' ? String(item) : String(item.id);
+      // Skip duplicates but do NOT count them against the batch — keep looping
       if (renderedIds.has(cardId)) continue;
       renderedIds.add(cardId);
 
@@ -4766,32 +4882,9 @@ export function showGenreMovies(genreId, genreName) {
         typeof item === 'object' ? item : null
       );
       card.classList.add('entering');
-      card.style.animationDelay = `${(added % (cols * 2)) * 30}ms`;
+      card.style.animationDelay = `${(added % 16) * 30}ms`;
       grid.appendChild(card);
-      added++;
-    }
-
-    // Final safety pass: if we still have a partial last row (e.g. skipped dupes),
-    // keep topping up until the row is complete or we run out of items.
-    const afterCount = grid.children.length;
-    const afterRemainder = afterCount % cols;
-    if (afterRemainder !== 0) {
-      const needed = cols - afterRemainder;
-      let extra = 0;
-      while (extra < needed && rendered < allItems.length) {
-        const item   = allItems[rendered];
-        rendered++;
-        const cardId = typeof item === 'number' ? String(item) : String(item.id);
-        if (renderedIds.has(cardId)) continue;
-        renderedIds.add(cardId);
-        const card = buildCard(
-          typeof item === 'number' ? item : item.id,
-          typeof item === 'object' ? item : null
-        );
-        card.classList.add('entering');
-        grid.appendChild(card);
-        extra++;
-      }
+      added++; // only incremented for real, newly-added cards
     }
 
     updateLoadMore();
@@ -4826,13 +4919,14 @@ export function showGenreMovies(genreId, genreName) {
       fetching = true;
       updateLoadMore();
       try {
-        // Fetch 2 pages at a time to fill a full Load More batch quickly
-        const [r1, r2] = await Promise.all([
+        // Fetch 3 pages at a time to ensure a full Load More batch is always available
+        const [r1, r2, r3] = await Promise.all([
           fetchTMDBPage(tmdbPage),
-          fetchTMDBPage(tmdbPage + 1)
+          fetchTMDBPage(tmdbPage + 1),
+          fetchTMDBPage(tmdbPage + 2)
         ]);
-        tmdbPage += 2;
-        const combined = [...r1, ...r2];
+        tmdbPage += 3;
+        const combined = [...r1, ...r2, ...r3];
         combined.forEach(item => {
           if (!seen.has(item.id)) { seen.add(item.id); allItems.push(item); }
         });
@@ -4841,32 +4935,34 @@ export function showGenreMovies(genreId, genreName) {
       }
       fetching = false;
       if (renderAfter) {
-        renderBatch(rendered === 0 ? ROWS_INITIAL : ROWS_MORE);
+        renderBatch(rendered === 0 ? GENRE_INITIAL_SIZE : GENRE_MORE_SIZE);
       } else {
         updateLoadMore(); // just refresh button state after silent pre-fetch
       }
     }
 
-    // Wire Load More button — render from buffer first, silently pre-fetch more in background
+    // Wire Load More button — fetch more if buffer is thin, then render a full batch
     if (lmBtn) {
       lmBtn.onclick = () => {
-        if (rendered < allItems.length) {
-          renderBatch(ROWS_MORE);
-          // If buffer is getting thin, pre-fetch silently (no render on completion)
-          if (allItems.length - rendered < getColumnCount() * ROWS_MORE * 2) loadMoreTMDB(false);
+        const remaining = allItems.length - rendered;
+        if (remaining >= GENRE_MORE_SIZE) {
+          // Buffer has a full batch ready — render immediately
+          renderBatch(GENRE_MORE_SIZE);
+          // If buffer is getting thin after rendering, pre-fetch silently in background
+          if (allItems.length - rendered < GENRE_MORE_SIZE * 2) loadMoreTMDB(false);
         } else {
-          // Buffer exhausted — fetch and render
+          // Buffer is thin — fetch more first, then render a full batch
           loadMoreTMDB(true);
         }
       };
     }
 
-    // Initial load — fetch pages 1–4 upfront so the first render is rich
+    // Initial load — fetch pages 1–6 upfront so the buffer stays healthy after first render
     (async () => {
       fetching = true;
       try {
-        const pages = await Promise.all([1,2,3,4].map(p => fetchTMDBPage(p)));
-        tmdbPage = 5;
+        const pages = await Promise.all([1,2,3,4,5,6].map(p => fetchTMDBPage(p)));
+        tmdbPage = 7;
         pages.flat().forEach(item => {
           if (!seen.has(item.id)) { seen.add(item.id); allItems.push(item); }
         });
@@ -4874,7 +4970,7 @@ export function showGenreMovies(genreId, genreName) {
       fetching = false;
       // Clear skeletons before rendering real cards
       grid.querySelectorAll('.genre-skeleton').forEach(el => el.remove());
-      renderBatch(ROWS_INITIAL);
+      renderBatch(GENRE_INITIAL_SIZE);
     })();
 
   } else {
@@ -4893,10 +4989,10 @@ export function showGenreMovies(genreId, genreName) {
         return;
       }
 
-      renderBatch(ROWS_INITIAL);
+      renderBatch(GENRE_INITIAL_SIZE);
 
       if (lmBtn) {
-        lmBtn.onclick = () => renderBatch(ROWS_MORE);
+        lmBtn.onclick = () => renderBatch(GENRE_MORE_SIZE);
       }
     });
   }
@@ -5092,7 +5188,7 @@ export function updateSearchSuggestions(q) {
       const personP = fetch(`https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=1`)
         .then(r => r.json()).catch(() => ({ results: [] }));
 
-      Promise.all([...movieFetches, ...tvFetches, personP]).then((allData) => {
+      Promise.all([...movieFetches, ...tvFetches, personP]).then(async (allData) => {
         const moviePages  = allData.slice(0, 3);
         const tvPages     = allData.slice(3, 5);
         const personData  = allData[5];
@@ -5115,20 +5211,34 @@ export function updateSearchSuggestions(q) {
         });
 
         let personResults = [];
-        if (personData.results) {
-          personData.results.slice(0, 2).forEach(person => {
-            if (person.known_for) {
-              person.known_for.forEach(item => {
-                personResults.push({
-                  ...item,
-                  mediaType: item.media_type || 'movie',
-                  personReason: {
-                    name: person.name,
-                    role: person.known_for_department === 'Directing' ? 'Director' : 'Cast'
-                  }
-                });
-              });
-            }
+        if (personData.results && personData.results.length > 0) {
+          // Fetch full credits for top 2 people — same as main search, not just known_for
+          const creditsFetches = await Promise.all(
+            personData.results.slice(0, 2).map(person =>
+              fetch(`https://api.themoviedb.org/3/person/${person.id}/combined_credits?api_key=${TMDB_API_KEY}`)
+                .then(r => r.json())
+                .then(credits => ({ person, credits }))
+                .catch(() => null)
+            )
+          );
+          const personSeen = new Set();
+          creditsFetches.forEach(res => {
+            if (!res) return;
+            const { person, credits } = res;
+            (credits.crew || []).filter(i => i.job === 'Director' && i.poster_path).forEach(i => {
+              const key = `${i.media_type||'movie'}-${i.id}`;
+              if (!personSeen.has(key)) {
+                personSeen.add(key);
+                personResults.push({ ...i, mediaType: i.media_type||'movie', personReason: { name: person.name, role: 'Director' } });
+              }
+            });
+            (credits.cast || []).filter(i => i.poster_path).forEach(i => {
+              const key = `${i.media_type||'movie'}-${i.id}`;
+              if (!personSeen.has(key)) {
+                personSeen.add(key);
+                personResults.push({ ...i, mediaType: i.media_type||'movie', personReason: { name: person.name, role: 'Cast' } });
+              }
+            });
           });
         }
 
@@ -5522,19 +5632,209 @@ window.toggleTasteTuner = function() {
 
 export function triggerPersonSearch(name) {
   closeModal();
-  
-  if (typeof activeViewState !== 'undefined' && activeViewState !== 'home') {
-    activeViewState = 'home';
-    showHomePage();
-  }
+
+  // Clear any stale cache so the search always fetches fresh
+  _autocompleteCache = { q: '', results: [] };
 
   const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    searchInput.value = name;
-    searchInput.dispatchEvent(new Event('input'));
-    // Open the search panel so the user sees the results
-    if (typeof window.openSearchPanel === 'function') window.openSearchPanel();
-    else searchInput.focus();
+  if (searchInput) searchInput.value = name;
+
+  // Close the floating search bar so it doesn't block the results
+  if (typeof window.closeSearchPanel === 'function') window.closeSearchPanel();
+
+  if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
+    // Coming from the watchlist page — switch to home first, then search
+    // after the page transition so showHomePage doesn't nuke our results
+    activeViewState = 'home';
+    showHomePage();
+    setTimeout(() => _runPersonSearch(name), 350);
+  } else {
+    // Already on home — just run the search immediately
+    // Reset activeViewState so the navbar shows Search as active
+    activeViewState = 'home';
+    _runPersonSearch(name);
   }
 }
 window.triggerPersonSearch = triggerPersonSearch;
+
+/**
+ * Full person-first search: looks up the person via TMDb /search/person,
+ * fetches ALL their combined credits, then renders every card as a grid
+ * with a working Load More that pages through their filmography.
+ */
+async function _runPersonSearch(name) {
+  const q            = name.trim().toLowerCase();
+  const searchSec    = document.getElementById('search-section');
+  const searchResults= document.getElementById('search-results');
+  const countEl      = document.getElementById('search-count');
+  const lmWrap       = document.getElementById('search-load-more-wrap');
+  const lmBtn        = document.getElementById('search-load-more-btn');
+  const gridWrap     = document.getElementById('genre-grid-wrap');
+  const rowWrap      = document.getElementById('search-row-wrap');
+  const quickResults = document.getElementById('search-quick-results');
+  const divider      = document.getElementById('search-results-divider');
+  const titleEl      = searchSec ? searchSec.querySelector('#search-section-title') : null;
+  const subEl        = document.getElementById('search-sub');
+
+  if (!searchSec || !searchResults) return;
+
+  // Remove any !important display:none that showHomePage may have set
+  searchSec.style.removeProperty('display');
+
+  // Switch to list/search mode (not genre-grid mode)
+  if (gridWrap) gridWrap.style.display = 'none';
+  if (rowWrap)  rowWrap.style.display  = 'block';
+
+  document.body.classList.add('search-active');
+  searchSec.style.display = 'block';
+  searchResults.innerHTML = '';
+  if (quickResults) { quickResults.innerHTML = ''; quickResults.style.display = 'none'; }
+  if (divider)      divider.style.display = 'none';
+  if (lmWrap)       lmWrap.style.display  = 'none';
+
+  if (titleEl) {
+    titleEl.innerHTML = `<i class="fa-solid fa-user" style="color:var(--vl);font-size:15px"></i> ${name} <span class="sec-tag tag-violet" id="search-count">Loading…</span>`;
+  }
+  if (subEl) subEl.textContent = `Movies and TV shows featuring ${name}`;
+
+  // Reset pagination state
+  _searchState = {
+    q,
+    tmdbMoviePage: 0, tmdbTvPage: 0,
+    tmdbMovieTotalPages: 1, tmdbTvTotalPages: 1,
+    rendered: new Set(),
+    allResults: [],
+    offlineOffset: 0,
+    loading: false,
+  };
+
+  if (!TMDB_API_KEY) {
+    // Offline fallback — search by title substring
+    const rawMatches = state.movieLensData && state.movieLensData.loaded
+      ? Object.values(state.movieLensData.movies)
+          .filter(m => m.title.toLowerCase().includes(q))
+          .map(m => m.movieId)
+      : MOVIES.filter(m => m.title.toLowerCase().includes(q)).map(m => m.id);
+
+    if (countEl) countEl.textContent = `${rawMatches.length} found`;
+    _searchState.allResults  = rawMatches;
+    _searchState.offlineOffset = 0;
+    _appendOfflineCards(rawMatches.slice(0, SEARCH_PAGE_SIZE), searchResults);
+    _searchState.offlineOffset = SEARCH_PAGE_SIZE;
+    if (lmWrap) lmWrap.style.display = rawMatches.length > SEARCH_PAGE_SIZE ? 'block' : 'none';
+    if (lmBtn)  lmBtn.onclick = () => _loadMoreOfflineResults(searchResults, lmWrap, lmBtn);
+    setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    return;
+  }
+
+  // ── TMDb path: person lookup → combined_credits ──────────────────────────
+  try {
+    // 1. Find the person
+    const personRes = await fetch(
+      `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(name)}&page=1`
+    ).then(r => r.json()).catch(() => ({ results: [] }));
+
+    let allCredits = [];
+
+    if (personRes.results && personRes.results.length > 0) {
+      // Fetch combined credits for the top 2 matching people
+      const creditsResults = await Promise.all(
+        personRes.results.slice(0, 2).map(person =>
+          fetch(`https://api.themoviedb.org/3/person/${person.id}/combined_credits?api_key=${TMDB_API_KEY}`)
+            .then(r => r.json())
+            .then(credits => ({ person, credits }))
+            .catch(() => null)
+        )
+      );
+
+      const seen = new Set();
+      creditsResults.forEach(res => {
+        if (!res) return;
+        const { person, credits } = res;
+        // Director credits (crew)
+        (credits.crew || [])
+          .filter(i => i.job === 'Director' && i.poster_path)
+          .forEach(i => {
+            const key = `${i.media_type||'movie'}-${i.id}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              allCredits.push({ ...i, mediaType: i.media_type || 'movie', personReason: { name: person.name, role: 'Director' } });
+            }
+          });
+        // Cast credits
+        (credits.cast || []).filter(i => i.poster_path).forEach(i => {
+          const key = `${i.media_type||'movie'}-${i.id}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            allCredits.push({ ...i, mediaType: i.media_type || 'movie', personReason: { name: person.name, role: 'Cast' } });
+          }
+        });
+      });
+
+      // Sort by popularity descending
+      allCredits.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+    }
+
+    // Fall back to a regular movie+tv search if no person match found
+    if (allCredits.length === 0) {
+      const [m1, tv1] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(name)}&page=1`).then(r => r.json()).catch(() => ({ results: [], total_pages: 1, total_results: 0 })),
+        fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(name)}&page=1`).then(r => r.json()).catch(() => ({ results: [], total_pages: 1, total_results: 0 })),
+      ]);
+      allCredits = _mergeAndSort(
+        (m1.results || []).map(i => ({ ...i, mediaType: 'movie' })),
+        (tv1.results || []).map(i => ({ ...i, mediaType: 'tv' })),
+        [],
+        q
+      );
+      _searchState.tmdbMovieTotalPages = m1.total_pages || 1;
+      _searchState.tmdbTvTotalPages    = tv1.total_pages || 1;
+    }
+
+    if (countEl) {
+      const countTag = document.getElementById('search-count');
+      if (countTag) countTag.textContent = `${allCredits.length} titles`;
+    }
+
+    if (allCredits.length === 0) {
+      searchResults.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">No results found for this person.</div>';
+      setTimeout(() => searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      return;
+    }
+
+    // Store full list for pagination
+    _searchState.allResults    = allCredits;
+    _searchState.offlineOffset = 0;
+
+    // Render first page
+    const firstPage = allCredits.slice(0, SEARCH_INITIAL_SIZE);
+    _appendSearchCards(firstPage, searchResults);
+    _searchState.offlineOffset = SEARCH_INITIAL_SIZE;
+
+    const hasMore = _searchState.offlineOffset < allCredits.length;
+    if (lmWrap) lmWrap.style.display = hasMore ? 'block' : 'none';
+    if (lmBtn) {
+      lmBtn.disabled = false;
+      lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results';
+      lmBtn.onclick = () => {
+        const slice = _searchState.allResults.slice(
+          _searchState.offlineOffset,
+          _searchState.offlineOffset + SEARCH_MORE_SIZE
+        );
+        _appendSearchCards(slice, searchResults);
+        _searchState.offlineOffset += SEARCH_MORE_SIZE;
+        const stillMore = _searchState.offlineOffset < _searchState.allResults.length;
+        if (lmWrap) lmWrap.style.display = stillMore ? 'block' : 'none';
+      };
+    }
+
+    setTimeout(() => {
+      searchSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 80);
+
+  } catch (err) {
+    console.error('Person search error:', err);
+    searchResults.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">Search failed. Please try again.</div>';
+  }
+}
