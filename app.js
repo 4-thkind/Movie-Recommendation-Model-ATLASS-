@@ -1,7 +1,7 @@
-import { state, loadWatchlistFromStorage, loadAuthState } from './state.js?v=15';
-import { loadMovieLensDatabase } from './recommender.js?v=15';
-import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=15';
-import { initPillNav } from './PillNav.js?v=15';
+import { state, loadWatchlistFromStorage, loadAuthState } from './state.js?v=28';
+import { loadMovieLensDatabase } from './recommender.js?v=28';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=28';
+import { initPillNav } from './PillNav.js?v=28';
 
 /* ─── INIT ─── */
 window.addEventListener('DOMContentLoaded', () => {
