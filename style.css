@@ -1811,10 +1811,20 @@ body.not-logged-in #overlay {
   background: var(--b0);
 }
 
-body.not-logged-in #landing-page {
+body.show-landing-page #landing-page {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Hide main content when landing page is shown */
+body.show-landing-page #nav,
+body.show-landing-page #hero,
+body.show-landing-page main,
+body.show-landing-page footer,
+body.show-landing-page #card-popup,
+body.show-landing-page #overlay {
+  display: none !important;
 }
 
 /* Grid Motion Background */
