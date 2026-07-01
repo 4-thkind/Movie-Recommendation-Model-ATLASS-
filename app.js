@@ -11,6 +11,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (state.isLoggedIn) {
     document.body.classList.remove('not-logged-in');
+    document.body.classList.remove('show-landing-page');
   } else {
     document.body.classList.add('not-logged-in');
   }
