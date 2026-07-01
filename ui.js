@@ -4190,7 +4190,22 @@ export function initHashRouting() {
 export function handleHashChange() {
   const hash = window.location.hash || '';
   
-  // 1. Movie details modal routing
+  // If already logged in and on landing page, redirect to home
+  if (state.isLoggedIn && (hash === '#landing-page' || hash === '#landing' || hash === '' || hash === '#')) {
+    activeViewState = 'home';
+    showHomePage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    history.replaceState(null, '', window.location.pathname);
+    return;
+  }
+  
+  // 1. Landing page routing
+  if (hash === '#landing-page' || hash === '#landing') {
+    showLandingPage();
+    return;
+  }
+  
+  // 2. Movie details modal routing
   if (hash.startsWith('#movie-')) {
     const movieIdStr = hash.replace('#movie-', '');
     const movieId = isNaN(movieIdStr) ? movieIdStr : Number(movieIdStr);
@@ -4218,14 +4233,14 @@ export function handleHashChange() {
     closeModal(true);
   }
 
-  // 2. Watchlist routing
+  // 3. Watchlist routing
   if (hash === '#watchlist-section' || hash === '#watchlist') {
     activeViewState = 'watchlist';
     showWatchlistPage();
     return;
   }
   
-  // 3. Search routing - open the unified search panel
+  // 4. Search routing - open the unified search panel
   if (hash === '#search') {
     window.location.hash = (activeViewState === 'watchlist') ? '#watchlist-section' : '';
     history.replaceState(null, '', window.location.pathname);
@@ -4235,7 +4250,7 @@ export function handleHashChange() {
     return;
   }
 
-  // 4. Section routing (Trending, Platforms, Surprise Me)
+  // 5. Section routing (Trending, Platforms, Surprise Me)
   if (hash === '#trending-section' || hash === '#platforms-section' || hash === '#surprise-section') {
     activeViewState = 'home';
     showHomePage();
@@ -4249,8 +4264,13 @@ export function handleHashChange() {
     return;
   }
   
-  // 5. Default home page routing
+  // 6. Default - if not logged in, show landing page; otherwise show home page
   if (hash === '' || hash === '#' || hash === '#home' || hash === '#hero') {
+    if (!state.isLoggedIn) {
+      // If not logged in and at root, redirect to landing page
+      window.location.hash = '#landing-page';
+      return;
+    }
     activeViewState = 'home';
     showHomePage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4260,7 +4280,21 @@ export function handleHashChange() {
   }
 }
 
+export function showLandingPage() {
+  clearSearch(true);
+  stopHeroRotation();
+  closeModal(true);
+  
+  // Show the landing page by adding a class to body
+  document.body.classList.add('show-landing-page');
+}
+
+
+
 export function showWatchlistPage() {
+  // Hide the landing page
+  document.body.classList.remove('show-landing-page');
+  
   clearSearch(true);
   stopHeroRotation();
   updateNavbarActiveLink('watchlist-section');
@@ -4607,8 +4641,13 @@ function _updateModalWatchlistPill() {
 }
 
 export function showHomePage() {
+  // Hide the landing page
+  document.body.classList.remove('show-landing-page');
+  
   clearSearch(true);
+  stopHeroRotation();
   updateNavbarActiveLink('hero');
+  closeModal(true);
   // Refresh the hero banner every time we navigate home
   initHero().then(() => startHeroRotation());
   
@@ -4680,32 +4719,155 @@ export function updateNavbarActiveLink(activeId) {
 
 import { saveAuthState } from './state.js?v=28';
 
+// Helper function to hash password using SHA-256
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+// Helper function to get users from localStorage
+function getUsers() {
+  const usersStr = localStorage.getItem('atlass_users');
+  return usersStr ? JSON.parse(usersStr) : {};
+}
+
+// Helper function to get usernames mapping from localStorage
+function getUsernames() {
+  const usernamesStr = localStorage.getItem('atlass_usernames');
+  return usernamesStr ? JSON.parse(usernamesStr) : {};
+}
+
+// Helper function to show/hide errors
+function showAuthError(message) {
+  const errorEl = document.getElementById('auth-error');
+  if (errorEl) {
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+  }
+}
+
+function clearAuthError() {
+  const errorEl = document.getElementById('auth-error');
+  if (errorEl) {
+    errorEl.style.display = 'none';
+  }
+}
+
 window.switchLoginTab = function(tab) {
   const loginTab = document.getElementById('tab-login');
   const signupTab = document.getElementById('tab-signup');
   const submitBtn = document.getElementById('auth-submit-btn');
+  const emailLabel = document.getElementById('auth-email-label');
+  const emailInput = document.getElementById('auth-email');
+  const usernameGroup = document.getElementById('auth-username-group');
+  const usernameInput = document.getElementById('auth-username');
+  clearAuthError();
 
   if (tab === 'login') {
     loginTab.classList.add('active');
     signupTab.classList.remove('active');
     submitBtn.textContent = 'Log In';
+    emailLabel.textContent = 'Email or Username';
+    emailInput.placeholder = 'name@example.com or username';
+    emailInput.type = 'text';
+    usernameGroup.style.display = 'none';
+    usernameInput.removeAttribute('required');
   } else {
     signupTab.classList.add('active');
     loginTab.classList.remove('active');
     submitBtn.textContent = 'Sign Up';
+    emailLabel.textContent = 'Email';
+    emailInput.placeholder = 'name@example.com';
+    emailInput.type = 'email';
+    usernameGroup.style.display = 'block';
+    usernameInput.setAttribute('required', 'required');
   }
 };
 
-window.handleAuthSubmit = function(e) {
+window.handleAuthSubmit = async function(e) {
   e.preventDefault();
-  const email = document.getElementById('auth-email').value;
-  // Mock login success
-  state.isLoggedIn = true;
-  state.user = { name: email.split('@')[0], role: 'Member' };
+  clearAuthError();
+  
+  const emailOrUsernameInput = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const isLogin = document.getElementById('tab-login').classList.contains('active');
+  
+  const users = getUsers();
+  const usernames = getUsernames();
+  const hashedPassword = await hashPassword(password);
+  
+  if (isLogin) {
+    // Log In flow
+    let email;
+    
+    // Detect if input is email or username
+    if (emailOrUsernameInput.includes('@')) {
+      email = emailOrUsernameInput;
+    } else {
+      // Look up email from username
+      email = usernames[emailOrUsernameInput];
+      if (!email) {
+        showAuthError('No account found. Please sign up.');
+        return;
+      }
+    }
+    
+    if (!users[email]) {
+      showAuthError('No account found. Please sign up.');
+      return;
+    }
+    
+    if (users[email].password !== hashedPassword) {
+      showAuthError('Incorrect password.');
+      return;
+    }
+    
+    // Success - log in
+    state.isLoggedIn = true;
+    state.user = { name: users[email].name, role: 'Member' };
+  } else {
+    // Sign Up flow
+    const email = emailOrUsernameInput;
+    const username = document.getElementById('auth-username').value.trim();
+    
+    if (!username) {
+      showAuthError('Username is required.');
+      return;
+    }
+    
+    if (users[email]) {
+      showAuthError('Account already exists. Please log in.');
+      return;
+    }
+    
+    if (usernames[username]) {
+      showAuthError('Username already taken.');
+      return;
+    }
+    
+    // Create new user
+    users[email] = { name: username, email, password: hashedPassword };
+    usernames[username] = email;
+    
+    localStorage.setItem('atlass_users', JSON.stringify(users));
+    localStorage.setItem('atlass_usernames', JSON.stringify(usernames));
+    
+    // Log them in immediately
+    state.isLoggedIn = true;
+    state.user = { name: username, role: 'Member' };
+  }
+  
+  // Common login steps
   saveAuthState();
   document.body.classList.remove('not-logged-in');
   updateProfileUI();
   updateWatchlistUI();
+  // Redirect to home page after login
+  window.location.hash = '#home';
 };
 
 window.continueAsGuest = function() {
@@ -4715,6 +4877,8 @@ window.continueAsGuest = function() {
   document.body.classList.remove('not-logged-in');
   updateProfileUI();
   updateWatchlistUI();
+  // Redirect to home page after guest login
+  window.location.hash = '#home';
 };
 
 window.logout = function() {
@@ -4723,7 +4887,7 @@ window.logout = function() {
   saveAuthState();
   document.body.classList.add('not-logged-in');
   document.getElementById('profile-dropdown').classList.remove('show');
-  window.location.hash = ''; // Return to top
+  showLandingPage();
 };
 
 export function initProfileDropdown() {
