@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>CineMatch</title>
+<title>ATLASS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
@@ -23,7 +23,7 @@
     <div class="login-card">
       <div class="login-header">
         <h1 style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;letter-spacing:-1px">
-          <i class="fa-solid fa-film" style="color:var(--vl);margin-right:8px"></i>CineMatch
+          <i class="fa-solid fa-film" style="color:var(--vl);margin-right:8px"></i>ATLASS
         </h1>
         <p class="login-subtitle">Discover movies you'll love with AI</p>
       </div>
@@ -34,14 +34,19 @@
       </div>
 
       <form id="login-form" onsubmit="handleAuthSubmit(event)">
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="auth-email" placeholder="name@example.com" required />
+        <div class="form-group" id="auth-email-group">
+          <label id="auth-email-label">Email</label>
+          <input type="text" id="auth-email" placeholder="name@example.com" required />
+        </div>
+        <div class="form-group" id="auth-username-group" style="display: none;">
+          <label>Username</label>
+          <input type="text" id="auth-username" placeholder="username" />
         </div>
         <div class="form-group">
           <label>Password</label>
           <input type="password" id="auth-password" placeholder="••••••••" required />
         </div>
+        <div id="auth-error" class="auth-error" style="color: #ef4444; font-size: 14px; margin-bottom: 16px; display: none;"></div>
         <button type="submit" class="btn-primary login-btn" id="auth-submit-btn">Log In</button>
       </form>
 
