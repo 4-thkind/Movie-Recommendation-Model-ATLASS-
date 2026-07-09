@@ -5481,7 +5481,6 @@ export function initGenrePopover() {
   if (dockBtn) {
     dockBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
       toggleGenrePopover();
     });
   }
@@ -5490,7 +5489,6 @@ export function initGenrePopover() {
   const closeBtn = document.getElementById('gp-close-btn');
   if (closeBtn) {
     closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
       closeGenrePopover();
     });
   }
@@ -5507,11 +5505,11 @@ export function initGenrePopover() {
     }
   });
 
-  // Stop propagation on popover click
+  // Stop propagation on popover click removed
   const popover = document.getElementById('genre-popover');
   if (popover) {
     popover.addEventListener('click', (e) => {
-      e.stopPropagation();
+      // Allow bubbling so global handlers (like closeSearchPanel) can fire
     });
   }
 
