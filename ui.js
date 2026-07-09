@@ -2075,6 +2075,63 @@ function openModalContent(movie) {
     }
   }
 
+  // ── Fetch Real Watch Providers from TMDB ──
+  const platformsContainer = document.getElementById('m-platforms');
+  if (platformsContainer) {
+    platformsContainer.innerHTML = `<span class="plat-badge" style="color:var(--t2)">Loading...</span>`;
+    let rawTmdbId = movie.tmdbId || movie.id;
+    if (typeof rawTmdbId === 'string' && rawTmdbId.includes('tmdb-')) {
+      rawTmdbId = rawTmdbId.split('-').pop();
+    }
+    const numericTmdbId = parseInt(rawTmdbId, 10);
+    const tmdbType = isSeries ? 'tv' : 'movie';
+    if (TMDB_API_KEY && numericTmdbId && !isNaN(numericTmdbId)) {
+      fetch(`https://api.themoviedb.org/3/${tmdbType}/${numericTmdbId}/watch/providers?api_key=${TMDB_API_KEY}`)
+        .then(res => res.json())
+        .then(data => {
+          let providersHtml = '';
+          if (data && data.results && data.results.US) {
+            const usData = data.results.US;
+            let allProviders = usData.flatrate || usData.rent || usData.buy || [];
+            
+            // Sort by shortest name first to process base names ("Netflix") before variants ("Netflix with Ads")
+            allProviders.sort((a, b) => a.provider_name.length - b.provider_name.length);
+            
+            const uniqueProviders = [];
+            for (const p of allProviders) {
+              const lowerName = p.provider_name.toLowerCase();
+              const isDuplicate = uniqueProviders.some(existing => 
+                lowerName.startsWith(existing.provider_name.toLowerCase()) || 
+                existing.provider_name.toLowerCase().startsWith(lowerName)
+              );
+              if (!isDuplicate) {
+                let displayName = p.provider_name.replace(/\s*(?:basic|standard|premium)?\s*(?:with ads|ad-supported)/i, '').trim();
+                uniqueProviders.push({...p, display_name: displayName});
+              }
+            }
+            
+            const topProviders = uniqueProviders.slice(0, 3);
+            if (topProviders.length > 0) {
+              providersHtml = topProviders.map(p => {
+                const logoUrl = `https://image.tmdb.org/t/p/w45${p.logo_path}`;
+                return `<span class="plat-badge" style="padding-left:4px"><img src="${logoUrl}" alt="${p.display_name}" class="plat-logo"/>${p.display_name}</span>`;
+              }).join('');
+            }
+          }
+          if (providersHtml) {
+            platformsContainer.innerHTML = providersHtml;
+          } else {
+            platformsContainer.innerHTML = `<span class="plat-badge" style="color:var(--t2)">Not available to stream</span>`;
+          }
+        })
+        .catch(() => {
+          platformsContainer.innerHTML = `<span class="plat-badge" style="color:var(--t2)">Unavailable</span>`;
+        });
+    } else {
+      platformsContainer.innerHTML = `<span class="plat-badge" style="color:var(--t2)">Unavailable</span>`;
+    }
+  }
+
   if (isSeries) {
     document.getElementById('m-chip').innerHTML = `<i class="fa-solid fa-tv" style="font-size:10px"></i> Popular Series`;
     document.getElementById('m-title').textContent = movie.title;
