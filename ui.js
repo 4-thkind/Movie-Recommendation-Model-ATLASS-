@@ -776,32 +776,83 @@ export function renderRows() {
   initializeRecommender();
 
   const rw2 = document.getElementById('rw2');
+  const rw2Title = document.getElementById('rw2-title');
   if (!rw2) return;
   rw2.innerHTML = '';
   rw2._infiniteInit = false;
 
-  if (TMDB_API_KEY) {
-    // Pick a random page 1–5 so the popular row shows different movies each visit
-    const randomPage = Math.floor(Math.random() * 5) + 1;
-    fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&page=${randomPage}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.results) {
-          // Shuffle results so even within the same page order varies
-          const shuffled = data.results.sort(() => Math.random() - 0.5);
-          shuffled.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
-          requestAnimationFrame(() => makeRowInfinite(rw2));
-        }
-      });
-    return;
+  let rw2Sub;
+  if (rw2Title) {
+    rw2Sub = rw2Title.closest('.sec-head').querySelector('.sec-sub');
   }
 
-  // Offline fallback — use second half of DEFAULT_RECS so rw1 and rw2 don't overlap
-  const popularRecs = DEFAULT_RECS.slice(Math.floor(DEFAULT_RECS.length / 2));
-  popularRecs.forEach(id => {
-    rw2.appendChild(buildCard(id));
-  });
-  requestAnimationFrame(() => makeRowInfinite(rw2));
+  const userRatings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
+  const ratedIds = Object.keys(userRatings);
+
+  const fetchPopular = () => {
+    if (rw2Title) rw2Title.textContent = "Trending Movies";
+    if (rw2Sub) rw2Sub.style.display = 'none';
+    if (TMDB_API_KEY) {
+      const randomPage = Math.floor(Math.random() * 5) + 1;
+      fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&page=${randomPage}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.results) {
+            const shuffled = data.results.sort(() => Math.random() - 0.5);
+            shuffled.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
+            requestAnimationFrame(() => makeRowInfinite(rw2));
+          }
+        });
+    } else {
+      const popularRecs = DEFAULT_RECS.slice(Math.floor(DEFAULT_RECS.length / 2));
+      popularRecs.forEach(id => rw2.appendChild(buildCard(id)));
+      requestAnimationFrame(() => makeRowInfinite(rw2));
+    }
+  };
+
+  if (ratedIds.length > 0) {
+    // Pick a random highly rated movie (or random if none >= 4)
+    const highRated = ratedIds.filter(id => userRatings[id] >= 4);
+    const pool = highRated.length > 0 ? highRated : ratedIds;
+    const seedId = pool[Math.floor(Math.random() * pool.length)];
+
+    if (TMDB_API_KEY) {
+      Promise.all([
+        fetch(`https://api.themoviedb.org/3/movie/${seedId}?api_key=${TMDB_API_KEY}`).then(r => r.json()),
+        fetch(`https://api.themoviedb.org/3/movie/${seedId}/recommendations?api_key=${TMDB_API_KEY}`).then(r => r.json())
+      ]).then(([details, recs]) => {
+        if (rw2Title && details.title) {
+          rw2Title.textContent = details.title;
+          if (rw2Sub && details.genres) {
+            rw2Sub.style.display = 'block';
+            rw2Sub.textContent = "Matched on: " + details.genres.slice(0,3).map(g => g.name).join(' · ');
+          }
+        }
+        if (recs.results && recs.results.length > 0) {
+          recs.results.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
+          requestAnimationFrame(() => makeRowInfinite(rw2));
+        } else {
+          fetchPopular();
+        }
+      }).catch(() => fetchPopular());
+    } else {
+      // Offline mode fallback
+      const movieData = state.movieLensData?.movies?.[seedId];
+      if (rw2Title && movieData) {
+        rw2Title.textContent = movieData.title;
+        if (rw2Sub && movieData.genres) {
+          rw2Sub.style.display = 'block';
+          rw2Sub.textContent = "Matched on: " + movieData.genres.split('|').slice(0,3).join(' · ');
+        }
+      } else if (rw2Title) {
+        rw2Title.textContent = "Your Favorites";
+        if (rw2Sub) rw2Sub.style.display = 'none';
+      }
+      fetchPopular();
+    }
+  } else {
+    fetchPopular();
+  }
 }
 
 /* ─── HOME SECTIONS RENDERER ──────────────────────────────────────────────────
@@ -2033,7 +2084,6 @@ function openModalContent(movie) {
     document.getElementById('m-genre').textContent = movie.genre;
     document.getElementById('m-synopsis').textContent = movie.synopsis || `${movie.title} is a hit series in the ${movie.genre} genre. Watch all seasons now! Rated ${movie.rating}/10.`;
     
-    document.getElementById('m-platforms').innerHTML = `<span class="plat-badge"><i class="fa-solid fa-circle-play" style="font-size:9px;color:var(--y)"></i>Streaming</span>`;
     document.getElementById('m-reasons').innerHTML = `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>Trending</span>`;
     
     // Render Director
@@ -2082,9 +2132,6 @@ function openModalContent(movie) {
     document.getElementById('m-genre').textContent = movie.genre;
     document.getElementById('m-synopsis').textContent = movie.synopsis;
 
-    document.getElementById('m-platforms').innerHTML = movie.platforms.map(p =>
-      `<span class="plat-badge"><i class="fa-solid fa-circle-play" style="font-size:9px;color:var(--y)"></i>${p}</span>`
-    ).join('');
 
     document.getElementById('m-reasons').innerHTML = movie.reasons.map(r =>
       `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>${r}</span>`
@@ -3809,6 +3856,13 @@ window.commitSearch = function() {
   const lmBtn         = document.getElementById('search-load-more-btn');
   if (!searchResults || !searchSec) return;
 
+  // Switch to list/search mode (not genre-grid mode)
+  state.isShowingGenre = false;
+  const gridWrap = document.getElementById('genre-grid-wrap');
+  const rowWrap  = document.getElementById('search-row-wrap');
+  if (gridWrap) gridWrap.style.display = 'none';
+  if (rowWrap)  rowWrap.style.display  = 'block';
+
   clearTimeout(searchDebounce);
 
   function _renderResults(results) {
@@ -4303,7 +4357,7 @@ export function showWatchlistPage() {
   const homeElements = [
     document.getElementById('hero'),
     // homepage-search-container removed — search is now in tiktok-nav panel
-    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#watched-section)'))
+    ...Array.from(document.querySelectorAll('main > section:not(#watchlist-section):not(#watched-section):not(#search-section)'))
   ].filter(Boolean);
 
   const watchlistSection = document.getElementById('watchlist-section');
@@ -4398,7 +4452,7 @@ export function showAlreadyWatched() {
   // Hide home + search views
   const homeElements = [
     document.getElementById('hero'),
-    ...Array.from(document.querySelectorAll('main > section:not(#watched-section):not(#watchlist-section)'))
+    ...Array.from(document.querySelectorAll('main > section:not(#watched-section):not(#watchlist-section):not(#search-section)'))
   ].filter(Boolean);
 
   const watchlistSection = document.getElementById('watchlist-section');
@@ -4660,7 +4714,7 @@ export function showHomePage() {
 
   // Always keep search-section hidden when showing home
   const searchSec = document.getElementById('search-section');
-  if (searchSec) searchSec.style.setProperty('display', 'none', 'important');
+  if (searchSec) searchSec.style.removeProperty('display');
 
   // Hide the watched section when going home
   const watchedSection = document.getElementById('watched-section');
@@ -4766,6 +4820,17 @@ window.switchLoginTab = function(tab) {
   const usernameGroup = document.getElementById('auth-username-group');
   const usernameInput = document.getElementById('auth-username');
   clearAuthError();
+
+  const formEl = document.getElementById('login-form');
+  if (formEl) {
+    formEl.classList.remove('auth-slide-left', 'auth-slide-right');
+    void formEl.offsetWidth; // Trigger DOM reflow to restart animation
+    if (tab === 'login') {
+      formEl.classList.add('auth-slide-right');
+    } else {
+      formEl.classList.add('auth-slide-left');
+    }
+  }
 
   if (tab === 'login') {
     loginTab.classList.add('active');
@@ -5136,6 +5201,7 @@ export function showGenreMovies(genreId, genreName) {
 
   grid.innerHTML = '';
   if (lmWrap) lmWrap.style.display = 'none';
+  searchSec.style.removeProperty('display');
   searchSec.style.display = 'block';
 
   // Show loading skeletons immediately so there's no black screen while TMDB fetches
