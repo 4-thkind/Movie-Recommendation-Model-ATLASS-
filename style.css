@@ -1275,6 +1275,7 @@ body.watchlist-active #watchlist-section{
 .m-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:18px;border-top:1px solid rgba(255,255,255,.05)}
 .m-platforms{display:flex;gap:6px;flex-wrap:wrap}
 .plat-badge{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:5px;}
+.plat-logo{width:14px;height:14px;border-radius:4px;object-fit:cover;}
 .danger-btn{display:flex;align-items:center;gap:6px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.22);border-radius:24px;padding:9px 16px;font-size:12px;font-weight:700;color:#f87171;cursor:pointer;transition:all .22s;margin-left:auto;}
 .danger-btn:hover{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.48)}
 .mini-row{display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
@@ -3604,4 +3605,23 @@ body.light-theme .watched-sort-select {
   background: rgba(0,0,0,.03);
   border-color: rgba(0,0,0,.12);
   color: #374151;
+}
+
+/* ── Auth Form Animations ── */
+.auth-slide-left {
+  animation: authSlideLeft 0.4s var(--smooth) forwards;
+}
+
+.auth-slide-right {
+  animation: authSlideRight 0.4s var(--smooth) forwards;
+}
+
+@keyframes authSlideLeft {
+  0% { transform: translateX(25px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes authSlideRight {
+  0% { transform: translateX(-25px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
 }
