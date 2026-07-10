@@ -104,7 +104,7 @@ export async function loadMovieLensDatabase() {
     updateDatabaseStatus('links', 'Live (TMDB)');
     updateDatabaseStatus('ratings', 'Live (TMDB)');
     state.movieLensData.loaded = true;
-
+    
     renderRows();
     buildTrending();
     buildPlatforms();
@@ -116,7 +116,7 @@ export async function loadMovieLensDatabase() {
   if (window.location.protocol === 'file:') {
     if (typeof window.showToast === 'function') {
       window.showToast(
-        "Offline Database Error",
+        "Offline Database Error", 
         "CineMatch is running via file://. Browser security policies block loading local CSVs. Run a local web server (e.g. python -m http.server) to enable offline recommendations.",
         "error"
       );
