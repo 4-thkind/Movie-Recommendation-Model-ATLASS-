@@ -889,8 +889,8 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   cursor:pointer;z-index:300;opacity:0;transition:opacity .2s ease;
 }
 .row-wrap:hover .arr{opacity:1}
-.arr.L{left:0;background:linear-gradient(to right,rgba(5,5,8,.9) 0%,transparent 100%);}
-.arr.R{right:0;background:linear-gradient(to left,rgba(5,5,8,.9) 0%,transparent 100%);}
+.arr.L{left:0;background:transparent;}
+.arr.R{right:0;background:transparent;}
 .arr:hover{color:var(--y)}
 
 /* ══════════════════════════════════════
@@ -912,8 +912,8 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   cursor:pointer;z-index:300;opacity:0;transition:opacity .2s ease;
 }
 .trend-scroll-wrap:hover .trend-arr{opacity:1}
-.trend-arr.L{left:0;background:linear-gradient(to right,rgba(5,5,8,.9) 0%,transparent 100%);}
-.trend-arr.R{right:0;background:linear-gradient(to left,rgba(5,5,8,.9) 0%,transparent 100%);}
+.trend-arr.L{left:0;background:transparent;}
+.trend-arr.R{right:0;background:transparent;}
 .trend-arr:hover{color:var(--y)}
 
 .trend-card{
@@ -1040,8 +1040,8 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   cursor:pointer;z-index:300;opacity:0;transition:opacity .2s ease;
 }
 .plat-wrap:hover .plat-arr{opacity:1}
-.plat-arr.L{left:0;background:linear-gradient(to right,rgba(5,5,8,.9),transparent);}
-.plat-arr.R{right:0;background:linear-gradient(to left,rgba(5,5,8,.9),transparent);}
+.plat-arr.L{left:0;background:transparent;}
+.plat-arr.R{right:0;background:transparent;}
 .plat-arr:hover{color:var(--y)}
 
 .plat-card{
@@ -1239,8 +1239,7 @@ body.watchlist-active #watchlist-section{
 
 /* ── MODAL ── */
 #overlay{
-  position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  position:fixed;inset:0;z-index:9999;background:rgba(5,5,8,.4);
   display:flex;align-items:center;justify-content:center;padding:20px;
   opacity:0;pointer-events:none;transition:opacity .35s var(--smooth);
 }
@@ -1250,6 +1249,7 @@ body.watchlist-active #watchlist-section{
   border-radius:18px;width:100%;max-width:840px;max-height:90vh;
   overflow-y:auto;transform:scale(.88) translateY(24px);
   transition:transform .45s var(--spring);scrollbar-width:thin;scrollbar-color:var(--b5) transparent;
+  position:relative;z-index:10;
 }
 #overlay.on #modal{transform:scale(1) translateY(0)}
 .m-hero{position:relative;height:310px;border-radius:18px 18px 0 0;overflow:hidden}
@@ -1420,8 +1420,7 @@ footer{background:var(--b1);border-top:1px solid rgba(255,255,255,.04);padding:4
 /* ─── SETTINGS MODAL ─── */
 #settings-overlay{
   position:fixed;inset:0;z-index:9999;
-  background:rgba(0,0,0,.85);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  background:rgba(5,5,8,.4);
   display:flex;align-items:center;justify-content:center;padding:20px;
   opacity:0;pointer-events:none;transition:opacity .35s var(--smooth);
 }
@@ -1431,7 +1430,7 @@ footer{background:var(--b1);border-top:1px solid rgba(255,255,255,.04);padding:4
   border-radius:18px;width:100%;max-width:440px;
   transform:scale(.88) translateY(24px);
   transition:transform .45s var(--spring);
-  position:relative;
+  position:relative;z-index:10;
 }
 #settings-overlay.on #settings-modal{transform:scale(1) translateY(0)}
 
@@ -3363,20 +3362,22 @@ body.watchlist-active .homepage-search-container {
 ══════════════════════════════════════ */
 .genre-results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 168px);
-  gap: 14px 10px;
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  gap: 18px 12px;
   padding: 4px 0 8px;
-  justify-content: start;
+  justify-content: center;
 }
 
 /* Each card in grid mode fills its cell */
 .genre-results-grid .movie-card {
   flex: unset;
-  width: 168px;
+  width: 100%;
 }
 
 .genre-results-grid .card-thumb {
-  width: 168px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
 }
 
 /* Load More button */
@@ -3624,4 +3625,45 @@ body.light-theme .watched-sort-select {
 @keyframes authSlideRight {
   0% { transform: translateX(-25px); opacity: 0; }
   100% { transform: translateX(0); opacity: 1; }
+}
+
+/* ─── GRADUAL BLUR OVERLAY SYSTEM ─── */
+.gradual-blur {
+  position: absolute;
+  top: 0; bottom: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  isolation: isolate;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity .25s ease-out;
+}
+.row-wrap:hover .gradual-blur,
+.trend-scroll-wrap:hover .gradual-blur,
+.plat-wrap:hover .gradual-blur {
+  opacity: 1;
+}
+#overlay .gradual-blur,
+#settings-overlay .gradual-blur {
+  opacity: 1 !important;
+}
+.gradual-blur-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.gradual-blur-inner > div {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-backdrop-filter: inherit;
+  backdrop-filter: inherit;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .gradual-blur-inner > div {
+    background: rgba(5, 5, 8, 0.45);
+    opacity: 0.6;
+  }
 }

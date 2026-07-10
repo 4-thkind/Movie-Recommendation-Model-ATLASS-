@@ -1302,6 +1302,9 @@ export function buildPlatforms() {
       </div>`;
     panelsEl.appendChild(panel);
 
+    const platWrap = panel.querySelector('.plat-wrap');
+    if (platWrap) injectGradualBlurs(platWrap);
+
     renderPlatCards(plat.id, state.activeType);
   });
 }
@@ -2403,6 +2406,7 @@ function openModalContent(movie) {
     };
   }
 
+  injectOverlayGradualBlur('overlay');
   document.getElementById('overlay').classList.add('on');
   document.body.style.overflow = 'hidden';
 }
@@ -2694,6 +2698,7 @@ export function openSettingsModal() {
     bendValEl.textContent = bendVal.toFixed(1);
   }
 
+  injectOverlayGradualBlur('settings-overlay');
   document.getElementById('settings-overlay').classList.add('on');
   document.body.style.overflow = 'hidden';
 }
@@ -4074,6 +4079,11 @@ window.commitSearch = function() {
 
 // Wire listeners once DOM is ready
 window.addEventListener('DOMContentLoaded', () => {
+  // Inject Gradual Blurs into static scroll containers
+  document.querySelectorAll('.row-wrap, .trend-scroll-wrap').forEach(wrap => {
+    injectGradualBlurs(wrap);
+  });
+
   const si = document.getElementById('search-input');
   if (!si) return;
 
@@ -6252,4 +6262,120 @@ async function _runPersonSearch(name) {
     console.error('Person search error:', err);
     searchResults.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">Search failed. Please try again.</div>';
   }
+}
+
+export function injectGradualBlurs(container) {
+  if (!container || container.querySelector('.gradual-blur')) return;
+
+  const positions = ['left', 'right'];
+  positions.forEach(pos => {
+    const blurEl = document.createElement('div');
+    blurEl.className = `gradual-blur gradual-blur-${pos}`;
+    blurEl.style.width = '72px';
+    blurEl.style[pos] = '0';
+
+    const innerEl = document.createElement('div');
+    innerEl.className = 'gradual-blur-inner';
+    blurEl.appendChild(innerEl);
+
+    const divCount = 9;
+    const strength = 3;
+    const increment = 100 / divCount;
+    const curveFunc = p => p * p * (3 - 2 * p); // bezier curve
+
+    for (let i = 1; i <= divCount; i++) {
+      let progress = i / divCount;
+      progress = curveFunc(progress);
+
+      // Exponential progression formula
+      const blurValue = Math.pow(2, progress * 4) * 0.0625 * strength;
+
+      const p1 = Math.round((increment * i - increment) * 10) / 10;
+      const p2 = Math.round(increment * i * 10) / 10;
+      const p3 = Math.round((increment * i + increment) * 10) / 10;
+      const p4 = Math.round((increment * i + increment * 2) * 10) / 10;
+
+      let maskGradient = `transparent ${p1}%, black ${p2}%`;
+      if (p3 <= 100) maskGradient += `, black ${p3}%`;
+      if (p4 <= 100) maskGradient += `, transparent ${p4}%`;
+
+      const direction = pos === 'left' ? 'to left' : 'to right';
+
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.inset = '0';
+      
+      const gradientVal = `linear-gradient(${direction}, ${maskGradient})`;
+      div.style.maskImage = gradientVal;
+      div.style.webkitMaskImage = gradientVal;
+      
+      const blurStr = `blur(${blurValue.toFixed(3)}rem)`;
+      div.style.backdropFilter = blurStr;
+      div.style.webkitBackdropFilter = blurStr;
+      div.style.opacity = '0.5';
+
+      innerEl.appendChild(div);
+    }
+
+    container.appendChild(blurEl);
+  });
+}
+
+export function injectOverlayGradualBlur(overlayId) {
+  const overlay = document.getElementById(overlayId);
+  if (!overlay || overlay.querySelector('.gradual-blur')) return;
+
+  const blurEl = document.createElement('div');
+  blurEl.className = 'gradual-blur gradual-blur-overlay';
+  blurEl.style.position = 'absolute';
+  blurEl.style.inset = '0';
+  blurEl.style.width = '100%';
+  blurEl.style.height = '100%';
+  blurEl.style.zIndex = '1';
+
+  const innerEl = document.createElement('div');
+  innerEl.className = 'gradual-blur-inner';
+  blurEl.appendChild(innerEl);
+
+  const divCount = 9;
+  const strength = 3;
+  const increment = 100 / divCount;
+  const curveFunc = p => p * p * (3 - 2 * p); // bezier curve
+
+  const directions = ['to bottom', 'to top'];
+  directions.forEach(direction => {
+    for (let i = 1; i <= divCount; i++) {
+      let progress = i / divCount;
+      progress = curveFunc(progress);
+
+      // Exponential progression formula
+      const blurValue = Math.pow(2, progress * 4) * 0.0625 * strength;
+
+      const p1 = Math.round((increment * i - increment) * 10) / 10;
+      const p2 = Math.round(increment * i * 10) / 10;
+      const p3 = Math.round((increment * i + increment) * 10) / 10;
+      const p4 = Math.round((increment * i + increment * 2) * 10) / 10;
+
+      let maskGradient = `transparent ${p1}%, black ${p2}%`;
+      if (p3 <= 100) maskGradient += `, black ${p3}%`;
+      if (p4 <= 100) maskGradient += `, transparent ${p4}%`;
+
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.inset = '0';
+      
+      const gradientVal = `linear-gradient(${direction}, ${maskGradient})`;
+      div.style.maskImage = gradientVal;
+      div.style.webkitMaskImage = gradientVal;
+      
+      const blurStr = `blur(${blurValue.toFixed(3)}rem)`;
+      div.style.backdropFilter = blurStr;
+      div.style.webkitBackdropFilter = blurStr;
+      div.style.opacity = '0.5';
+
+      innerEl.appendChild(div);
+    }
+  });
+
+  overlay.insertBefore(blurEl, overlay.firstChild);
 }
