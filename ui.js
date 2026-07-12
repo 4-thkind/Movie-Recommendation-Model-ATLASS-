@@ -1,8 +1,8 @@
-import { state, saveWatchlistToStorage } from './state.js?v=28';
-import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=28';
-import { MOVIES } from './data.js?v=28';
-import { initializeRecommender, calculateMatchScore } from './recommender.js?v=28';
-import { createCircularGallery } from './CircularGallery.js?v=28';
+import { state, saveWatchlistToStorage } from './state.js?v=32';
+import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=32';
+import { MOVIES } from './data.js?v=32';
+import { initializeRecommender, calculateMatchScore } from './recommender.js?v=32';
+import { createCircularGallery } from './CircularGallery.js?v=32';
 
 const sessionStart = Date.now();
 
@@ -798,8 +798,32 @@ export function renderRows() {
         .then(res => res.json())
         .then(data => {
           if (data.results) {
-            const shuffled = data.results.sort(() => Math.random() - 0.5);
-            shuffled.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
+            let currentDislikes = [];
+            try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+            const filtered = data.results.filter(m => !currentDislikes.some(id => String(id) === String(m.id)));
+            
+            let onboardingGenres = [];
+            let onboardingLanguages = [];
+            try { onboardingGenres = JSON.parse(localStorage.getItem('onboarding_genres') || '[]'); } catch(e){}
+            try { onboardingLanguages = JSON.parse(localStorage.getItem('onboarding_languages') || '[]'); } catch(e){}
+
+            // Score based on onboarding language and genre matching
+            const scored = filtered.map(m => {
+              let score = 0;
+              if (onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language)) {
+                score += 1000;
+              }
+              const matchingGenresCount = (m.genre_ids || []).filter(gId => onboardingGenres.includes(gId)).length;
+              score += matchingGenresCount * 100;
+              score += (m.popularity || 0) / 1000;
+              return { item: m, score };
+            });
+
+            // Sort descending by score
+            scored.sort((a, b) => b.score - a.score);
+            const finalRecs = scored.map(s => s.item);
+
+            finalRecs.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
             requestAnimationFrame(() => makeRowInfinite(rw2));
           }
         });
@@ -829,8 +853,68 @@ export function renderRows() {
           }
         }
         if (recs.results && recs.results.length > 0) {
-          recs.results.slice(0, 15).forEach(m => rw2.appendChild(buildCard(m.id, m)));
-          requestAnimationFrame(() => makeRowInfinite(rw2));
+          let currentDislikes = [];
+          try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+          const dislikeSet = new Set(currentDislikes.map(id => String(id)));
+          const filteredRecs = recs.results.filter(m => !dislikeSet.has(String(m.id)));
+          
+          let onboardingGenres = [];
+          let onboardingLanguages = [];
+          try { onboardingGenres = JSON.parse(localStorage.getItem('onboarding_genres') || '[]'); } catch(e){}
+          try { onboardingLanguages = JSON.parse(localStorage.getItem('onboarding_languages') || '[]'); } catch(e){}
+
+          // Filter strictly by preferred language and genres
+          let finalRecs = filteredRecs.filter(m => {
+            const matchesLang = onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language);
+            const matchesGenre = onboardingGenres.length === 0 || (m.genre_ids || []).some(gId => onboardingGenres.includes(gId));
+            return matchesLang && matchesGenre;
+          });
+
+          // Score based on onboarding genre matching count and popularity
+          const scored = finalRecs.map(m => {
+            let score = 0;
+            const matchingGenresCount = (m.genre_ids || []).filter(gId => onboardingGenres.includes(gId)).length;
+            score += matchingGenresCount * 100;
+            score += (m.popularity || 0) / 1000;
+            return { item: m, score };
+          });
+          scored.sort((a, b) => b.score - a.score);
+          let sortedRecs = scored.map(s => s.item);
+
+          // Backfill if needed
+          if (sortedRecs.length < 15 && (onboardingLanguages.length > 0 || onboardingGenres.length > 0)) {
+            const genreStr = onboardingGenres.join(',');
+            const langStr = onboardingLanguages.join('|');
+            let discoverUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=1`;
+            if (genreStr) discoverUrl += `&with_genres=${genreStr}`;
+            if (langStr) discoverUrl += `&with_original_language=${langStr}`;
+
+            fetch(discoverUrl)
+              .then(r => r.json())
+              .then(backfillRes => {
+                if (backfillRes.results) {
+                  const seen = new Set(sortedRecs.map(m => m.id));
+                  backfillRes.results.forEach(m => {
+                    if (!seen.has(m.id) && !dislikeSet.has(String(m.id))) {
+                      seen.add(m.id);
+                      sortedRecs.push(m);
+                    }
+                  });
+                }
+                sortedRecs = sortedRecs.slice(0, 15);
+                sortedRecs.forEach(m => rw2.appendChild(buildCard(m.id, m)));
+                requestAnimationFrame(() => makeRowInfinite(rw2));
+              })
+              .catch(() => {
+                sortedRecs = sortedRecs.slice(0, 15);
+                sortedRecs.forEach(m => rw2.appendChild(buildCard(m.id, m)));
+                requestAnimationFrame(() => makeRowInfinite(rw2));
+              });
+          } else {
+            sortedRecs = sortedRecs.slice(0, 15);
+            sortedRecs.forEach(m => rw2.appendChild(buildCard(m.id, m)));
+            requestAnimationFrame(() => makeRowInfinite(rw2));
+          }
         } else {
           fetchPopular();
         }
@@ -863,9 +947,16 @@ export function renderRows() {
 ──────────────────────────────────────────────────────────────────────────── */
 
 export function renderHomeSections() {
+  // Refresh the ML recommendations rows (rw1 & rw2) as well
+  renderRows();
+
   // Cross-section deduplication — IDs seen in earlier (higher-priority) rows
   // are pushed to the end of later rows rather than shown first.
   const globalSeenIds = new Set();
+
+  let onboardingDislikes = [];
+  try { onboardingDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+  const dislikeSet = new Set(onboardingDislikes.map(id => String(id)));
 
   // TMDB genre IDs
   const GENRE = {
@@ -889,6 +980,9 @@ export function renderHomeSections() {
       const fresh = [];
       const repeats = [];
       all.forEach(item => {
+        let currentDislikes = [];
+        try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+        if (currentDislikes.some(id => String(id) === String(item.id))) return;
         if (globalSeenIds.has(item.id)) {
           repeats.push(item);
         } else {
@@ -920,6 +1014,10 @@ export function renderHomeSections() {
       const fresh = [];
       const repeats = [];
       all.forEach(item => {
+        const normalisedId = `tmdb-tv-${item.id}`;
+        let currentDislikes = [];
+        try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+        if (currentDislikes.some(id => String(id) === String(item.id)) || currentDislikes.some(id => String(id) === normalisedId)) return;
         const key = `tv-${item.id}`;
         if (globalSeenIds.has(key)) {
           repeats.push(item);
@@ -946,7 +1044,8 @@ export function renderHomeSections() {
     if (!row) return;
     row.innerHTML = '';
     row._infiniteInit = false;
-    ids.forEach(id => row.appendChild(buildCard(id)));
+    const filteredIds = ids.filter(id => !dislikeSet.has(String(id)));
+    filteredIds.forEach(id => row.appendChild(buildCard(id)));
     requestAnimationFrame(() => makeRowInfinite(row));
   }
 
@@ -954,6 +1053,156 @@ export function renderHomeSections() {
     const K = TMDB_API_KEY;
     const base = 'https://api.themoviedb.org/3';
     const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+    function customizeRowTitle(rowId, newTitleText) {
+      const rowEl = document.getElementById(rowId);
+      if (!rowEl) return;
+      const sectionEl = rowEl.closest('section');
+      if (!sectionEl) return;
+      const titleEl = sectionEl.querySelector('.sec-title');
+      if (titleEl) {
+        const icon = titleEl.querySelector('i');
+        titleEl.innerHTML = '';
+        if (icon) titleEl.appendChild(icon);
+        titleEl.appendChild(document.createTextNode(' ' + newTitleText));
+      }
+    }
+
+    if (localStorage.getItem('swipe_onboarding_completed') === 'true') {
+      (async () => {
+        let onboardingGenres = [];
+        let onboardingLanguages = [];
+        let onboardingTalents = [];
+        let onboardingLikes = [];
+        let onboardingExcludedGenres = [];
+
+        try { onboardingGenres = JSON.parse(localStorage.getItem('onboarding_genres') || '[]'); } catch(e){}
+        try { onboardingLanguages = JSON.parse(localStorage.getItem('onboarding_languages') || '[]'); } catch(e){}
+        try { onboardingTalents = JSON.parse(localStorage.getItem('onboarding_talents') || '[]'); } catch(e){}
+        try { onboardingLikes = JSON.parse(localStorage.getItem('onboarding_likes') || '[]'); } catch(e){}
+        try { onboardingExcludedGenres = JSON.parse(localStorage.getItem('onboarding_excluded_genres') || '[]'); } catch(e){}
+
+        const genreMap = {
+          28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
+          18: "Drama", 10751: "Family", 14: "Fantasy", 27: "Horror", 9648: "Mystery",
+          10749: "Romance", 878: "Sci-Fi", 53: "Thriller"
+        };
+        const langNames = { en: "English", es: "Spanish", fr: "French", ja: "Japanese", ko: "Korean", hi: "Hindi" };
+        const excludedStr = onboardingExcludedGenres.length > 0 ? `&without_genres=${onboardingExcludedGenres.join(',')}` : '';
+
+        customizeRowTitle('hs-new-releases', 'Top Picks for You');
+        const hsNewReleases = document.getElementById('hs-new-releases');
+        if (hsNewReleases) {
+          hsNewReleases.innerHTML = '';
+          hsNewReleases._infiniteInit = false;
+          
+          let likedId = null;
+          if (onboardingLikes.length > 0) {
+            likedId = onboardingLikes[Math.floor(Math.random() * onboardingLikes.length)];
+          }
+
+          let fetchUrl = likedId 
+            ? `${base}/movie/${likedId}/recommendations?api_key=${K}&page=1`
+            : `${base}/movie/now_playing?api_key=${K}&page=1`;
+
+          try {
+            const res = await fetch(fetchUrl).then(r => r.json());
+            let recs = res.results || [];
+            
+            let currentDislikes = [];
+            try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+            const dislikeSet = new Set(currentDislikes.map(id => String(id)));
+
+            let filtered = recs.filter(m => !dislikeSet.has(String(m.id)));
+
+            // Filter strictly by preferred language and genres
+            let finalRecs = filtered.filter(m => {
+              const matchesLang = onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language);
+              const matchesGenre = onboardingGenres.length === 0 || (m.genre_ids || []).some(gId => onboardingGenres.includes(gId));
+              return matchesLang && matchesGenre;
+            });
+
+            // Backfill if needed
+            if (finalRecs.length < 20 && (onboardingLanguages.length > 0 || onboardingGenres.length > 0)) {
+              const genreStr = onboardingGenres.join(',');
+              const langStr = onboardingLanguages.join('|');
+              let discoverUrl = `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&page=1`;
+              if (genreStr) discoverUrl += `&with_genres=${genreStr}`;
+              if (langStr) discoverUrl += `&with_original_language=${langStr}`;
+
+              const backfillRes = await fetch(discoverUrl).then(r => r.json());
+              if (backfillRes.results) {
+                const seen = new Set(finalRecs.map(m => m.id));
+                backfillRes.results.forEach(m => {
+                  if (!seen.has(m.id) && !dislikeSet.has(String(m.id))) {
+                    seen.add(m.id);
+                    finalRecs.push(m);
+                  }
+                });
+              }
+            }
+
+            finalRecs = finalRecs.slice(0, 20);
+            finalRecs.forEach(item => hsNewReleases.appendChild(buildCard(item.id, item)));
+            requestAnimationFrame(() => makeRowInfinite(hsNewReleases));
+          } catch (e) {
+            console.error("hs-new-releases curation failed:", e);
+          }
+        }
+        await delay(100);
+
+        const chosenGenreId = onboardingGenres[0] || 28;
+        const genreName = genreMap[chosenGenreId] || 'Action';
+        customizeRowTitle('hs-hidden-gems', `Because you like ${genreName}`);
+        _fillRowTMDB('hs-hidden-gems', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=${chosenGenreId}${excludedStr}&page=1`);
+        await delay(100);
+
+        const chosenLangCode = onboardingLanguages[0] || 'en';
+        const langName = langNames[chosenLangCode] || 'English';
+        customizeRowTitle('hs-genres-you-love', `Trending in ${langName}`);
+        _fillRowTMDB('hs-genres-you-love', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_original_language=${chosenLangCode}${excludedStr}&page=1`);
+        await delay(100);
+
+        if (onboardingTalents.length > 0) {
+          const talent = onboardingTalents[0];
+          customizeRowTitle('hs-classics', `Spotlight on ${talent.name}`);
+          _fillRowTMDB('hs-classics', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_people=${talent.id}&page=1`);
+        } else {
+          customizeRowTitle('hs-classics', 'Classics');
+          _fillRowTMDB('hs-classics', `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&vote_count.gte=5000&primary_release_date.lte=1989-12-31${excludedStr}&page=1`);
+        }
+        await delay(100);
+
+        _fillRowTMDB('hs-award-winning', `${base}/discover/movie?api_key=${K}&sort_by=revenue.desc&vote_average.gte=8.0&vote_count.gte=10000${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-critically-acclaimed', `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&vote_count.gte=8000${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-scifi-essentials', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=878${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-action-blockbusters', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=28${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-comedy-picks', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=35${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-thriller-mystery', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=53,9648${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-family-favorites', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=10751${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-animation-collection', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=16${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDBTV('hs-binge-tv', `${base}/discover/tv?api_key=${K}&sort_by=popularity.desc&with_original_language=en&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-recently-added', `${base}/discover/movie?api_key=${K}&sort_by=release_date.desc&vote_count.gte=100${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-most-rewatched', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&vote_count.gte=8000${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-editors-picks', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&vote_average.gte=7.5${excludedStr}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-popular-atlass', `${base}/movie/popular?api_key=${K}&page=1`);
+        await delay(100);
+        _fillRowTMDB('hs-currently-trending', `${base}/trending/movie/day?api_key=${K}`);
+      })();
+      return;
+    }
 
     (async () => {
       // Each section uses a structurally different TMDB endpoint or filter combination
@@ -4311,6 +4560,16 @@ export function initHashRouting() {
 export function handleHashChange() {
   const hash = window.location.hash || '';
   
+  if (!state.isLoggedIn) {
+    showLandingPage();
+    return;
+  }
+  
+  if (state.isLoggedIn && localStorage.getItem('swipe_onboarding_completed') !== 'true') {
+    if (window.checkOnboardingState) window.checkOnboardingState();
+    return;
+  }
+  
   // If already logged in and on landing page, redirect to home
   if (state.isLoggedIn && (hash === '#landing-page' || hash === '#landing' || hash === '' || hash === '#')) {
     activeViewState = 'home';
@@ -4724,6 +4983,28 @@ window._toggleModalWatched = function() {
   }
 };
 
+window.markMovieAsWatched = function(movie) {
+  if (!movie) return;
+  const ratings = JSON.parse(localStorage.getItem('user_movie_ratings') || '{}');
+  ratings[movie.id] = 3;
+  localStorage.setItem('user_movie_ratings', JSON.stringify(ratings));
+
+  const ts = JSON.parse(localStorage.getItem('user_watched_timestamps') || '{}');
+  if (!ts[movie.id]) ts[movie.id] = Date.now();
+  localStorage.setItem('user_watched_timestamps', JSON.stringify(ts));
+
+  // Remove from watchlist if present
+  state.watchlist = state.watchlist.filter(x => String(x.id) !== String(movie.id));
+  saveWatchlistToStorage();
+  updateWatchlistUI();
+  updateWLCount();
+  
+  _syncWatchedBadge();
+  if (state.movieLensData.loaded) {
+    initializeRecommender();
+  }
+};
+
 /* ─── "Watchlist" pill toggle in modal ──────────────────────────────────── */
 window._toggleModalWatchlist = function() {
   const movie = state.currentModalMovie;
@@ -4838,7 +5119,7 @@ export function updateNavbarActiveLink(activeId) {
 
 /* ─── LANDING PAGE: AUTHENTICATION & PROFILE ─── */
 
-import { saveAuthState } from './state.js?v=28';
+import { saveAuthState } from './state.js?v=32';
 
 // Helper function to hash password using SHA-256
 async function hashPassword(password) {
@@ -5017,6 +5298,13 @@ window.logout = function() {
   state.isLoggedIn = false;
   state.user = null;
   saveAuthState();
+  localStorage.removeItem('swipe_onboarding_completed');
+  localStorage.removeItem('onboarding_genres');
+  localStorage.removeItem('onboarding_languages');
+  localStorage.removeItem('onboarding_talents');
+  localStorage.removeItem('onboarding_likes');
+  localStorage.removeItem('onboarding_dislikes');
+  localStorage.removeItem('onboarding_excluded_genres');
   document.body.classList.add('not-logged-in');
   document.getElementById('profile-dropdown').classList.remove('show');
   showLandingPage();

@@ -1,7 +1,11 @@
-import { state, loadWatchlistFromStorage, loadAuthState } from './state.js?v=28';
-import { loadMovieLensDatabase } from './recommender.js?v=28';
-import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=28';
-import { initPillNav } from './PillNav.js?v=28';
+import { state, loadWatchlistFromStorage, loadAuthState } from './state.js?v=32';
+import { loadMovieLensDatabase } from './recommender.js?v=32';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=32';
+import { initPillNav } from './PillNav.js?v=32';
+import './onboarding.js?v=32';
+
+// Bind to window for onboarding completions
+window.renderHomeSections = renderHomeSections;
 
 /* ─── INIT ─── */
 window.addEventListener('DOMContentLoaded', () => {
