@@ -630,6 +630,9 @@
       <button class="settings-tab-btn" data-tab="roulette-tuning" onclick="switchSettingsTab('roulette-tuning')">
         <i class="fa-solid fa-dice"></i> Roulette
       </button>
+      <button class="settings-tab-btn" data-tab="change-preference" onclick="switchSettingsTab('change-preference')">
+        <i class="fa-solid fa-rotate-right"></i> Change Preference
+      </button>
     </div>
     
     <!-- Tab 1: User Preferences -->
@@ -722,6 +725,17 @@
       </div>
     </div>
     
+    <!-- Tab 3: Change Preference -->
+    <div class="settings-tab-content" id="tab-change-preference">
+      <div class="settings-control-group" style="padding:14px;background:var(--b3);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
+        <div style="margin-bottom:12px">
+          <h4 style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:4px">Rebuild Recommendations</h4>
+          <p style="font-size:11px;color:var(--t3);line-height:1.4">Start over with the Taste Selection flow to pick new favorite genres, actors, and languages.</p>
+        </div>
+        <button class="btn-primary" style="width:100%;justify-content:center;background:#e74c3c;color:#fff" onclick="resetContentPreferences()">Reset Content Preferences</button>
+      </div>
+    </div>
+
     <div style="margin-top:24px">
       <button class="btn-primary" style="width:100%;justify-content:center" onclick="saveSettings()">Save Changes</button>
     </div>
