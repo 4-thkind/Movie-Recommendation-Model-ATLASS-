@@ -16,7 +16,26 @@ const ONBOARDING_GENRES = [
   { id: 9648, name: "Mystery" },
   { id: 10749, name: "Romance" },
   { id: 878, name: "Sci-Fi" },
-  { id: 53, name: "Thriller" }
+  { id: 53, name: "Thriller" },
+  { id: 36, name: "History" },
+  { id: 10402, name: "Music" },
+  { id: 10752, name: "War" },
+  { id: 37, name: "Western" },
+  { id: 99, name: "Documentary" },
+  { id: 10759, name: "Action & Adventure" },
+  { id: 10765, name: "Sci-Fi & Fantasy" },
+  { id: 9001, name: "Anime" },
+  { id: 9002, name: "Indie" },
+  { id: 9003, name: "Classic" },
+  { id: 9004, name: "Sports" },
+  { id: 9005, name: "Biographical" },
+  { id: 9006, name: "Musical" },
+  { id: 9007, name: "Superhero" },
+  { id: 9008, name: "Dark Comedy" },
+  { id: 9009, name: "Coming-of-Age" },
+  { id: 9010, name: "Neo-Noir" },
+  { id: 9011, name: "Cult Classic" },
+  { id: 10767, name: "Reality TV" }
 ];
 
 const ONBOARDING_LANGUAGES = [
@@ -25,7 +44,27 @@ const ONBOARDING_LANGUAGES = [
   { code: "fr", name: "French" },
   { code: "ja", name: "Japanese" },
   { code: "ko", name: "Korean" },
-  { code: "hi", name: "Hindi" }
+  { code: "hi", name: "Hindi" },
+  { code: "te", name: "Telugu" },
+  { code: "ta", name: "Tamil" },
+  { code: "ml", name: "Malayalam" },
+  { code: "kn", name: "Kannada" },
+  { code: "bn", name: "Bengali" },
+  { code: "zh", name: "Mandarin" },
+  { code: "de", name: "German" },
+  { code: "it", name: "Italian" },
+  { code: "pt", name: "Portuguese" },
+  { code: "ru", name: "Russian" },
+  { code: "ar", name: "Arabic" },
+  { code: "tr", name: "Turkish" },
+  { code: "th", name: "Thai" },
+  { code: "vi", name: "Vietnamese" },
+  { code: "id", name: "Indonesian" },
+  { code: "pl", name: "Polish" },
+  { code: "nl", name: "Dutch" },
+  { code: "sv", name: "Swedish" },
+  { code: "el", name: "Greek" },
+  { code: "da", name: "Danish" }
 ];
 
 let selectedGenres = new Set();
@@ -86,11 +125,26 @@ function initPills() {
   const genreContainer = document.getElementById('onboarding-genre-pills');
   const langContainer = document.getElementById('onboarding-lang-pills');
 
-  if (genreContainer) {
-    genreContainer.innerHTML = ONBOARDING_GENRES.map(g => `
-      <div class="genre-pill" data-id="${g.id}">${g.name}</div>
-    `).join('');
-    genreContainer.querySelectorAll('.genre-pill').forEach(pill => {
+  let genreLimit = 13;
+  let langLimit = 6;
+
+  function renderGenres() {
+    if (!genreContainer) return;
+    const items = ONBOARDING_GENRES.slice(0, genreLimit);
+    
+    let html = items.map(g => {
+      const activeClass = selectedGenres.has(g.id) ? 'active' : '';
+      return `<div class="genre-pill ${activeClass}" data-id="${g.id}">${g.name}</div>`;
+    }).join('');
+    
+    // Only append Load More button if we haven't reached the end and haven't exceeded 8 clicks (13 + 8*4 = 45)
+    if (genreLimit < ONBOARDING_GENRES.length && genreLimit < 45) {
+      html += `<div class="genre-pill load-more-btn" style="background:rgba(255,255,255,0.05);color:var(--t2)">+ Load More</div>`;
+    }
+    
+    genreContainer.innerHTML = html;
+    
+    genreContainer.querySelectorAll('.genre-pill:not(.load-more-btn)').forEach(pill => {
       pill.addEventListener('click', () => {
         const id = Number(pill.dataset.id);
         if (selectedGenres.has(id)) {
@@ -102,13 +156,33 @@ function initPills() {
         }
       });
     });
+
+    const loadMore = genreContainer.querySelector('.load-more-btn');
+    if (loadMore) {
+      loadMore.addEventListener('click', () => {
+        genreLimit += 4;
+        renderGenres();
+      });
+    }
   }
 
-  if (langContainer) {
-    langContainer.innerHTML = ONBOARDING_LANGUAGES.map(l => `
-      <div class="lang-pill" data-code="${l.code}">${l.name}</div>
-    `).join('');
-    langContainer.querySelectorAll('.lang-pill').forEach(pill => {
+  function renderLangs() {
+    if (!langContainer) return;
+    const items = ONBOARDING_LANGUAGES.slice(0, langLimit);
+    
+    let html = items.map(l => {
+      const activeClass = selectedLanguages.has(l.code) ? 'active' : '';
+      return `<div class="lang-pill ${activeClass}" data-code="${l.code}">${l.name}</div>`;
+    }).join('');
+    
+    // Max 8 clicks (6 + 8*4 = 38)
+    if (langLimit < ONBOARDING_LANGUAGES.length && langLimit < 38) {
+      html += `<div class="lang-pill load-more-btn" style="background:rgba(255,255,255,0.05);color:var(--t2)">+ Load More</div>`;
+    }
+    
+    langContainer.innerHTML = html;
+    
+    langContainer.querySelectorAll('.lang-pill:not(.load-more-btn)').forEach(pill => {
       pill.addEventListener('click', () => {
         const code = pill.dataset.code;
         if (selectedLanguages.has(code)) {
@@ -120,7 +194,18 @@ function initPills() {
         }
       });
     });
+
+    const loadMore = langContainer.querySelector('.load-more-btn');
+    if (loadMore) {
+      loadMore.addEventListener('click', () => {
+        langLimit += 4;
+        renderLangs();
+      });
+    }
   }
+
+  renderGenres();
+  renderLangs();
 }
 
 // ─── TALENT AUTOCOMPLETE TAG INPUT ───
@@ -355,8 +440,13 @@ function renderNextDeckCards() {
     card.style.zIndex = String(10 - i);
     card.style.opacity = String(1 - (i * 0.15));
 
+    let displayPoster = movie.poster;
+    if (displayPoster && displayPoster.includes('image.tmdb.org')) {
+      displayPoster = `https://images.weserv.nl/?url=${encodeURIComponent(displayPoster)}`;
+    }
+
     card.innerHTML = `
-      <img src="${movie.poster}" alt="${movie.title}"/>
+      <img src="${displayPoster}" alt="${movie.title}"/>
       <div class="swipe-card-overlay"></div>
       <div class="swipe-card-info">
         <h3 class="swipe-card-title">${movie.title}</h3>
