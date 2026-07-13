@@ -269,7 +269,9 @@ function fetchOnboardingQueue(callback) {
       .then(r => r.json())
       .then(data => {
         if (data.results && data.results.length > 0) {
-          swipeQueue = data.results.map(m => mapTmdbMovieToLocal(m));
+          swipeQueue = data.results
+            .filter(m => !m.release_date || new Date(m.release_date) <= new Date())
+            .map(m => mapTmdbMovieToLocal(m));
         }
         fallbackIfQueueEmpty();
         callback();
@@ -446,18 +448,75 @@ function setupCardGestures(cardEl, movie) {
       window.handleOnboardingSwipeAction('skip');
     }
 
+    // Decouple the card from the stack so it isn't destroyed when the stack re-renders
+    const parentContainer = dragCard.closest('.swipe-deck-container');
+    if (parentContainer) {
+      const rect = dragCard.getBoundingClientRect();
+      const parentRect = parentContainer.getBoundingClientRect();
+      dragCard.style.position = 'absolute';
+      dragCard.style.top = `${rect.top - parentRect.top}px`;
+      dragCard.style.left = `${rect.left - parentRect.left}px`;
+      dragCard.style.width = `${rect.width}px`;
+      dragCard.style.height = `${rect.height}px`;
+      dragCard.style.zIndex = '9999';
+      parentContainer.appendChild(dragCard);
+    }
+
     dragCard.style.transform = targetTransform;
     dragCard.style.opacity = '0';
 
     const cardToRemove = dragCard;
     setTimeout(() => {
       cardToRemove.remove();
-    }, 300);
+    }, 450);
 
     currentX = 0;
     currentY = 0;
   }
 }
+
+// ─── PROGRAMMATIC SWIPE (BUTTONS) ───
+window.triggerSwipeAnimation = function(direction) {
+  const stack = document.getElementById('onboarding-card-stack');
+  if (!stack || !stack.lastElementChild) return;
+  
+  const topCard = stack.lastElementChild;
+  topCard.style.transition = 'transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease';
+  
+  let targetTransform = '';
+  if (direction === 'right') {
+    targetTransform = `translate(${window.innerWidth}px, 0px) rotate(45deg)`;
+  } else if (direction === 'left') {
+    targetTransform = `translate(${-window.innerWidth}px, 0px) rotate(-45deg)`;
+  } else if (direction === 'skip') {
+    targetTransform = `translate(0px, ${-window.innerHeight}px) rotate(0deg)`;
+  }
+  
+  const parentContainer = topCard.closest('.swipe-deck-container');
+  if (parentContainer) {
+    const rect = topCard.getBoundingClientRect();
+    const parentRect = parentContainer.getBoundingClientRect();
+    topCard.style.position = 'absolute';
+    topCard.style.top = `${rect.top - parentRect.top}px`;
+    topCard.style.left = `${rect.left - parentRect.left}px`;
+    topCard.style.width = `${rect.width}px`;
+    topCard.style.height = `${rect.height}px`;
+    topCard.style.zIndex = '9999';
+    parentContainer.appendChild(topCard);
+  }
+
+  // Force reflow
+  void topCard.offsetWidth;
+
+  topCard.style.transform = targetTransform;
+  topCard.style.opacity = '0';
+  
+  setTimeout(() => {
+    topCard.remove();
+  }, 450);
+
+  window.handleOnboardingSwipeAction(direction);
+};
 
 // ─── SWIPE ACTIONS ───
 window.handleOnboardingSwipeAction = function(action) {
@@ -478,7 +537,10 @@ window.handleOnboardingSwipeAction = function(action) {
         .then(r => r.json())
         .then(data => {
           if (data.results && data.results.length > 0) {
-            const list = data.results.map(m => mapTmdbMovieToLocal(m)).filter(rec => {
+            const list = data.results
+              .filter(m => !m.release_date || new Date(m.release_date) <= new Date())
+              .map(m => mapTmdbMovieToLocal(m))
+              .filter(rec => {
               return !swipeQueue.find(q => q.id === rec.id) && !swipedLikes.find(l => l.id === rec.id) && !swipedDislikes.find(d => d.id === rec.id);
             });
             swipeQueue.push(...list.slice(0, 5));

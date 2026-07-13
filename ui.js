@@ -863,8 +863,9 @@ export function renderRows() {
           try { onboardingGenres = JSON.parse(localStorage.getItem('onboarding_genres') || '[]'); } catch(e){}
           try { onboardingLanguages = JSON.parse(localStorage.getItem('onboarding_languages') || '[]'); } catch(e){}
 
-          // Filter strictly by preferred language and genres
+          // Filter strictly by preferred language and genres, and omit unreleased movies
           let finalRecs = filteredRecs.filter(m => {
+            if (m.release_date && new Date(m.release_date) > new Date()) return false;
             const matchesLang = onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language);
             const matchesGenre = onboardingGenres.length === 0 || (m.genre_ids || []).some(gId => onboardingGenres.includes(gId));
             return matchesLang && matchesGenre;
@@ -895,7 +896,8 @@ export function renderRows() {
                 if (backfillRes.results) {
                   const seen = new Set(sortedRecs.map(m => m.id));
                   backfillRes.results.forEach(m => {
-                    if (!seen.has(m.id) && !dislikeSet.has(String(m.id))) {
+                    const isUnreleased = m.release_date && new Date(m.release_date) > new Date();
+                    if (!seen.has(m.id) && !dislikeSet.has(String(m.id)) && !isUnreleased) {
                       seen.add(m.id);
                       sortedRecs.push(m);
                     }
@@ -972,6 +974,13 @@ export function renderHomeSections() {
     if (!row) return;
     row.innerHTML = '';
     row._infiniteInit = false;
+    
+    // Auto-append release date filter for discover queries to prevent unreleased movies
+    if (url.includes('/discover/movie') && !url.includes('primary_release_date.lte')) {
+      const today = new Date().toISOString().split('T')[0];
+      url += `&primary_release_date.lte=${today}`;
+    }
+
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error('TMDB fetch failed');
@@ -980,6 +989,9 @@ export function renderHomeSections() {
       const fresh = [];
       const repeats = [];
       all.forEach(item => {
+        // Skip movies that haven't been released yet
+        if (item.release_date && new Date(item.release_date) > new Date()) return;
+
         let currentDislikes = [];
         try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
         if (currentDislikes.some(id => String(id) === String(item.id))) return;
@@ -1113,7 +1125,7 @@ export function renderHomeSections() {
             try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
             const dislikeSet = new Set(currentDislikes.map(id => String(id)));
 
-            let filtered = recs.filter(m => !dislikeSet.has(String(m.id)));
+            let filtered = recs.filter(m => !dislikeSet.has(String(m.id)) && !(m.release_date && new Date(m.release_date) > new Date()));
 
             // Filter strictly by preferred language and genres
             let finalRecs = filtered.filter(m => {
