@@ -3016,6 +3016,18 @@ export function saveSettings() {
   }
 }
 
+export function resetContentPreferences() {
+  localStorage.removeItem('swipe_onboarding_completed');
+  localStorage.removeItem('onboarding_genres');
+  localStorage.removeItem('onboarding_languages');
+  localStorage.removeItem('onboarding_talents');
+  localStorage.removeItem('onboarding_likes');
+  localStorage.removeItem('onboarding_dislikes');
+  localStorage.removeItem('onboarding_excluded_genres');
+  
+  window.location.reload();
+}
+
 export function updateDatabaseStatus(type, status) {
   const el = document.getElementById(`status-${type}`);
   if (!el) return;
@@ -4413,6 +4425,7 @@ window.closeSettingsModal = closeSettingsModal;
 window.handleSettingsOverlay = handleSettingsOverlay;
 window.saveSettings = saveSettings;
 window.switchSettingsTab = switchSettingsTab;
+window.resetContentPreferences = resetContentPreferences;
 window.testTMDBConnection = testTMDBConnection;
 window.toggleGenrePill = toggleGenrePill;
 window.toggleProviderCheckbox = toggleProviderCheckbox;
@@ -4686,6 +4699,7 @@ export function showLandingPage() {
 export function showWatchlistPage() {
   // Hide the landing page
   document.body.classList.remove('show-landing-page');
+  if (typeof window.closeSearchPanel === 'function') window.closeSearchPanel();
   
   clearSearch(true);
   stopHeroRotation();
@@ -5057,6 +5071,7 @@ function _updateModalWatchlistPill() {
 export function showHomePage() {
   // Hide the landing page
   document.body.classList.remove('show-landing-page');
+  if (typeof window.closeSearchPanel === 'function') window.closeSearchPanel();
   
   clearSearch(true);
   stopHeroRotation();
