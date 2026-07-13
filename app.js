@@ -18,6 +18,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.body.classList.remove('show-landing-page');
   } else {
     document.body.classList.add('not-logged-in');
+    document.body.classList.add('show-landing-page');
   }
 
   // Initialize TMDB API key if not present in localStorage
