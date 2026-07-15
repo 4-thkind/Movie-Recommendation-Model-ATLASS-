@@ -1249,10 +1249,6 @@ body.watchlist-active #watchlist-section{
   overflow-y:auto;transform:scale(.88) translateY(24px);
   transition:transform .45s var(--spring);scrollbar-width:thin;scrollbar-color:var(--b5) transparent;
   position:relative;z-index:10;
-  scroll-behavior:smooth;
-  overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;
-  will-change:transform;
 }
 #overlay.on #modal{transform:scale(1) translateY(0)}
 .m-hero{position:relative;height:310px;border-radius:18px 18px 0 0;overflow:hidden}
