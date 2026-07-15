@@ -8,22 +8,17 @@ import './onboarding.js?v=32';
 window.renderHomeSections = renderHomeSections;
 
 /* ─── INIT ─── */
-window.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   // Load watchlist and auth from localStorage
   loadWatchlistFromStorage();
   loadAuthState();
 
-  if (state.isLoggedIn) {
+  if (state.isLoggedIn) { 
     document.body.classList.remove('not-logged-in');
     document.body.classList.remove('show-landing-page');
   } else {
     document.body.classList.add('not-logged-in');
     document.body.classList.add('show-landing-page');
-  }
-
-  // Initialize TMDB API key if not present in localStorage
-  if (!localStorage.getItem('tmdb_api_key')) {
-    localStorage.setItem('tmdb_api_key', '572a69a7b33b22b3aaa05c9c9351fbab');
   }
 
   // Load database (MovieLens CSV or TMDB Live setup)
@@ -50,7 +45,13 @@ window.addEventListener('DOMContentLoaded', () => {
     initHero();
     renderHomeSections();
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 function applyTheme(theme) {
   const isLight = theme === 'light';

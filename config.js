@@ -1,4 +1,17 @@
-export const TMDB_API_KEY = localStorage.getItem('tmdb_api_key') || '572a69a7b33b22b3aaa05c9c9351fbab';
+export let TMDB_API_KEY = localStorage.getItem('tmdb_api_key') || '';
+
+try {
+  const response = await fetch('./.env');
+  if (response.ok) {
+    const text = await response.text();
+    const match = text.match(/^TMDB_API_KEY=(.*)$/m);
+    if (match && match[1]) {
+      TMDB_API_KEY = match[1].trim().replace(/^['"]|['"]$/g, '');
+    }
+  }
+} catch (err) {
+  console.warn('Could not load .env file', err);
+}
 export const IS_FILE_PROTOCOL = window.location.protocol === 'file:';
 export const DEFAULT_RECS = [
   318, 858, 296, 527, 593, 2571, 50, 1198, 2858, 47,
