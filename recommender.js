@@ -10,147 +10,155 @@ export function initializeRecommender() {
   rw1.innerHTML = '';
   rw1._infiniteInit = false;
 
-  if (TMDB_API_KEY) {
-    let onboardingLikes = [];
-    try { onboardingLikes = JSON.parse(localStorage.getItem('onboarding_likes') || '[]'); } catch(e){}
-
-    const watchlistSeeds = state.watchlist.map(m => m.id);
-    const combinedSeeds = [...watchlistSeeds, ...onboardingLikes];
-
-    if (combinedSeeds.length > 0) {
-      // Use up to 3 different seeds from watchlist and onboarding likes merged
-      const seeds = combinedSeeds
-        .slice()
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3);
-
-      Promise.all(
-        seeds.map(seedId =>
-          fetch(`https://api.themoviedb.org/3/movie/${seedId}/recommendations?api_key=${TMDB_API_KEY}`)
-            .then(r => r.json())
-            .catch(() => ({ results: [] }))
-        )
-      ).then(allData => {
-        const seen = new Set();
-        const merged = [];
-        const maxLen = Math.max(...allData.map(d => (d.results || []).length));
-        for (let i = 0; i < maxLen; i++) {
-          allData.forEach(data => {
-            const m = (data.results || [])[i];
-            if (m && !seen.has(m.id)) { seen.add(m.id); merged.push(m); }
-          });
-        }
-
-        let onboardingGenres = [];
-        let onboardingLanguages = [];
-        try { onboardingGenres = JSON.parse(localStorage.getItem('onboarding_genres') || '[]'); } catch(e){}
-        try { onboardingLanguages = JSON.parse(localStorage.getItem('onboarding_languages') || '[]'); } catch(e){}
-
-        // Dynamic Filtering: Exclude any movie matching onboardingDislikes
-        let onboardingDislikes = [];
-        try { onboardingDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
-        const dislikeSet = new Set(onboardingDislikes.map(id => String(id)));
-
-        const filtered = merged.filter(m => !dislikeSet.has(String(m.id)));
-
-        // Filter strictly by preferred language and genres if selected
-        let finalRecs = filtered.filter(m => {
-          const matchesLang = onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language);
-          const matchesGenre = onboardingGenres.length === 0 || (m.genre_ids || []).some(gId => onboardingGenres.includes(gId));
-          return matchesLang && matchesGenre;
-        });
-
-        // Score final recs based on genre matching count and popularity
-        const scored = finalRecs.map(m => {
-          let score = 0;
-          const matchingGenresCount = (m.genre_ids || []).filter(gId => onboardingGenres.includes(gId)).length;
-          score += matchingGenresCount * 100;
-          score += (m.popularity || 0) / 1000;
-          return { item: m, score };
-        });
-        scored.sort((a, b) => b.score - a.score);
-        let sortedRecs = scored.map(s => s.item);
-
-        // If we don't have enough matching recommendations, backfill with popular movies matching preferences
-        if (sortedRecs.length < 20 && (onboardingLanguages.length > 0 || onboardingGenres.length > 0)) {
-          const genreStr = onboardingGenres.join(',');
-          const langStr = onboardingLanguages.join('|');
-          let discoverUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=1`;
-          if (genreStr) discoverUrl += `&with_genres=${genreStr}`;
-          if (langStr) discoverUrl += `&with_original_language=${langStr}`;
-
-          // Fetch backfill synchronizing inside the Promise resolver
-          const backfillPromise = fetch(discoverUrl)
-            .then(r => r.json())
-            .then(backfillRes => {
-              if (backfillRes.results) {
-                backfillRes.results.forEach(m => {
-                  if (!seen.has(m.id) && !dislikeSet.has(String(m.id))) {
-                    seen.add(m.id);
-                    sortedRecs.push(m);
-                  }
-                });
-              }
-              sortedRecs = sortedRecs.slice(0, 20);
-              sortedRecs.forEach(m => rw1.appendChild(buildCard(m.id, m)));
-              requestAnimationFrame(() => makeRowInfinite(rw1));
-            })
-            .catch(() => {
-              sortedRecs = sortedRecs.slice(0, 20);
-              if (sortedRecs.length > 0) {
-                sortedRecs.forEach(m => rw1.appendChild(buildCard(m.id, m)));
-              } else {
-                loadDefaultRecs(rw1);
-              }
-              requestAnimationFrame(() => makeRowInfinite(rw1));
-            });
-        } else {
-          sortedRecs = sortedRecs.slice(0, 20);
-          if (sortedRecs.length > 0) {
-            sortedRecs.forEach(m => rw1.appendChild(buildCard(m.id, m)));
-          } else {
-            loadDefaultRecs(rw1);
-          }
-          requestAnimationFrame(() => makeRowInfinite(rw1));
-        }
-      }).catch(() => { loadDefaultRecs(rw1); requestAnimationFrame(() => makeRowInfinite(rw1)); });
-    } else {
-      loadDefaultRecs(rw1);
-    }
-    return;
-  }
-
-  // Offline MovieLens collaborative filtering
   const myRatingsStr = localStorage.getItem('user_movie_ratings') || '{}';
   const myRatings = JSON.parse(myRatingsStr);
-
-  if (Object.keys(myRatings).length === 0) {
-    state.personalizedRecommendations = {};
-    // Use first half of DEFAULT_RECS for rw1 (rw2 uses second half — no overlap)
-    DEFAULT_RECS.slice(0, Math.ceil(DEFAULT_RECS.length / 2)).forEach(id => {
-      rw1.appendChild(buildCard(id));
-    });
-    requestAnimationFrame(() => makeRowInfinite(rw1));
-    return;
-  }
-
   const myRatingsMapped = {};
   for (const [mid, r] of Object.entries(myRatings)) {
     myRatingsMapped[parseInt(mid)] = parseFloat(r);
   }
 
-  // Trained SVD model (32 latent factors, fit offline on MovieLens)
+  let onboardingLikes = [];
+  try { onboardingLikes = JSON.parse(localStorage.getItem('onboarding_likes') || '[]'); } catch(e){}
+  onboardingLikes.forEach(id => {
+    if (!myRatingsMapped[id]) {
+      myRatingsMapped[id] = 4.5;
+    }
+  });
+
+  // Always load the model to populate score map for badges and recommendations
   loadModel().then(() => {
     state.personalizedRecommendations = getScoreMap(myRatingsMapped);
-    const sortedIds = getRecommendations(myRatingsMapped, 10);
 
-    rw1.innerHTML = '';
-    if (sortedIds.length === 0) {
-      DEFAULT_RECS.forEach(id => rw1.appendChild(buildCard(id)));
+    if (TMDB_API_KEY) {
+      if (Object.keys(myRatingsMapped).length > 0) {
+        // We have enough signal to use the ML model
+        const sortedIds = getRecommendations(myRatingsMapped, 30);
+        if (sortedIds.length > 0) {
+          Promise.all(sortedIds.map(id => 
+            fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}`).then(r => r.json()).catch(() => null)
+          )).then(results => {
+            let onboardingDislikes = [];
+            try { onboardingDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+            const dislikeSet = new Set(onboardingDislikes.map(id => String(id)));
+            
+            const validMovies = results.filter(m => m && m.id && !m.adult && !dislikeSet.has(String(m.id)));
+            
+            if (validMovies.length > 0) {
+              validMovies.slice(0, 20).forEach(m => rw1.appendChild(buildCard(m.id, m)));
+            } else {
+              loadDefaultRecs(rw1);
+            }
+            requestAnimationFrame(() => makeRowInfinite(rw1));
+          });
+          return;
+        }
+      }
+
+      // Cold start / Fallback: TMDB Discover based on Watchlist/Onboarding Likes
+      const watchlistSeeds = state.watchlist.map(m => m.id);
+      const combinedSeeds = [...watchlistSeeds, ...onboardingLikes];
+
+      if (combinedSeeds.length > 0) {
+        const seeds = combinedSeeds.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+        Promise.all(
+          seeds.map(seedId =>
+            fetch(`https://api.themoviedb.org/3/movie/${seedId}/recommendations?api_key=${TMDB_API_KEY}`)
+              .then(r => r.json())
+              .catch(() => ({ results: [] }))
+          )
+        ).then(allData => {
+          const seen = new Set();
+          const merged = [];
+          const maxLen = Math.max(...allData.map(d => (d.results || []).length));
+          for (let i = 0; i < maxLen; i++) {
+            allData.forEach(data => {
+              const m = (data.results || [])[i];
+              if (m && !seen.has(m.id)) { seen.add(m.id); merged.push(m); }
+            });
+          }
+
+          let onboardingGenres = [];
+          let onboardingLanguages = [];
+          try { onboardingGenres = JSON.parse(localStorage.getItem('onboarding_genres') || '[]'); } catch(e){}
+          try { onboardingLanguages = JSON.parse(localStorage.getItem('onboarding_languages') || '[]'); } catch(e){}
+
+          let onboardingDislikes = [];
+          try { onboardingDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+          const dislikeSet = new Set(onboardingDislikes.map(id => String(id)));
+
+          const filtered = merged.filter(m => !dislikeSet.has(String(m.id)));
+          let finalRecs = filtered.filter(m => {
+            const matchesLang = onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language);
+            const matchesGenre = onboardingGenres.length === 0 || (m.genre_ids || []).some(gId => onboardingGenres.includes(gId));
+            return matchesLang && matchesGenre;
+          });
+
+          const scored = finalRecs.map(m => {
+            let score = 0;
+            const matchingGenresCount = (m.genre_ids || []).filter(gId => onboardingGenres.includes(gId)).length;
+            score += matchingGenresCount * 100;
+            score += (m.popularity || 0) / 1000;
+            return { item: m, score };
+          });
+          scored.sort((a, b) => b.score - a.score);
+          let sortedRecs = scored.map(s => s.item);
+
+          if (sortedRecs.length < 20 && (onboardingLanguages.length > 0 || onboardingGenres.length > 0)) {
+            const genreStr = onboardingGenres.join(',');
+            const langStr = onboardingLanguages.join('|');
+            let discoverUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=1`;
+            if (genreStr) discoverUrl += `&with_genres=${genreStr}`;
+            if (langStr) discoverUrl += `&with_original_language=${langStr}`;
+
+            fetch(discoverUrl)
+              .then(r => r.json())
+              .then(backfillRes => {
+                if (backfillRes.results) {
+                  backfillRes.results.forEach(m => {
+                    if (!seen.has(m.id) && !dislikeSet.has(String(m.id))) {
+                      seen.add(m.id);
+                      sortedRecs.push(m);
+                    }
+                  });
+                }
+                sortedRecs.slice(0, 20).forEach(m => rw1.appendChild(buildCard(m.id, m)));
+                requestAnimationFrame(() => makeRowInfinite(rw1));
+              })
+              .catch(() => {
+                const finalSet = sortedRecs.slice(0, 20);
+                if (finalSet.length > 0) {
+                  finalSet.forEach(m => rw1.appendChild(buildCard(m.id, m)));
+                } else {
+                  loadDefaultRecs(rw1);
+                }
+                requestAnimationFrame(() => makeRowInfinite(rw1));
+              });
+          } else {
+            const finalSet = sortedRecs.slice(0, 20);
+            if (finalSet.length > 0) {
+              finalSet.forEach(m => rw1.appendChild(buildCard(m.id, m)));
+            } else {
+              loadDefaultRecs(rw1);
+            }
+            requestAnimationFrame(() => makeRowInfinite(rw1));
+          }
+        }).catch(() => { loadDefaultRecs(rw1); requestAnimationFrame(() => makeRowInfinite(rw1)); });
+      } else {
+        loadDefaultRecs(rw1);
+      }
     } else {
-      sortedIds.forEach(id => rw1.appendChild(buildCard(id)));
+      // Offline mode
+      const sortedIds = getRecommendations(myRatingsMapped, 10);
+      if (sortedIds.length === 0) {
+        state.personalizedRecommendations = {};
+        DEFAULT_RECS.slice(0, Math.ceil(DEFAULT_RECS.length / 2)).forEach(id => {
+          rw1.appendChild(buildCard(id));
+        });
+      } else {
+        sortedIds.forEach(id => rw1.appendChild(buildCard(id)));
+      }
+      requestAnimationFrame(() => makeRowInfinite(rw1));
     }
-    requestAnimationFrame(() => makeRowInfinite(rw1));
   });
 }
 
@@ -204,6 +212,9 @@ export async function loadMovieLensDatabase() {
     updateDatabaseStatus('links', 'Live (TMDB)');
     updateDatabaseStatus('ratings', 'Live (TMDB)');
     state.movieLensData.loaded = true;
+    
+    // Warm up the trained SVD model in the background
+    loadModel();
     
     renderRows();
     buildTrending();
@@ -366,8 +377,9 @@ export function cosineSimilarity(ratingsA, ratingsB) {
 
 /* ─── MATCH SCORE CALCULATION ─── */
 export function calculateMatchScore(movieId) {
-  if (state.personalizedRecommendations[movieId]) {
+  const numericId = parseInt(String(movieId).replace(/\D/g, '')) || 0;
+  if (state.personalizedRecommendations && state.personalizedRecommendations[movieId]) {
     return Math.min(99, Math.max(75, Math.round(75 + (state.personalizedRecommendations[movieId] / 5.0) * 24)));
   }
-  return 85 + ((movieId * 7) % 15);
+  return 85 + ((numericId * 7) % 15);
 }
