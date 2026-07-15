@@ -1241,13 +1241,14 @@ body.watchlist-active #watchlist-section{
   position:fixed;inset:0;z-index:9999;background:rgba(5,5,8,.4);
   display:flex;align-items:center;justify-content:center;padding:20px;
   opacity:0;pointer-events:none;transition:opacity .35s var(--smooth);
+  will-change: opacity;
 }
 #overlay.on{opacity:1;pointer-events:all}
 #modal{
   background:var(--b2);border:1px solid rgba(124,58,237,.15);
   border-radius:18px;width:100%;max-width:840px;max-height:90vh;
   overflow-y:auto;transform:scale(.88) translateY(24px);
-  transition:transform .45s var(--spring);scrollbar-width:thin;scrollbar-color:var(--b5) transparent;
+  transition:transform .4s var(--smooth);scrollbar-width:thin;scrollbar-color:var(--b5) transparent;
   position:relative;z-index:10;
 }
 #overlay.on #modal{transform:scale(1) translateY(0)}
