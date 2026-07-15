@@ -1102,65 +1102,7 @@ export function renderHomeSections() {
         const langNames = { en: "English", es: "Spanish", fr: "French", ja: "Japanese", ko: "Korean", hi: "Hindi" };
         const excludedStr = onboardingExcludedGenres.length > 0 ? `&without_genres=${onboardingExcludedGenres.join(',')}` : '';
 
-        customizeRowTitle('hs-new-releases', 'Top Picks for You');
-        const hsNewReleases = document.getElementById('hs-new-releases');
-        if (hsNewReleases) {
-          hsNewReleases.innerHTML = '';
-          hsNewReleases._infiniteInit = false;
-          
-          let likedId = null;
-          if (onboardingLikes.length > 0) {
-            likedId = onboardingLikes[Math.floor(Math.random() * onboardingLikes.length)];
-          }
-
-          let fetchUrl = likedId 
-            ? `${base}/movie/${likedId}/recommendations?api_key=${K}&page=1`
-            : `${base}/movie/now_playing?api_key=${K}&page=1`;
-
-          try {
-            const res = await fetch(fetchUrl).then(r => r.json());
-            let recs = res.results || [];
-            
-            let currentDislikes = [];
-            try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
-            const dislikeSet = new Set(currentDislikes.map(id => String(id)));
-
-            let filtered = recs.filter(m => !dislikeSet.has(String(m.id)) && !(m.release_date && new Date(m.release_date) > new Date()));
-
-            // Filter strictly by preferred language and genres
-            let finalRecs = filtered.filter(m => {
-              const matchesLang = onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language);
-              const matchesGenre = onboardingGenres.length === 0 || (m.genre_ids || []).some(gId => onboardingGenres.includes(gId));
-              return matchesLang && matchesGenre;
-            });
-
-            // Backfill if needed
-            if (finalRecs.length < 20 && (onboardingLanguages.length > 0 || onboardingGenres.length > 0)) {
-              const genreStr = onboardingGenres.join(',');
-              const langStr = onboardingLanguages.join('|');
-              let discoverUrl = `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&page=1`;
-              if (genreStr) discoverUrl += `&with_genres=${genreStr}`;
-              if (langStr) discoverUrl += `&with_original_language=${langStr}`;
-
-              const backfillRes = await fetch(discoverUrl).then(r => r.json());
-              if (backfillRes.results) {
-                const seen = new Set(finalRecs.map(m => m.id));
-                backfillRes.results.forEach(m => {
-                  if (!seen.has(m.id) && !dislikeSet.has(String(m.id))) {
-                    seen.add(m.id);
-                    finalRecs.push(m);
-                  }
-                });
-              }
-            }
-
-            finalRecs = finalRecs.slice(0, 20);
-            finalRecs.forEach(item => hsNewReleases.appendChild(buildCard(item.id, item)));
-            requestAnimationFrame(() => makeRowInfinite(hsNewReleases));
-          } catch (e) {
-            console.error("hs-new-releases curation failed:", e);
-          }
-        }
+        _fillRowTMDB('hs-new-releases', `${base}/movie/now_playing?api_key=${K}&page=1`);
         await delay(100);
 
         const chosenGenreId = onboardingGenres[0] || 28;
@@ -1189,17 +1131,17 @@ export function renderHomeSections() {
         await delay(100);
         _fillRowTMDB('hs-critically-acclaimed', `${base}/discover/movie?api_key=${K}&sort_by=vote_average.desc&vote_count.gte=8000${excludedStr}&page=1`);
         await delay(100);
-        _fillRowTMDB('hs-scifi-essentials', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=878${excludedStr}&page=1`);
+        _fillRowTMDB('hs-scifi', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=878${excludedStr}&page=1`);
         await delay(100);
-        _fillRowTMDB('hs-action-blockbusters', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=28${excludedStr}&page=1`);
+        _fillRowTMDB('hs-action', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=28${excludedStr}&page=1`);
         await delay(100);
-        _fillRowTMDB('hs-comedy-picks', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=35${excludedStr}&page=1`);
+        _fillRowTMDB('hs-comedy', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=35${excludedStr}&page=1`);
         await delay(100);
-        _fillRowTMDB('hs-thriller-mystery', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=53,9648${excludedStr}&page=1`);
+        _fillRowTMDB('hs-thriller', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=53,9648${excludedStr}&page=1`);
         await delay(100);
-        _fillRowTMDB('hs-family-favorites', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=10751${excludedStr}&page=1`);
+        _fillRowTMDB('hs-family', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=10751${excludedStr}&page=1`);
         await delay(100);
-        _fillRowTMDB('hs-animation-collection', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=16${excludedStr}&page=1`);
+        _fillRowTMDB('hs-animation', `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&with_genres=16${excludedStr}&page=1`);
         await delay(100);
         _fillRowTMDBTV('hs-binge-tv', `${base}/discover/tv?api_key=${K}&sort_by=popularity.desc&with_original_language=en&page=1`);
         await delay(100);
@@ -2293,7 +2235,7 @@ function transitionModal(fn) {
 
 export function openModal(movie, _fromSimilar = false, skipHashUpdate = false) {
   if (!skipHashUpdate && movie && movie.id) {
-    window.location.hash = `#movie-${movie.id}`;
+    history.pushState(null, '', `#movie-${movie.id}`);
   }
   if (_fromSimilar) {
     transitionModal(() => {
