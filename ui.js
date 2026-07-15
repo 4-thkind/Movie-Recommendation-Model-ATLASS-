@@ -581,7 +581,7 @@ export function buildCard(movieId, initialData = null) {
     poster = initialData && initialData.poster_path
       ? `https://image.tmdb.org/t/p/w500${initialData.poster_path}`
       : (initialData && initialData.poster ? initialData.poster : 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80');
-    match = initialData && initialData.match ? initialData.match : Math.floor(Math.random() * 15) + 85;
+    match = initialData && initialData.match ? initialData.match : calculateMatchScore(movieId);
   } else {
     if (isVirtual) {
       cleanTitle = 'Loading...';
@@ -871,12 +871,18 @@ export function renderRows() {
             return matchesLang && matchesGenre;
           });
 
-          // Score based on onboarding genre matching count and popularity
+          // Score based on onboarding genre matching count, popularity, and ML model score
           const scored = finalRecs.map(m => {
             let score = 0;
             const matchingGenresCount = (m.genre_ids || []).filter(gId => onboardingGenres.includes(gId)).length;
             score += matchingGenresCount * 100;
             score += (m.popularity || 0) / 1000;
+            
+            // Blend ML score if available
+            if (state.personalizedRecommendations && state.personalizedRecommendations[m.id]) {
+               score += (state.personalizedRecommendations[m.id] * 50);
+            }
+            
             return { item: m, score };
           });
           scored.sort((a, b) => b.score - a.score);
