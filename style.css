@@ -18,7 +18,6 @@ h1,h2,h3,.sec-title,.logo-text,.spin-btn,.trend-title,.trend-btn{font-family:'Sy
 }
 ::-webkit-scrollbar-track {
   background: rgba(18, 18, 20, 0.4);
-  backdrop-filter: blur(4px);
 }
 ::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, var(--v) 0%, var(--vl) 100%);
@@ -1250,6 +1249,10 @@ body.watchlist-active #watchlist-section{
   overflow-y:auto;transform:scale(.88) translateY(24px);
   transition:transform .45s var(--spring);scrollbar-width:thin;scrollbar-color:var(--b5) transparent;
   position:relative;z-index:10;
+  scroll-behavior:smooth;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  will-change:transform;
 }
 #overlay.on #modal{transform:scale(1) translateY(0)}
 .m-hero{position:relative;height:310px;border-radius:18px 18px 0 0;overflow:hidden}
