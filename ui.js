@@ -2227,7 +2227,7 @@ function transitionModal(fn) {
     fn();
     modal.scrollTop = 0;
     // Expand back
-    modal.style.transition = 'transform .42s cubic-bezier(.34,1.56,.64,1), opacity .3s ease';
+    modal.style.transition = 'transform .35s cubic-bezier(0.4,0,0.2,1), opacity .3s ease';
     modal.style.transform = 'scale(1) translateY(0)';
     modal.style.opacity = '1';
   }, 220);
