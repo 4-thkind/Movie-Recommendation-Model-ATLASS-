@@ -3,6 +3,7 @@ import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=32';
 import { MOVIES } from './data.js?v=32';
 import { initializeRecommender, calculateMatchScore } from './recommender.js?v=32';
 import { createCircularGallery } from './CircularGallery.js?v=32';
+import { loadModel, isModelLoaded, rerankByML, buildUserRatingsFromOnboarding, prepareUserVectors } from './ml-model.js?v=32';
 
 const sessionStart = Date.now();
 
@@ -973,8 +974,33 @@ export function renderHomeSections() {
     mystery: 9648, romance: 10749, scifi: 878, thriller: 53,
   };
 
+  // ── ML Model: prepare user vectors for re-ranking ALL sections ──────────
+  // Build synthetic ratings from onboarding signals + explicit ratings + watchlist
+  // then precompute SVD & content vectors once (reused across all _fillRowTMDB calls)
+  let _mlUvec = null;
+  let _mlProfile = null;
+  let _mlReady = false;
+
+  // Store as a promise that _fillRowTMDB can await — ensures model is ready
+  const _mlReadyPromise = loadModel().then(() => {
+    const userRatings = buildUserRatingsFromOnboarding();
+    const ratingCount = Object.keys(userRatings).length;
+    if (ratingCount > 0) {
+      const vectors = prepareUserVectors(userRatings);
+      _mlUvec    = vectors.uvec;
+      _mlProfile = vectors.profile;
+      _mlReady   = true;
+      console.log(`[ML-RERANK] Model ready — ${ratingCount} user signals, vectors prepared for re-ranking`);
+    } else {
+      console.log('[ML-RERANK] No user signals found — sections will use TMDB default ordering');
+    }
+  }).catch(e => {
+    console.warn('[ML-RERANK] Model load failed, falling back to TMDB ordering:', e);
+  });
+
   // Helper: populate a row element with TMDB discover results
   // Any ID already in globalSeenIds is pushed to the END of the row (not front)
+  // After filtering, results are RE-RANKED by the ML model (SVD+content hybrid)
   async function _fillRowTMDB(rowId, url, limit = 20) {
     const row = document.getElementById(rowId);
     if (!row) return;
@@ -1008,8 +1034,18 @@ export function renderHomeSections() {
           fresh.push(item);
         }
       });
-      // Show fresh items first, repeats appended at end — stays within limit
-      const toShow = [...fresh, ...repeats].slice(0, limit);
+
+      // Combine fresh + repeats, then ML re-rank before slicing to limit
+      let combined = [...fresh, ...repeats];
+
+      // ── ML RE-RANKING: wait for model, then sort by hybrid SVD+content score
+      await _mlReadyPromise;
+      if (_mlReady && _mlUvec) {
+        combined = rerankByML(combined, _mlUvec, _mlProfile);
+        console.log(`[ML-RERANK] ${rowId}: re-ranked ${combined.length} items by ML score`);
+      }
+
+      const toShow = combined.slice(0, limit);
       if (toShow.length === 0) return;
       toShow.forEach(item => row.appendChild(buildCard(item.id, item)));
       requestAnimationFrame(() => makeRowInfinite(row));
@@ -1108,7 +1144,73 @@ export function renderHomeSections() {
         const langNames = { en: "English", es: "Spanish", fr: "French", ja: "Japanese", ko: "Korean", hi: "Hindi" };
         const excludedStr = onboardingExcludedGenres.length > 0 ? `&without_genres=${onboardingExcludedGenres.join(',')}` : '';
 
-        _fillRowTMDB('hs-new-releases', `${base}/movie/now_playing?api_key=${K}&page=1`);
+        customizeRowTitle('hs-new-releases', 'Top Picks for You');
+        const hsNewReleases = document.getElementById('hs-new-releases');
+        if (hsNewReleases) {
+          hsNewReleases.innerHTML = '';
+          hsNewReleases._infiniteInit = false;
+          
+          let likedId = null;
+          if (onboardingLikes.length > 0) {
+            likedId = onboardingLikes[Math.floor(Math.random() * onboardingLikes.length)];
+          }
+
+          let fetchUrl = likedId 
+            ? `${base}/movie/${likedId}/recommendations?api_key=${K}&page=1`
+            : `${base}/movie/now_playing?api_key=${K}&page=1`;
+
+          try {
+            const res = await fetch(fetchUrl).then(r => r.json());
+            let recs = res.results || [];
+            
+            let currentDislikes = [];
+            try { currentDislikes = JSON.parse(localStorage.getItem('onboarding_dislikes') || '[]'); } catch(e){}
+            const dislikeSet = new Set(currentDislikes.map(id => String(id)));
+
+            let filtered = recs.filter(m => !dislikeSet.has(String(m.id)) && !(m.release_date && new Date(m.release_date) > new Date()));
+
+            // Filter strictly by preferred language and genres
+            let finalRecs = filtered.filter(m => {
+              const matchesLang = onboardingLanguages.length === 0 || onboardingLanguages.includes(m.original_language);
+              const matchesGenre = onboardingGenres.length === 0 || (m.genre_ids || []).some(gId => onboardingGenres.includes(gId));
+              return matchesLang && matchesGenre;
+            });
+
+            // Backfill if needed
+            if (finalRecs.length < 20 && (onboardingLanguages.length > 0 || onboardingGenres.length > 0)) {
+              const genreStr = onboardingGenres.join(',');
+              const langStr = onboardingLanguages.join('|');
+              let discoverUrl = `${base}/discover/movie?api_key=${K}&sort_by=popularity.desc&page=1`;
+              if (genreStr) discoverUrl += `&with_genres=${genreStr}`;
+              if (langStr) discoverUrl += `&with_original_language=${langStr}`;
+
+              const backfillRes = await fetch(discoverUrl).then(r => r.json());
+              if (backfillRes.results) {
+                const seen = new Set(finalRecs.map(m => m.id));
+                backfillRes.results.forEach(m => {
+                  if (!seen.has(m.id) && !dislikeSet.has(String(m.id))) {
+                    seen.add(m.id);
+                    finalRecs.push(m);
+                  }
+                });
+              }
+            }
+
+            finalRecs = finalRecs.slice(0, 20);
+
+            // ── ML RE-RANKING for Top Picks ────────────────────────
+            await _mlReadyPromise;
+            if (_mlReady && _mlUvec) {
+              finalRecs = rerankByML(finalRecs, _mlUvec, _mlProfile);
+              console.log(`[ML-RERANK] hs-new-releases (Top Picks): re-ranked ${finalRecs.length} items by ML score`);
+            }
+
+            finalRecs.forEach(item => hsNewReleases.appendChild(buildCard(item.id, item)));
+            requestAnimationFrame(() => makeRowInfinite(hsNewReleases));
+          } catch (e) {
+            console.error("hs-new-releases curation failed:", e);
+          }
+        }
         await delay(100);
 
         const chosenGenreId = onboardingGenres[0] || 28;
@@ -1855,7 +1957,7 @@ export function confettiBurst() {
 
   for (let i = 0; i < 75; i++) {
     const dot = document.createElement('div');
-    dot.className = 'confetti';
+    dot.className = 'confetti-dot';
     const left = 10 + Math.random() * 80;
     const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
     dot.style.cssText = `
@@ -1976,9 +2078,17 @@ export function rollPickMovie() {
     media.uWinningTarget = 0.0;
   });
 
-  // Pick a random winner
-  const winnerIdx = Math.floor(Math.random() * state.watchlist.length);
-  const winner = state.watchlist[winnerIdx];
+  // Pick a random winner, ensuring it's not the same as the last pick (if possible)
+  let winnerIdx = Math.floor(Math.random() * state.watchlist.length);
+  let winner = state.watchlist[winnerIdx];
+
+  if (state.watchlist.length > 1 && window._lastPickWinnerId !== undefined) {
+    while (winner.id === window._lastPickWinnerId) {
+      winnerIdx = Math.floor(Math.random() * state.watchlist.length);
+      winner = state.watchlist[winnerIdx];
+    }
+  }
+  window._lastPickWinnerId = winner.id;
 
   const w = app.medias[0].width;
   const N = state.watchlist.length;
@@ -1986,13 +2096,13 @@ export function rollPickMovie() {
   // Calculate current index position
   const currentIndex = Math.round(app.scroll.target / w);
 
-  // We want to spin smoothly with 4 rotations
-  const rotations = 4;
+  // We want to spin smoothly with 3 rotations for a slower, classier reveal
+  const rotations = 3;
   const targetIndex = currentIndex + rotations * N + ((winnerIdx - (currentIndex % N) + N) % N);
 
-  // Set target and start programmatic spin with faster deceleration ease
+  // Set target and start programmatic spin with slower deceleration ease
   app.scroll.target = targetIndex * w;
-  app.scroll.ease = 0.04; // Faster deceleration
+  app.scroll.ease = 0.011; // Goldilocks ease: slow enough for suspense, but doesn't crawl endlessly at the end
   app.isSpinning = true;
 
   // Callback when settled
