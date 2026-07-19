@@ -2166,7 +2166,7 @@ export function surpriseMe() {
     const rect = orb.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
-    launchSurpriseSparkles(x, y);
+    // Sparkles moved to revealSurpriseResult
   }
 
   // Fade out and collapse current result card if it's already shown
@@ -2309,7 +2309,15 @@ function revealSurpriseResult(movie) {
         height: 'auto',
         duration: 0.5,
         ease: 'back.out(1.15)',
-        clearProps: 'height'
+        clearProps: 'height',
+        onComplete: () => {
+          if (orb) {
+            const rect = orb.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            launchSurpriseSparkles(x, y);
+          }
+        }
       },
       '-=0.15'
     );
@@ -5600,7 +5608,7 @@ export function showGenreMovies(genreId, genreName) {
 
   // If currently on watchlist page, redirect to home page first, then show genre movies
   if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
-    history.replaceState(null, '', '#watchlist-section');
+    window.location.hash = '';
     setTimeout(() => {
       showGenreMovies(genreId, genreName);
     }, 350);
@@ -6223,19 +6231,19 @@ export function launchSurpriseSparkles(x, y) {
   const particles = [];
   const colors = ['#fbbf24', '#c4c0e8', '#8b5cf6', '#06b6d4', '#ec4899'];
 
-  for (let i = 0; i < 45; i++) {
+  for (let i = 0; i < 30; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 2 + Math.random() * 8;
+    const speed = 12 + Math.random() * 20;
     particles.push({
       x: x,
       y: y,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - (1 + Math.random() * 2),
+      vy: Math.sin(angle) * speed - (5 + Math.random() * 5),
       size: 4 + Math.random() * 6,
       color: colors[Math.floor(Math.random() * colors.length)],
       alpha: 1,
-      decay: 0.02 + Math.random() * 0.02,
-      gravity: 0.15,
+      decay: 0.04 + Math.random() * 0.03,
+      gravity: 0.4,
       isStar: Math.random() > 0.6
     });
   }
@@ -6256,12 +6264,6 @@ export function launchSurpriseSparkles(x, y) {
       ctx.save();
       ctx.fillStyle = p.color;
       ctx.strokeStyle = p.color;
-
-      // Draw outer glowing halo (high-performance overlay)
-      ctx.globalAlpha = p.alpha * 0.25;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
-      ctx.fill();
 
       // Draw bright core (circle or star shine cross)
       ctx.globalAlpha = p.alpha;
