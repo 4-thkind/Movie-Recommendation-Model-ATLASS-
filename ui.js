@@ -1961,7 +1961,7 @@ export function confettiBurst() {
     const left = 10 + Math.random() * 80;
     const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
     dot.style.cssText = `
-      left:${left}%;background:${color};
+      top:-20px; left:${left}%; background:${color};
       animation-delay:${Math.random()*0.5}s;
       animation-duration:${1.3+Math.random()*.7}s;
       transform:rotate(${Math.random()*360}deg);
