@@ -245,7 +245,7 @@ class GalleryApp {
     this.scroll.last = this.scroll.current;
 
     // Check if programmatic spin has settled on target
-    if (this.isSpinning && Math.abs(this.scroll.target - this.scroll.current) < 0.15) {
+    if (this.isSpinning && Math.abs(this.scroll.target - this.scroll.current) < 0.8) {
       this.scroll.current = this.scroll.target; // Snap to exact target
       this.isSpinning = false;
       if (typeof this.onSpinEnd === 'function') {
