@@ -43,9 +43,14 @@
           <label>Username</label>
           <input type="text" id="auth-username" placeholder="username" />
         </div>
-        <div class="form-group">
+        <div class="form-group" style="position:relative;">
           <label>Password</label>
-          <input type="password" id="auth-password" placeholder="••••••••" required />
+          <input type="password" id="auth-password" placeholder="Min 8 characters" required minlength="8" style="padding-right:44px;" />
+          <button type="button" id="toggle-password-btn"
+            onclick="(function(){var i=document.getElementById('auth-password');var b=document.getElementById('toggle-password-btn');i.type=i.type==='password'?'text':'password';b.innerHTML=i.type==='password'?'<i class=\'fa-solid fa-eye\'></i>':'<i class=\'fa-solid fa-eye-slash\'></i>';})()"
+            style="position:absolute;right:14px;bottom:14px;background:none;border:none;color:var(--t3);cursor:pointer;padding:0;line-height:1;">
+            <i class="fa-solid fa-eye"></i>
+          </button>
         </div>
         <div id="auth-error" class="auth-error" style="color: #ef4444; font-size: 14px; margin-bottom: 16px; display: none;"></div>
         <button type="submit" class="btn-primary login-btn" id="auth-submit-btn">Log In</button>
@@ -72,11 +77,8 @@
       <span class="watched-nav-badge" id="watched-nav-badge" style="display:none"></span>
     </button>
     <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme" onclick="toggleTheme()">
-      <span class="toggle-track">
-        <i class="fa-solid fa-moon moon-icon"></i>
-        <i class="fa-solid fa-sun sun-icon"></i>
-      </span>
-      <span class="toggle-knob"></span>
+      <i class="fa-solid fa-moon"></i>
+      <i class="fa-solid fa-sun"></i>
     </button>
     <div class="profile-container" id="profile-container">
       <img class="avatar" id="avatar-btn" src="data/a4b920a028317a89fb8ee08fc5e3f0dd.jpg" alt="Profile" style="cursor:pointer"/>
@@ -951,7 +953,7 @@
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script type="module" src="app.js?v=32"></script>
+<script type="module" src="app.js?v=33"></script>
 
 <!-- ═══ USER ONBOARDING OVERLAY ═══ -->
 <div id="onboarding-overlay" style="display:none;position:fixed;inset:0;background:var(--b0);z-index:99999;overflow-y:auto;padding:40px 20px;">

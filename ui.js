@@ -1,9 +1,9 @@
-import { state, saveWatchlistToStorage } from './state.js?v=32';
-import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=32';
-import { MOVIES } from './data.js?v=32';
-import { initializeRecommender, calculateMatchScore } from './recommender.js?v=32';
-import { createCircularGallery } from './CircularGallery.js?v=32';
-import { loadModel, isModelLoaded, rerankByML, buildUserRatingsFromOnboarding, prepareUserVectors } from './ml-model.js?v=32';
+import { state, saveWatchlistToStorage, saveUserData, loadUserData, getUserStorageKey } from './state.js?v=33';
+import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=33';
+import { MOVIES } from './data.js?v=33';
+import { initializeRecommender, calculateMatchScore } from './recommender.js?v=33';
+import { createCircularGallery } from './CircularGallery.js?v=33';
+import { loadModel, isModelLoaded, rerankByML, buildUserRatingsFromOnboarding, prepareUserVectors } from './ml-model.js?v=33';
 
 const sessionStart = Date.now();
 
@@ -3083,6 +3083,12 @@ export function saveSettings() {
 }
 
 export function resetContentPreferences() {
+  // 1. Snapshot current watchlist + watch history into the blob BEFORE touching anything
+  if (state.userEmail) {
+    saveUserData(state.userEmail);
+  }
+
+  // 2. Clear onboarding preference keys from localStorage
   localStorage.removeItem('swipe_onboarding_completed');
   localStorage.removeItem('onboarding_genres');
   localStorage.removeItem('onboarding_languages');
@@ -3090,7 +3096,24 @@ export function resetContentPreferences() {
   localStorage.removeItem('onboarding_likes');
   localStorage.removeItem('onboarding_dislikes');
   localStorage.removeItem('onboarding_excluded_genres');
-  
+
+  // 3. Zero ONLY the onboarding fields inside the user blob;
+  //    watchlist, movieRatings, watchedTimestamps are intentionally preserved
+  if (state.userEmail) {
+    try {
+      const key  = getUserStorageKey(state.userEmail);
+      const blob = JSON.parse(localStorage.getItem(key) || '{}');
+      blob.onboardingCompleted      = false;
+      blob.onboardingGenres         = [];
+      blob.onboardingLanguages      = [];
+      blob.onboardingTalents        = [];
+      blob.onboardingLikes          = [];
+      blob.onboardingDislikes       = [];
+      blob.onboardingExcludedGenres = [];
+      localStorage.setItem(key, JSON.stringify(blob));
+    } catch(e) {}
+  }
+
   window.location.reload();
 }
 
@@ -5212,7 +5235,7 @@ export function updateNavbarActiveLink(activeId) {
 
 /* ─── LANDING PAGE: AUTHENTICATION & PROFILE ─── */
 
-import { saveAuthState } from './state.js?v=32';
+import { saveAuthState } from './state.js?v=33';
 
 // Helper function to hash password using SHA-256
 async function hashPassword(password) {
@@ -5282,6 +5305,9 @@ window.switchLoginTab = function(tab) {
     emailInput.type = 'text';
     usernameGroup.style.display = 'none';
     usernameInput.removeAttribute('required');
+    emailInput.value = '';
+    usernameInput.value = '';
+    document.getElementById('auth-password').value = '';
   } else {
     signupTab.classList.add('active');
     loginTab.classList.remove('active');
@@ -5291,6 +5317,9 @@ window.switchLoginTab = function(tab) {
     emailInput.type = 'email';
     usernameGroup.style.display = 'block';
     usernameInput.setAttribute('required', 'required');
+    emailInput.value = '';
+    usernameInput.value = '';
+    document.getElementById('auth-password').value = '';
   }
 };
 
@@ -5334,11 +5363,25 @@ window.handleAuthSubmit = async function(e) {
     
     // Success - log in
     state.isLoggedIn = true;
+    state.userEmail  = email;
     state.user = { name: users[email].name, role: 'Member' };
+    loadUserData(email);   // restore this user's watchlist, watch history, and onboarding state
   } else {
     // Sign Up flow
     const email = emailOrUsernameInput;
     const username = document.getElementById('auth-username').value.trim();
+
+    // Validate email format
+    if (!email.includes('@') || !email.includes('.')) {
+      showAuthError('Please enter a valid email address.');
+      return;
+    }
+
+    // Enforce minimum password length on signup
+    if (password.length < 8) {
+      showAuthError('Password must be at least 8 characters.');
+      return;
+    }
     
     if (!username) {
       showAuthError('Username is required.');
@@ -5364,7 +5407,9 @@ window.handleAuthSubmit = async function(e) {
     
     // Log them in immediately
     state.isLoggedIn = true;
+    state.userEmail  = email;
     state.user = { name: username, role: 'Member' };
+    // no loadUserData — brand-new account, nothing stored yet
   }
   
   // Common login steps
@@ -5388,9 +5433,21 @@ window.continueAsGuest = function() {
 };
 
 window.logout = function() {
-  state.isLoggedIn = false;
-  state.user = null;
+  // 1. Archive everything into the user's blob BEFORE clearing
+  if (state.userEmail) {
+    saveUserData(state.userEmail);
+  }
+
+  // 2. Clear in-memory state
+  state.isLoggedIn         = false;
+  state.user               = null;
+  state.userEmail          = null;
+  state.watchlist          = [];
+  state.watchlistToRestore = [];
   saveAuthState();
+
+  // 3. Clear global runtime keys so they don't bleed into the next account
+  //    (the data is safe inside the user's blob saved in step 1)
   localStorage.removeItem('swipe_onboarding_completed');
   localStorage.removeItem('onboarding_genres');
   localStorage.removeItem('onboarding_languages');
@@ -5398,6 +5455,11 @@ window.logout = function() {
   localStorage.removeItem('onboarding_likes');
   localStorage.removeItem('onboarding_dislikes');
   localStorage.removeItem('onboarding_excluded_genres');
+  localStorage.removeItem('user_watchlist');
+  localStorage.removeItem('user_watchlist_to_restore');
+  localStorage.removeItem('user_movie_ratings');
+  localStorage.removeItem('user_watched_timestamps');
+
   document.body.classList.add('not-logged-in');
   document.getElementById('profile-dropdown').classList.remove('show');
   showLandingPage();

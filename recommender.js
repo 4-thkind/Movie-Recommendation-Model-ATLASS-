@@ -1,7 +1,7 @@
-import { state } from './state.js?v=32';
-import { TMDB_API_KEY, DEFAULT_RECS } from './config.js?v=32';
-import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite, renderHomeSections } from './ui.js?v=32';
-import { loadModel, getRecommendations, getScoreMap } from './ml-model.js?v=32';
+import { state } from './state.js?v=33';
+import { TMDB_API_KEY, DEFAULT_RECS } from './config.js?v=33';
+import { buildCard, updateDatabaseStatus, renderRows, buildTrending, buildPlatforms, initHero, makeRowInfinite, renderHomeSections } from './ui.js?v=33';
+import { loadModel, getRecommendations, getScoreMap } from './ml-model.js?v=33';
 
 /* ─── RECOMMENDATION ENGINE ─── */
 export function initializeRecommender() {
