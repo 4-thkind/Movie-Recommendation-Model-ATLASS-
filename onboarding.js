@@ -81,12 +81,17 @@ let currentY = 0;
 let dragCard = null;
 let talentSuggestionsTimeout = null;
 
-// On DOM load, initialize selectors and check status
-window.addEventListener('DOMContentLoaded', () => {
+function initOnboarding() {
   initPills();
   initTalentInput();
-  window.checkOnboardingState();
-});
+  if (window.checkOnboardingState) window.checkOnboardingState();
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initOnboarding);
+} else {
+  initOnboarding();
+}
 
 // Expose state checker globally
 window.checkOnboardingState = function() {
