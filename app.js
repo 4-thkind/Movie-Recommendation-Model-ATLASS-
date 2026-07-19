@@ -1,8 +1,8 @@
-import { state, loadWatchlistFromStorage, loadAuthState } from './state.js?v=32';
-import { loadMovieLensDatabase } from './recommender.js?v=32';
-import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=32';
-import { initPillNav } from './PillNav.js?v=32';
-import './onboarding.js?v=32';
+import { state, loadWatchlistFromStorage, loadAuthState } from './state.js?v=33';
+import { loadMovieLensDatabase } from './recommender.js?v=33';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=33';
+import { initPillNav } from './PillNav.js?v=33';
+import './onboarding.js?v=33';
 
 // Bind to window for onboarding completions
 window.renderHomeSections = renderHomeSections;
@@ -56,8 +56,6 @@ if (document.readyState === 'loading') {
 function applyTheme(theme) {
   const isLight = theme === 'light';
   document.body.classList.toggle('light-theme', isLight);
-  const icon = document.querySelector('#theme-toggle-btn i');
-  if (icon) icon.className = isLight ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
   localStorage.setItem('theme', theme);
 }
 

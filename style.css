@@ -54,65 +54,52 @@ body::before{
 }
 .theme-toggle-btn {
   position: relative;
-  width: 70px;
-  height: 34px;
-  margin-right: 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: #111827;
+  width: 36px;
+  height: 36px;
+  margin-right: 14px;
+  border-radius: 8px; /* elegant rounded rectangle */
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: #f8fafc;
   cursor: pointer;
-  transition: background .25s var(--smooth), transform .25s var(--smooth), border-color .25s var(--smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .3s var(--smooth);
   overflow: hidden;
 }
 .theme-toggle-btn:hover {
-  transform: scale(1.02);
-  border-color: rgba(255,255,255,.18);
+  background: rgba(255,255,255,0.1);
+  transform: scale(1.05);
 }
-.theme-toggle-btn .toggle-track {
+.theme-toggle-btn i {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
-  z-index: 2;
-  pointer-events: none;
+  font-size: 16px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.theme-toggle-btn .toggle-track i {
-  font-size: 14px;
-  transition: color .25s var(--smooth), transform .25s var(--smooth);
+.theme-toggle-btn .fa-sun {
+  opacity: 0;
+  transform: translateY(20px) rotate(45deg);
 }
-.theme-toggle-btn .sun-icon {
-  color: rgba(255,255,255,.5);
+.theme-toggle-btn .fa-moon {
+  opacity: 1;
+  transform: translateY(0) rotate(0);
 }
-.theme-toggle-btn .moon-icon {
-  color: #f9fafb;
-}
-.theme-toggle-btn .toggle-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #9ca3af;
-  box-shadow: 0 10px 20px rgba(0,0,0,.18);
-  transition: left .25s var(--smooth), background .25s var(--smooth), transform .25s var(--smooth);
-  z-index: 1;
-}
+
 body.light-theme .theme-toggle-btn {
-  background: #f8fafc;
-  border-color: rgba(31,41,55,.12);
+  color: #0f172a;
+  border-color: rgba(0,0,0,0.1);
 }
-body.light-theme .theme-toggle-btn .sun-icon {
-  color: rgba(31,41,55,.45);
+body.light-theme .theme-toggle-btn:hover {
+  background: rgba(0,0,0,0.05);
 }
-body.light-theme .theme-toggle-btn .moon-icon {
-  color: #facc15;
+body.light-theme .theme-toggle-btn .fa-moon {
+  opacity: 0;
+  transform: translateY(-20px) rotate(-45deg);
 }
-body.light-theme .theme-toggle-btn .toggle-knob {
-  left: calc(100% - 32px);
-  background: #6b7280;
+body.light-theme .theme-toggle-btn .fa-sun {
+  opacity: 1;
+  transform: translateY(0) rotate(0);
 }
 body.light-theme {
   --b0:#f7f8ff;

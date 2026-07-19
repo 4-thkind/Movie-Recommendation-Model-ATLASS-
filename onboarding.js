@@ -1,7 +1,7 @@
-import { state } from './state.js?v=32';
-import { TMDB_API_KEY } from './config.js?v=32';
-import { addToWatchlist } from './ui.js?v=32';
-import { MOVIES } from './data.js?v=32';
+import { state, saveUserData } from './state.js?v=33';
+import { TMDB_API_KEY } from './config.js?v=33';
+import { addToWatchlist } from './ui.js?v=33';
+import { MOVIES } from './data.js?v=33';
 
 const ONBOARDING_GENRES = [
   { id: 28, name: "Action" },
@@ -94,12 +94,7 @@ window.checkOnboardingState = function() {
   if (!overlay) return;
 
   if (state.isLoggedIn && localStorage.getItem('swipe_onboarding_completed') !== 'true') {
-    // Clear legacy ratings and watchlist to ensure a fresh curation session
-    localStorage.setItem('user_movie_ratings', '{}');
-    localStorage.setItem('watchlist', '[]');
-    state.watchlist = [];
-    if (window.updateWLCount) window.updateWLCount();
-    if (window.updateWatchlistUI) window.updateWatchlistUI();
+    // Never touch watch data here — just show the overlay
 
     overlay.style.display = 'block';
     document.body.classList.add('onboarding-active');
@@ -737,6 +732,12 @@ function completeOnboarding() {
 
       // Hide Onboarding overlay
       window.checkOnboardingState();
+
+      // Persist the newly set onboarding flags into the user's blob
+      // so they survive the next logout/re-login cycle
+      if (state.userEmail) {
+        saveUserData(state.userEmail);
+      }
     }
   }, 600);
 }
