@@ -126,9 +126,7 @@
   <section id="watched-section" style="display:none;padding:56px 0 0">
     <div class="sec-head" style="margin-bottom:24px">
       <div>
-        <div class="sec-title">
-          <i class="fa-solid fa-eye" style="color:var(--y);font-size:15px"></i>
-          Already Watched
+        <div class="sec-title">Already Watched
           <span class="sec-tag tag-violet" id="watched-count-badge" style="display:none"></span>
         </div>
         <p class="sec-sub" id="watched-sub">Movies you've rated — sorted by your score</p>
@@ -202,7 +200,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-link" style="color:var(--vl);font-size:15px"></i> Because you watched <span id="rw2-title" style="color:var(--vl)">Interstellar</span></div>
+        <div class="sec-title">Because you watched <span id="rw2-title" style="color:var(--vl)">Interstellar</span></div>
         <p class="sec-sub">Matched on: Space · Emotional depth · Hans Zimmer</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -218,7 +216,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-calendar-days" style="color:#f59e0b;font-size:15px"></i> New Releases <span class="sec-tag tag-hot">2024–2025</span></div>
+        <div class="sec-title">New Releases <span class="sec-tag tag-hot">2024–2025</span></div>
         <p class="sec-sub">Fresh out — the latest movies hitting screens now</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -233,7 +231,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-gem" style="color:#a78bfa;font-size:15px"></i> Hidden Gems</div>
+        <div class="sec-title">Hidden Gems</div>
         <p class="sec-sub">Critically loved, underrated — you probably haven't seen these</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -245,11 +243,27 @@
     </div>
   </section>
 
+  <!-- ═══ TRENDING — horizontal scroll ═══ -->
+  <section id="trending-section" class="reveal">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">Currently Trending <span class="sec-tag tag-hot"><span class="live-dot"></span>Live</span></div>
+        <p class="sec-sub">What the world is watching right now · scroll to see more</p>
+      </div>
+      <a href="#" class="see-all">Full chart <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+    </div>
+    <div class="trend-scroll-wrap" id="trend-wrap">
+      <div class="trend-arr L" onclick="scrollTrend(-1)"><i class="fa-solid fa-chevron-left"></i></div>
+      <div class="trend-row" id="trend-row"></div>
+      <div class="trend-arr R" onclick="scrollTrend(1)"><i class="fa-solid fa-chevron-right"></i></div>
+    </div>
+  </section>
+
   <!-- ROW: Genres You Love -->
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-heart" style="color:#f87171;font-size:15px"></i> Genres You Love</div>
+        <div class="sec-title">Genres You Love</div>
         <p class="sec-sub">Curated picks from your favorite categories</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -265,7 +279,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-film" style="color:#fbbf24;font-size:15px"></i> Classics</div>
+        <div class="sec-title">Classics</div>
         <p class="sec-sub">Timeless films every cinephile should see</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -281,7 +295,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-trophy" style="color:#f59e0b;font-size:15px"></i> Award-Winning Movies &amp; TV Shows</div>
+        <div class="sec-title">Award-Winning Movies &amp; TV Shows</div>
         <p class="sec-sub">Oscar, Emmy, and Golden Globe decorated titles</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -297,7 +311,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-star" style="color:#facc15;font-size:15px"></i> Critically Acclaimed</div>
+        <div class="sec-title">Critically Acclaimed</div>
         <p class="sec-sub">Titles that earned universal praise from critics</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -313,7 +327,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-rocket" style="color:#818cf8;font-size:15px"></i> Sci-Fi Essentials</div>
+        <div class="sec-title">Sci-Fi Essentials</div>
         <p class="sec-sub">Mind-bending futures and galaxies far, far away</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -329,7 +343,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-explosion" style="color:#ef4444;font-size:15px"></i> Action Blockbusters</div>
+        <div class="sec-title">Action Blockbusters</div>
         <p class="sec-sub">High-octane thrills and spectacular set pieces</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -345,7 +359,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-face-laugh-squint" style="color:#34d399;font-size:15px"></i> Comedy Picks</div>
+        <div class="sec-title">Comedy Picks</div>
         <p class="sec-sub">Laugh-out-loud favorites for any mood</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -361,7 +375,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-magnifying-glass-chart" style="color:#fb923c;font-size:15px"></i> Thriller &amp; Mystery</div>
+        <div class="sec-title">Thriller &amp; Mystery</div>
         <p class="sec-sub">Keep you guessing until the very last scene</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -377,7 +391,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-house-chimney-heart" style="color:#f472b6;font-size:15px"></i> Family Favorites</div>
+        <div class="sec-title">Family Favorites</div>
         <p class="sec-sub">Fun for everyone — movie nights made easy</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -393,7 +407,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-paintbrush" style="color:#a78bfa;font-size:15px"></i> Animation Collection</div>
+        <div class="sec-title">Animation Collection</div>
         <p class="sec-sub">Stunning animated worlds for all ages</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -409,7 +423,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-tv" style="color:#38bdf8;font-size:15px"></i> Binge-Worthy TV Shows</div>
+        <div class="sec-title">Binge-Worthy TV Shows</div>
         <p class="sec-sub">Series you won't be able to stop watching</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -425,7 +439,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-circle-plus" style="color:#4ade80;font-size:15px"></i> Recently Added</div>
+        <div class="sec-title">Recently Added</div>
         <p class="sec-sub">New to streaming — just added across platforms</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -441,7 +455,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-repeat" style="color:#fb923c;font-size:15px"></i> Most Rewatched</div>
+        <div class="sec-title">Most Rewatched</div>
         <p class="sec-sub">Titles so good people keep coming back</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -457,7 +471,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-pen-nib" style="color:#e879f9;font-size:15px"></i> Editor's Picks</div>
+        <div class="sec-title">Editor's Picks</div>
         <p class="sec-sub">Hand-curated selections from our film editors</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -473,7 +487,7 @@
   <section style="padding-top:44px" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-chart-line" style="color:var(--vl);font-size:15px"></i> Popular on Atlass <span class="sec-tag tag-violet">Top Watched</span></div>
+        <div class="sec-title">Popular on Atlass <span class="sec-tag tag-violet">Top Watched</span></div>
         <p class="sec-sub">What Atlass members are watching most right now</p>
       </div>
       <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
@@ -485,27 +499,12 @@
     </div>
   </section>
 
-  <!-- ═══ TRENDING — horizontal scroll ═══ -->
-  <section id="trending-section" class="reveal">
-    <div class="sec-head">
-      <div>
-        <div class="sec-title"><i class="fa-solid fa-fire-flame-curved" style="color:#f87171;font-size:16px"></i> Currently Trending <span class="sec-tag tag-hot"><span class="live-dot"></span>Live</span></div>
-        <p class="sec-sub">What the world is watching right now · scroll to see more</p>
-      </div>
-      <a href="#" class="see-all">Full chart <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
-    </div>
-    <div class="trend-scroll-wrap" id="trend-wrap">
-      <div class="trend-arr L" onclick="scrollTrend(-1)"><i class="fa-solid fa-chevron-left"></i></div>
-      <div class="trend-row" id="trend-row"></div>
-      <div class="trend-arr R" onclick="scrollTrend(1)"><i class="fa-solid fa-chevron-right"></i></div>
-    </div>
-  </section>
 
   <!-- ═══ PLATFORM BROWSER ═══ -->
   <section id="platforms-section" class="reveal">
     <div class="sec-head">
       <div>
-        <div class="sec-title"><i class="fa-solid fa-tv" style="color:var(--vl);font-size:16px"></i> Browse by Platform <span class="sec-tag tag-violet">All Services</span></div>
+        <div class="sec-title">Browse by Platform <span class="sec-tag tag-violet">All Services</span></div>
         <p class="sec-sub">What's streaming now — movies & series by platform</p>
       </div>
       <div style="display:flex;align-items:center;gap:16px;">
@@ -552,9 +551,7 @@
   <section id="watchlist-section" class="reveal" style="padding:56px 0 0">
     <div class="sec-head" style="margin-bottom:20px">
       <div>
-        <div class="sec-title">
-          <i class="fa-solid fa-bookmark" style="color:var(--y);font-size:15px"></i>
-          My Watchlist
+        <div class="sec-title">My Watchlist
         </div>
         <p class="sec-sub">Add movies to your list, then let the roulette decide what to watch</p>
       </div>
@@ -927,6 +924,9 @@
   function setActiveTab(clickedEl) {
     document.querySelectorAll('.tt-item').forEach(el => el.classList.remove('active'));
     clickedEl.classList.add('active');
+    if (typeof window.closeSearchPanel === 'function') {
+      window.closeSearchPanel();
+    }
   }
   function openSearchTab() {
     const panel = document.getElementById('tt-search-panel');
