@@ -894,6 +894,22 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 .arr.R{right:0;background:transparent;}
 .arr:hover{color:var(--y)}
 
+/* Smooth masked glass effect for all row arrows */
+.arr::before, .trend-arr::before, .plat-arr::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.arr.L::before, .trend-arr.L::before, .plat-arr.L::before {
+  background: linear-gradient(to right, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0) 100%);
+  -webkit-mask-image: linear-gradient(to right, black 20%, transparent 100%);
+  mask-image: linear-gradient(to right, black 20%, transparent 100%);
+}
+.arr.R::before, .trend-arr.R::before, .plat-arr.R::before {
+  background: linear-gradient(to left, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0) 100%);
+  -webkit-mask-image: linear-gradient(to left, black 20%, transparent 100%);
+  mask-image: linear-gradient(to left, black 20%, transparent 100%);
+}
+
 /* ══════════════════════════════════════
    TRENDING — horizontal scroll row
    (same row structure as movie rows but with number overlay)
@@ -1041,8 +1057,8 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   cursor:pointer;z-index:300;opacity:0;transition:opacity .2s ease;
 }
 .plat-wrap:hover .plat-arr{opacity:1}
-.plat-arr.L{left:0;background:transparent;}
-.plat-arr.R{right:0;background:transparent;}
+.plat-arr.L{left:0; background: linear-gradient(to right, rgba(10,10,10,0.85) 0%, rgba(10,10,10,0) 100%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);}
+.plat-arr.R{right:0; background: linear-gradient(to left, rgba(10,10,10,0.85) 0%, rgba(10,10,10,0) 100%); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);}
 .plat-arr:hover{color:var(--y)}
 
 .plat-card{
@@ -1241,6 +1257,7 @@ body.watchlist-active #watchlist-section{
 /* ── MODAL ── */
 #overlay{
   position:fixed;inset:0;z-index:9999;background:rgba(5,5,8,.4);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   display:flex;align-items:center;justify-content:center;padding:20px;
   opacity:0;pointer-events:none;transition:opacity .35s var(--smooth);
   will-change: opacity;
@@ -1423,6 +1440,7 @@ footer{background:var(--b1);border-top:1px solid rgba(255,255,255,.04);padding:4
 #settings-overlay{
   position:fixed;inset:0;z-index:9999;
   background:rgba(5,5,8,.4);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   display:flex;align-items:center;justify-content:center;padding:20px;
   opacity:0;pointer-events:none;transition:opacity .35s var(--smooth);
 }
@@ -1763,6 +1781,10 @@ body.search-active main > section:not(#search-section) {
 .grid-active .plat-card img {
   height: auto !important;
   aspect-ratio: 190 / 268 !important;
+}
+/* Hide infinite-scroll clones when in grid ("See all") mode */
+.grid-active [data-cloned="true"] {
+  display: none !important;
 }
 
 @media(max-width:992px){
@@ -3426,6 +3448,9 @@ body.watchlist-active .homepage-search-container {
 .genre-results-grid .movie-card.entering {
   animation: card-fade-in .4s var(--expo) both;
 }
+.plat-card.entering {
+  animation: card-fade-in .4s var(--expo) both;
+}
 
 /* ── Genre view: skeleton shimmer placeholders while TMDB loads ── */
 .genre-skeleton {
@@ -3639,7 +3664,7 @@ body.light-theme .watched-sort-select {
   z-index: 5;
   isolation: isolate;
   overflow: hidden;
-  opacity: 0;
+  opacity: 1;
   transition: opacity .25s ease-out;
 }
 .row-wrap:hover .gradual-blur,
