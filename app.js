@@ -1,6 +1,6 @@
 import { state, loadWatchlistFromStorage, loadAuthState } from './state.js?v=33';
 import { loadMovieLensDatabase } from './recommender.js?v=33';
-import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=33';
+import { buildPlatforms, updateWatchlistUI, updateWLCount, initScrollspy, renderRows, buildTrending, initHero, startHeroRotation, initSeeAllButtons, initScrollReveal, initNavbarScroll, initHashRouting, initGridMotion, initProfileDropdown, initPickGallery, initGenrePopover, renderHomeSections } from './ui.js?v=33';
 import { initPillNav } from './PillNav.js?v=33';
 import './onboarding.js?v=33';
 
@@ -42,7 +42,7 @@ function initApp() {
   if (!state.movieLensData.loaded) {
     renderRows();
     buildTrending();
-    initHero();
+    initHero().then(() => startHeroRotation());
     renderHomeSections();
   }
 }
