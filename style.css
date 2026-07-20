@@ -693,7 +693,7 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 
 /* ── BASE POSTER THUMB ── */
 .card-thumb{
-  width:168px;height:240px;border-radius:8px;overflow:hidden;
+  width:168px;aspect-ratio:2/3;height:auto;border-radius:8px;overflow:hidden;
   position:relative;background:var(--b3);border:1px solid rgba(255,255,255,.06);
   transition:border-color .3s var(--smooth), box-shadow .3s var(--smooth);
   will-change:transform;
@@ -814,7 +814,7 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
 
 /* Body of expand panel */
 .ce-body {
-  padding:10px 13px 13px;
+  padding: 10px 14px 20px 14px;
 }
 
 /* Action row */
@@ -950,7 +950,7 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   z-index:500;
   transition:z-index 0s 0s;
 }
-.trend-card img{width:100%;height:248px;object-fit:cover;display:block;transition:transform .55s var(--expo);}
+.trend-card img{width:100%;aspect-ratio:2/3;height:auto;object-fit:cover;display:block;transition:transform .55s var(--expo);}
 .trend-num{
   position:absolute;top:-4px;left:6px;
   font-size:90px;font-weight:900;line-height:1;
@@ -1077,7 +1077,7 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   z-index:500;
   transition:z-index 0s 0s;
 }
-.plat-card img{width:100%;height:268px;object-fit:cover;display:block;transition:transform .55s var(--expo);}
+.plat-card img{width:100%;aspect-ratio:2/3;height:auto;object-fit:cover;display:block;transition:transform .55s var(--expo);}
 .plat-card-overlay{
   position:absolute;inset:0;
   background:linear-gradient(to top,rgba(5,5,8,.98) 0%,rgba(5,5,8,.3) 55%,transparent 100%);
