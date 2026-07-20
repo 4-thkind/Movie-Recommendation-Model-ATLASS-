@@ -770,6 +770,9 @@
     <div class="m-hero">
       <img id="m-backdrop" src="" alt=""/>
       <img id="m-poster" src="" alt="" class="hidden"/>
+      <div id="m-video-container" class="hidden">
+        <iframe id="m-video-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
       <div class="m-hero-fade"></div><div class="m-hero-side"></div>
       <button class="m-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
       <div class="m-head">
@@ -777,6 +780,9 @@
         <div class="u-syne-header" id="m-title"></div>
         <div class="u-font-size-12px-color-var--t2-38" id="m-year"></div>
       </div>
+      <button class="btn-primary hero-play-btn" id="m-play-btn">
+        <i class="fa-solid fa-play text-sm"></i> Play Trailer
+      </button>
     </div>
     <div class="m-body">
       <div class="m-grid">
@@ -824,10 +830,6 @@
         </div>
       </div>
 
-      <!-- YouTube Embed Trailer Container -->
-      <div id="m-video-container" class="u-display--none-29">
-        <iframe id="m-video-iframe" src="" class="u-position--absolute-23" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      </div>
       <p class="m-synopsis" id="m-synopsis"></p>
       <div class="ai-box">
         <div class="ai-box-head"><i class="fa-solid fa-brain"></i> Why ATLASS picked this</div>
@@ -844,9 +846,6 @@
         </div>
       </div>
       <div class="u-display--flex-41">
-        <button class="btn-primary" id="m-play-btn" class="u-font-size-13px-padding-10px-43">
-          <i class="fa-solid fa-play text-sm"></i> Play Trailer
-        </button>
         <button id="m-letterboxd-btn" class="btn-secondary u-font-size-12px-padding-9px-7"><i class="fa-solid fa-star u-color-00E054-margin-right-4px-72"></i> Wanna rate on Letterboxd?</button>
       </div>
       </div>

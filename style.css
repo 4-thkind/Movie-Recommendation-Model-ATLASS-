@@ -1275,7 +1275,7 @@ body.watchlist-active #watchlist-section{
 .m-hero img{width:100%;height:100%;object-fit:cover}
 .m-hero-fade{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 15%,var(--b2) 100%)}
 .m-hero-side{position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,.7),transparent 60%)}
-.m-close{position:absolute;top:14px;right:14px;width:33px;height:33px;border-radius:50%;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:13px;transition:all .22s;z-index:5;}
+.m-close{position:absolute;top:14px;right:14px;width:33px;height:33px;border-radius:50%;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:13px;transition:all .22s;z-index:50;}
 .m-close:hover{background:var(--y2);border-color:rgba(245,197,24,.5);color:var(--y)}
 .m-head{position:absolute;bottom:20px;left:26px;right:26px}
 .m-body{padding:26px}
@@ -4341,3 +4341,25 @@ body.light-theme .watched-sort-select {
 .u-avatar-sm { width:30px;height:30px;border-radius:7px;object-fit:cover;display:block; }
 .u-padding-right-44px-77 { padding-right:44px; }
 .u-color-var--t2-font-size-13px-78 { color:var(--t2);font-size:13px;margin-bottom:20px }
+
+/* Play Trailer button on poster */
+.hero-play-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 20;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+/* Inline Trailer Player */
+#m-video-container {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #000;
+}
+#m-video-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}

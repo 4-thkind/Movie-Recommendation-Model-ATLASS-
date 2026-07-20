@@ -2644,6 +2644,13 @@ function openModalContent(movie) {
     const playBtn = document.getElementById('m-play-btn');
     if (playBtn) playBtn.classList.add('hidden');
     
+    const mHead = document.querySelector('.m-head');
+    if (mHead) mHead.classList.remove('hidden');
+    const mFade = document.querySelector('.m-hero-fade');
+    if (mFade) mFade.classList.remove('hidden');
+    const mSide = document.querySelector('.m-hero-side');
+    if (mSide) mSide.classList.remove('hidden');
+    
   } else {
     const ratingBox = document.querySelector('.user-rating-box');
     if (ratingBox) ratingBox.classList.remove('hidden');
@@ -2814,7 +2821,15 @@ function openModalContent(movie) {
       playBtn.classList.remove('hidden');
       playBtn.onclick = () => {
         if (movie.trailerKey) {
-          window.open(`https://www.youtube.com/watch?v=${movie.trailerKey}`, '_blank');
+          if (videoIframe) videoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&start=30`;
+          if (videoContainer) videoContainer.classList.remove('hidden');
+          playBtn.classList.add('hidden');
+          const mHead = document.querySelector('.m-head');
+          if (mHead) mHead.classList.add('hidden');
+          const mFade = document.querySelector('.m-hero-fade');
+          if (mFade) mFade.classList.add('hidden');
+          const mSide = document.querySelector('.m-hero-side');
+          if (mSide) mSide.classList.add('hidden');
         } else {
           window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title + ' trailer')}`, '_blank');
         }
