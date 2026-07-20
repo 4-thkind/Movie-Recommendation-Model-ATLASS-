@@ -341,11 +341,11 @@ function fetchOnboardingQueue(callback) {
   swipeQueue = [];
 
   if (TMDB_API_KEY) {
-    const genreStr = Array.from(selectedGenres).join(',');
+    const genreStr = Array.from(selectedGenres).join('|');
     const langStr = Array.from(selectedLanguages).join('|');
-    const peopleStr = selectedTalents.map(t => t.id).join(',');
+    const peopleStr = selectedTalents.map(t => t.id).join('|');
 
-    let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=1`;
+    let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=vote_count.desc&page=1`;
     if (genreStr) url += `&with_genres=${genreStr}`;
     if (langStr) url += `&with_original_language=${langStr}`;
     if (peopleStr) url += `&with_people=${peopleStr}`;
