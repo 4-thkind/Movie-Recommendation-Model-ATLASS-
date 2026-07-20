@@ -1610,6 +1610,11 @@ export function buildPlatforms() {
         <div class="plat-arr L" onclick="scrollPlat('${plat.id}',-1)"><i class="fa-solid fa-chevron-left"></i></div>
         <div class="plat-row" id="pr-${plat.id}"></div>
         <div class="plat-arr R" onclick="scrollPlat('${plat.id}',1)"><i class="fa-solid fa-chevron-right"></i></div>
+      </div>
+      <div class="plat-load-more" id="plm-${plat.id}" style="display:none; text-align:center; padding:30px 0;">
+        <button class="btn-primary" onclick="loadMorePlatform('${plat.id}')">
+          <i class="fa-solid fa-circle-plus"></i> Load More
+        </button>
       </div>`;
     panelsEl.appendChild(panel);
 
@@ -1776,6 +1781,119 @@ export function renderPlatCards(platId, type) {
   // Infinite scroll — seamless loop in both directions
   requestAnimationFrame(() => makeRowInfinite(row));
 }
+
+window.loadMorePlatform = async function(platId) {
+  const row = document.getElementById('pr-' + platId);
+  const btn = document.querySelector(`#plm-${platId} button`);
+  if (!row || !btn || btn.disabled) return;
+  
+  let page = parseInt(row.dataset.tmdbPage || '1') + 1;
+  const type = state.activeType;
+  const tmdbType = type === 'series' ? 'tv' : 'movie';
+  const plat = LIVE_PLATFORMS.find(p => p.id === platId);
+  
+  if (!TMDB_API_KEY || !plat) return;
+  
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading...';
+  
+  try {
+    const res = await fetch(`https://api.themoviedb.org/3/discover/${tmdbType}?api_key=${TMDB_API_KEY}&with_watch_providers=${plat.providerId}&watch_region=US&sort_by=popularity.desc&page=${page}`);
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      row.dataset.tmdbPage = page;
+      data.results.forEach((item, index) => {
+        if (row.querySelector(`.plat-card[data-id="${item.id}"]`)) return;
+
+        const card = document.createElement('div');
+        card.className = 'plat-card';
+        card.dataset.id = item.id;
+        const cleanTitle = item.title || item.name;
+        const poster = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://images.unsplash.com/photo-1549032305-e816fabf0dd2?w=400&q=80';
+        const rating = item.vote_average ? item.vote_average.toFixed(1) : '7.0';
+        const year = item.release_date ? item.release_date.split('-')[0] : (item.first_air_date ? item.first_air_date.split('-')[0] : 'N/A');
+        
+        card.innerHTML = `
+          <img class="lazy-poster" src="${poster}" alt="${cleanTitle}" style="opacity: 1;"/>
+          <div class="plat-card-overlay"></div>
+          <div class="plat-card-badge badge-${type}">${type === 'series' ? 'Series' : 'Movie'}</div>
+          <div class="plat-card-info">
+            <div class="plat-card-title">${cleanTitle}</div>
+            <div class="plat-card-meta">${year} · ★ ${rating}</div>
+            <div class="plat-card-actions">
+              <button class="pca-btn play"><i class="fa-solid fa-circle-info" style="font-size:9px"></i> Details</button>
+              <button class="pca-btn add"><i class="fa-solid fa-plus" style="font-size:9px"></i> Add</button>
+            </div>
+          </div>`;
+        
+        let resolvedDetails = {
+          id: item.id, type: type === 'series' ? 'series' : 'movie', title: cleanTitle, year: year, match: 90, rating: rating,
+          runtime: type === 'series' ? 'Series' : 'N/A', genre: 'Drama', synopsis: item.overview || 'Loading details...',
+          poster: poster, backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : poster,
+          platforms: [plat.name], reasons: [type === 'series' ? 'Popular Series' : 'Popular Choice'], cast: [], director: []
+        };
+        card._popupDetails = resolvedDetails;
+
+        if (type === 'movie') {
+          fetchTMDBDetails(item.id).then(details => {
+            if(!details) return;
+            resolvedDetails = details;
+            card._popupDetails = details;
+          });
+        } else {
+          fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&append_to_response=credits`)
+            .then(res => { if(!res.ok) throw new Error("TMDB network error"); return res.json(); })
+            .then(tvData => {
+              if(!tvData.name) return;
+              resolvedDetails = {
+                id: tvData.id, type: 'series', title: tvData.name,
+                year: tvData.first_air_date ? tvData.first_air_date.split('-')[0] : 'N/A',
+                rating: tvData.vote_average ? tvData.vote_average.toFixed(1) : '7.0',
+                genre: tvData.genres && tvData.genres.length > 0 ? tvData.genres.map(g=>g.name).join(' · ') : 'Drama',
+                synopsis: tvData.overview || 'No synopsis available.',
+                poster: tvData.poster_path ? `https://image.tmdb.org/t/p/w500${tvData.poster_path}` : poster,
+                backdrop: tvData.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tvData.backdrop_path}` : (item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : poster),
+                platforms: [plat.name], reasons: ['Popular Series'],
+                cast: tvData.credits && tvData.credits.cast ? tvData.credits.cast.slice(0, 5).map(c => ({
+                  name: c.name, character: c.character || 'Cast',
+                  img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
+                })) : [],
+                director: tvData.created_by && tvData.created_by.length > 0 ? tvData.created_by.map(c => ({
+                  name: c.name, img: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80'
+                })) : [{ name: "Creator", img: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&q=80" }]
+              };
+              card._popupDetails = resolvedDetails;
+            })
+            .catch(e => console.warn(e));
+        }
+
+        const handleOpen = (e) => { if (e) e.stopPropagation(); if (resolvedDetails) openModal(resolvedDetails); };
+        const handleAdd = (e) => { if (e) e.stopPropagation(); if (resolvedDetails) toggleWatchlist(resolvedDetails); };
+
+        card.addEventListener('click', () => handleOpen(null));
+        card.querySelector('.pca-btn.play').addEventListener('click', e => handleOpen(e));
+        card.querySelector('.pca-btn.add').addEventListener('click', handleAdd);
+        card.addEventListener('mouseenter', () => schedulePopup(resolvedDetails, card));
+        card.addEventListener('mouseleave', () => cancelPopup());
+        
+        card.classList.add('entering');
+        card.style.animationDelay = `${(index % 16) * 30}ms`;
+        
+        row.appendChild(card);
+      });
+      if (data.page >= data.total_pages) {
+         btn.parentElement.style.display = 'none';
+      }
+    } else {
+       btn.parentElement.style.display = 'none';
+    }
+  } catch(e) {
+    console.error(e);
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More';
+};
 
 export function switchPlatform(platId) {
   state.activePlatform = platId;
@@ -2671,17 +2789,15 @@ function openModalContent(movie) {
     if (videoContainer) videoContainer.style.display = 'none';
     if (videoIframe) videoIframe.src = '';
     
-    if (movie.trailerKey && playBtn) {
+    if (playBtn) {
       playBtn.style.display = 'inline-flex';
       playBtn.onclick = () => {
-        if (videoIframe) videoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1`;
-        if (videoContainer) {
-          videoContainer.style.display = 'block';
-          videoContainer.scrollIntoView({ behavior: 'smooth' });
+        if (movie.trailerKey) {
+          window.open(`https://www.youtube.com/watch?v=${movie.trailerKey}`, '_blank');
+        } else {
+          window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title + ' trailer')}`, '_blank');
         }
       };
-    } else if (playBtn) {
-      playBtn.style.display = 'none';
     }
   }
 
@@ -2705,6 +2821,13 @@ function openModalContent(movie) {
       }
     });
   });
+  // Letterboxd Button Config
+  const letterboxdBtn = document.getElementById('m-letterboxd-btn');
+  if (letterboxdBtn) {
+    letterboxdBtn.onclick = () => {
+      window.open(`https://letterboxd.com/tmdb/${movie.id}`, '_blank');
+    };
+  }
 
   // Populate Similar Movies
   populateSimilar(movie);
@@ -3914,13 +4037,11 @@ export function updateHeroUI(movie) {
   const playBtn = document.getElementById('hero-play-btn');
   if (playBtn) {
     playBtn.onclick = () => {
-      openModal(movie);
-      setTimeout(() => {
-        const mPlayBtn = document.getElementById('m-play-btn');
-        if (mPlayBtn && mPlayBtn.style.display !== 'none') {
-          mPlayBtn.click();
-        }
-      }, 400);
+      if (movie.trailerKey) {
+        window.open(`https://www.youtube.com/watch?v=${movie.trailerKey}`, '_blank');
+      } else {
+        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title + ' trailer')}`, '_blank');
+      }
     };
   }
   
