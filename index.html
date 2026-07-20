@@ -23,8 +23,8 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1 style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;letter-spacing:-1px;display:flex;align-items:center;justify-content:center;gap:10px">
-          <img src="logo.jpg" alt="ATLASS Logo" style="width:36px;height:36px;border-radius:8px;object-fit:cover;"/>ATLASS
+        <h1 class="u-syne-header">
+          <img src="logo.jpg" alt="ATLASS Logo" class="u-avatar-md"/>ATLASS
         </h1>
         <p class="login-subtitle">Discover movies you'll love with AI</p>
       </div>
@@ -39,27 +39,27 @@
           <label id="auth-email-label">Email</label>
           <input type="text" id="auth-email" placeholder="name@example.com" required />
         </div>
-        <div class="form-group" id="auth-username-group" style="display: none;">
+        <div class="form-group" id="auth-username-group" class="u-display--none-70">
           <label>Username</label>
           <input type="text" id="auth-username" placeholder="username" />
         </div>
-        <div class="form-group" style="position:relative;">
+        <div class="form-group u-position-relative-3">
           <label>Password</label>
-          <input type="password" id="auth-password" placeholder="Min 8 characters" required minlength="8" style="padding-right:44px;" />
+          <input type="password" id="auth-password" placeholder="Min 8 characters" required minlength="8" class="u-padding-right-44px-77" />
           <button type="button" id="toggle-password-btn"
             onclick="(function(){var i=document.getElementById('auth-password');var b=document.getElementById('toggle-password-btn');i.type=i.type==='password'?'text':'password';b.innerHTML=i.type==='password'?'<i class=\'fa-solid fa-eye\'></i>':'<i class=\'fa-solid fa-eye-slash\'></i>';})()"
-            style="position:absolute;right:14px;bottom:14px;background:none;border:none;color:var(--t3);cursor:pointer;padding:0;line-height:1;">
+            class="u-position-absolute-right-14px-8">
             <i class="fa-solid fa-eye"></i>
           </button>
         </div>
-        <div id="auth-error" class="auth-error" style="color: #ef4444; font-size: 14px; margin-bottom: 16px; display: none;"></div>
+        <div id="auth-error" class="auth-error u-color--ef4444-13"></div>
         <button type="submit" class="btn-primary login-btn" id="auth-submit-btn">Log In</button>
       </form>
 
       <div class="login-divider"><span>or</span></div>
 
       <button class="btn-secondary guest-btn" onclick="continueAsGuest()">
-        <i class="fa-solid fa-user-astronaut" style="margin-right:8px"></i> Continue as Guest
+        <i class="fa-solid fa-user-astronaut u-margin-right-8px-44"></i> Continue as Guest
       </button>
     </div>
   </div>
@@ -67,21 +67,21 @@
 <!-- ═══ NAVBAR ═══ -->
 <nav id="nav">
   <a href="#" class="logo">
-    <img src="logo.jpg" alt="ATLASS Logo" style="width:30px;height:30px;border-radius:7px;object-fit:cover;display:block;"/>
+    <img src="logo.jpg" alt="ATLASS Logo" class="u-avatar-sm"/>
     <span class="logo-text">ATLASS</span>
   </a>
   <div class="nav-right">
     <button id="watched-btn" class="watched-nav-btn" title="Already Watched" onclick="window.showAlreadyWatched && window.showAlreadyWatched()">
       <i class="fa-solid fa-eye"></i>
       <span class="watched-nav-label">Watched</span>
-      <span class="watched-nav-badge" id="watched-nav-badge" style="display:none"></span>
+      <span class="watched-nav-badge" id="watched-nav-badge" class="hidden"></span>
     </button>
     <button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme" onclick="toggleTheme()">
       <i class="fa-solid fa-moon"></i>
       <i class="fa-solid fa-sun"></i>
     </button>
     <div class="profile-container" id="profile-container">
-      <img class="avatar" id="avatar-btn" src="data/a4b920a028317a89fb8ee08fc5e3f0dd.jpg" alt="Profile" style="cursor:pointer"/>
+      <img class="avatar" id="avatar-btn" src="data/a4b920a028317a89fb8ee08fc5e3f0dd.jpg" alt="Profile" class="u-cursor-pointer-71"/>
       <div class="profile-dropdown" id="profile-dropdown">
         <div class="pd-user-info">
           <div class="pd-username" id="pd-display-name">Pranav Pant</div>
@@ -99,7 +99,7 @@
 </nav>
 
 <!-- Floating Toast Container -->
-<div id="toast-container" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;"></div>
+<div id="toast-container" class="u-position-fixed-bottom-24px-10"></div>
 
 <!-- ═══ HERO ═══ -->
 <section id="hero">
@@ -107,13 +107,13 @@
   <div class="hero-fade"></div>
   <div class="hero-side"></div>
   <div class="hero-content">
-    <div class="match-chip"><i class="fa-solid fa-circle-check" style="font-size:10px"></i> 98% Match For You</div>
+    <div class="match-chip"><i class="fa-solid fa-circle-check text-xs"></i> 98% Match For You</div>
     <h1 class="hero-title">Dune<br>Part Two</h1>
     <p class="hero-sub">2024 &nbsp;·&nbsp; 2h 46m &nbsp;·&nbsp; Sci-Fi &nbsp;·&nbsp; PG-13</p>
     <p class="hero-synopsis">Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family — love and fate collide on an impossible scale.</p>
-    <div class="why-tag"><i class="fa-solid fa-brain" style="font-size:10px;color:var(--vl)"></i> Epic Sci-Fi · Narrative Depth · Denis Villeneuve</div>
+    <div class="why-tag"><i class="fa-solid fa-brain u-font-size-10px-color-var--vl-46"></i> Epic Sci-Fi · Narrative Depth · Denis Villeneuve</div>
     <div class="hero-btns">
-      <button class="btn-primary" id="hero-play-btn"><i class="fa-solid fa-play" style="font-size:11px"></i> Play Trailer</button>
+      <button class="btn-primary" id="hero-play-btn"><i class="fa-solid fa-play text-sm"></i> Play Trailer</button>
       <button class="btn-secondary" id="hero-info-btn"><i class="fa-solid fa-circle-info"></i> More Info</button>
       <button class="btn-icon" id="hero-wl-btn" title="Add to watchlist"><i class="fa-solid fa-plus"></i></button>
     </div>
@@ -125,24 +125,24 @@
 <main>
 
   <!-- ═══ ALREADY WATCHED ═══ -->
-  <section id="watched-section" style="display:none;padding:56px 0 0">
-    <div class="sec-head" style="margin-bottom:24px">
+  <section id="watched-section" class="u-hidden-0">
+    <div class="sec-head u-margin-bottom-24px-65">
       <div>
         <div class="sec-title">Already Watched
-          <span class="sec-tag tag-violet" id="watched-count-badge" style="display:none"></span>
+          <span class="sec-tag tag-violet" id="watched-count-badge" class="hidden"></span>
         </div>
         <p class="sec-sub" id="watched-sub">Movies you've rated — sorted by your score</p>
       </div>
-      <div style="display:flex;align-items:center;gap:12px">
+      <div class="u-flex-67">
         <select id="watched-sort-select" class="watched-sort-select" onchange="window.sortWatchedGrid && window.sortWatchedGrid(this.value)">
           <option value="recent" selected>Recently Added</option>
           <option value="rating-desc">My Rating ↓</option>
           <option value="rating-asc">My Rating ↑</option>
         </select>
-        <button onclick="window.showHomePage && window.showHomePage()" style="background:transparent;border:none;color:var(--t2);cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="fa-solid fa-arrow-left" style="font-size:10px"></i> Back</button>
+        <button onclick="window.showHomePage && window.showHomePage()" class="u-background-transparent-border-none-30"><i class="fa-solid fa-arrow-left text-xs"></i> Back</button>
       </div>
     </div>
-    <div id="watched-empty" class="watched-empty" style="display:none">
+    <div id="watched-empty" class="watched-empty hidden">
       <i class="fa-regular fa-eye-slash"></i>
       <p>No rated movies yet — open any movie and give it stars to track it here</p>
     </div>
@@ -150,21 +150,21 @@
   </section>
 
   <!-- Search Results Section -->
-  <section id="search-section" style="display:none;padding-top:44px">
+  <section id="search-section" class="u-hidden-22">
     <div class="sec-head">
       <div>
         <div class="sec-title" id="search-section-title">
           Search Results
-          <span class="sec-tag tag-violet" id="search-count" style="display:none"></span>
+          <span class="sec-tag tag-violet" id="search-count" class="hidden"></span>
         </div>
         <p class="sec-sub" id="search-sub">Results matching your search query</p>
       </div>
-      <button onclick="clearSearch()" style="background:transparent;border:none;color:var(--t2);cursor:pointer;font-size:12px;font-weight:600">Clear</button>
+      <button onclick="clearSearch()" class="u-background-transparent-border-none-52">Clear</button>
     </div>
     <!-- Genre mode: multi-row grid with Load More -->
-    <div id="genre-grid-wrap" style="display:none">
+    <div id="genre-grid-wrap" class="hidden">
       <div class="genre-results-grid" id="genre-results-grid"></div>
-      <div id="genre-load-more-wrap" style="display:none;text-align:center;padding:32px 0 8px">
+      <div id="genre-load-more-wrap" class="load-more-wrap">
         <button id="genre-load-more-btn" class="genre-load-more-btn">
           <i class="fa-solid fa-circle-plus"></i> Load More
         </button>
@@ -173,7 +173,7 @@
     <!-- Search mode: full results grid with load-more -->
     <div id="search-row-wrap">
       <div class="search-results-grid" id="search-results"></div>
-      <div id="search-load-more-wrap" style="display:none;text-align:center;padding:32px 0 8px">
+      <div id="search-load-more-wrap" class="load-more-wrap">
         <button id="search-load-more-btn" class="genre-load-more-btn">
           <i class="fa-solid fa-circle-plus"></i> Load More Results
         </button>
@@ -183,13 +183,13 @@
 
 
   <!-- ROW 1: Top Picks -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Top Picks For You</div>
         <p class="sec-sub">Personalized from your taste profile · hover to explore</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap" id="rw1-wrap">
       <div class="arr L" onclick="scrollRow('rw1',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -199,13 +199,13 @@
   </section>
 
   <!-- ROW 2: Because You Watched -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
-        <div class="sec-title">Because you watched <span id="rw2-title" style="color:var(--vl)">Interstellar</span></div>
+        <div class="sec-title">Because you watched <span id="rw2-title" class="u-color-var--vl-16">Interstellar</span></div>
         <p class="sec-sub">Matched on: Space · Emotional depth · Hans Zimmer</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap" id="rw2-wrap">
       <div class="arr L" onclick="scrollRow('rw2',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -215,13 +215,13 @@
   </section>
 
   <!-- ROW: New Releases -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">New Releases <span class="sec-tag tag-hot">2024–2025</span></div>
         <p class="sec-sub">Fresh out — the latest movies hitting screens now</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-new-releases',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -230,13 +230,13 @@
     </div>
   </section>
   <!-- ROW: Hidden Gems -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Hidden Gems</div>
         <p class="sec-sub">Critically loved, underrated — you probably haven't seen these</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-hidden-gems',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -252,7 +252,7 @@
         <div class="sec-title">Currently Trending <span class="sec-tag tag-hot"><span class="live-dot"></span>Live</span></div>
         <p class="sec-sub">What the world is watching right now · scroll to see more</p>
       </div>
-      <a href="#" class="see-all">Full chart <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">Full chart <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="trend-scroll-wrap" id="trend-wrap">
       <div class="trend-arr L" onclick="scrollTrend(-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -262,13 +262,13 @@
   </section>
 
   <!-- ROW: Genres You Love -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Genres You Love</div>
         <p class="sec-sub">Curated picks from your favorite categories</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-genres-you-love',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -278,13 +278,13 @@
   </section>
 
   <!-- ROW: Classics -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Classics</div>
         <p class="sec-sub">Timeless films every cinephile should see</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-classics',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -294,13 +294,13 @@
   </section>
 
   <!-- ROW: Award-Winning Movies & TV Shows -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Award-Winning Movies &amp; TV Shows</div>
         <p class="sec-sub">Oscar, Emmy, and Golden Globe decorated titles</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-award-winning',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -310,13 +310,13 @@
   </section>
 
   <!-- ROW: Critically Acclaimed -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Critically Acclaimed</div>
         <p class="sec-sub">Titles that earned universal praise from critics</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-critically-acclaimed',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -326,13 +326,13 @@
   </section>
 
   <!-- ROW: Sci-Fi Essentials -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Sci-Fi Essentials</div>
         <p class="sec-sub">Mind-bending futures and galaxies far, far away</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-scifi',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -342,13 +342,13 @@
   </section>
 
   <!-- ROW: Action Blockbusters -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Action Blockbusters</div>
         <p class="sec-sub">High-octane thrills and spectacular set pieces</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-action',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -358,13 +358,13 @@
   </section>
 
   <!-- ROW: Comedy Picks -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Comedy Picks</div>
         <p class="sec-sub">Laugh-out-loud favorites for any mood</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-comedy',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -374,13 +374,13 @@
   </section>
 
   <!-- ROW: Thriller & Mystery -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Thriller &amp; Mystery</div>
         <p class="sec-sub">Keep you guessing until the very last scene</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-thriller',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -390,13 +390,13 @@
   </section>
 
   <!-- ROW: Family Favorites -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Family Favorites</div>
         <p class="sec-sub">Fun for everyone — movie nights made easy</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-family',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -406,13 +406,13 @@
   </section>
 
   <!-- ROW: Animation Collection -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Animation Collection</div>
         <p class="sec-sub">Stunning animated worlds for all ages</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-animation',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -422,13 +422,13 @@
   </section>
 
   <!-- ROW: Binge-Worthy TV Shows -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Binge-Worthy TV Shows</div>
         <p class="sec-sub">Series you won't be able to stop watching</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-binge-tv',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -438,13 +438,13 @@
   </section>
 
   <!-- ROW: Recently Added -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Recently Added</div>
         <p class="sec-sub">New to streaming — just added across platforms</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-recently-added',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -454,13 +454,13 @@
   </section>
 
   <!-- ROW: Most Rewatched -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Most Rewatched</div>
         <p class="sec-sub">Titles so good people keep coming back</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-most-rewatched',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -470,13 +470,13 @@
   </section>
 
   <!-- ROW: Editor's Picks -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Editor's Picks</div>
         <p class="sec-sub">Hand-curated selections from our film editors</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-editors-picks',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -486,13 +486,13 @@
   </section>
 
   <!-- ROW: Popular on Atlass -->
-  <section style="padding-top:44px" class="reveal">
+  <section class="reveal pt-44">
     <div class="sec-head">
       <div>
         <div class="sec-title">Popular on Atlass <span class="sec-tag tag-violet">Top Watched</span></div>
         <p class="sec-sub">What Atlass members are watching most right now</p>
       </div>
-      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+      <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
     </div>
     <div class="row-wrap">
       <div class="arr L" onclick="scrollRow('hs-popular-atlass',-1)"><i class="fa-solid fa-chevron-left"></i></div>
@@ -509,12 +509,12 @@
         <div class="sec-title">Browse by Platform <span class="sec-tag tag-violet">All Services</span></div>
         <p class="sec-sub">What's streaming now — movies & series by platform</p>
       </div>
-      <div style="display:flex;align-items:center;gap:16px;">
+      <div class="u-flex-47">
         <div class="type-toggle">
           <button class="type-pill active" id="pill-movies" onclick="setType('movies')">Movies</button>
           <button class="type-pill" id="pill-series" onclick="setType('series')">Series</button>
         </div>
-        <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right" style="font-size:10px"></i></a>
+        <a href="#" class="see-all">See all <i class="fa-solid fa-chevron-right text-xs"></i></a>
       </div>
     </div>
     <!-- Platform tabs -->
@@ -535,14 +535,14 @@
         <img class="s-card-img" id="s-img" src="" alt=""/>
         <div class="s-card-body">
           <div>
-            <div class="s-card-tag"><i class="fa-solid fa-sparkles" style="font-size:9px"></i> Surprise Pick</div>
+            <div class="s-card-tag"><i class="fa-solid fa-sparkles text-xxs"></i> Surprise Pick</div>
             <div class="s-card-title" id="s-title"></div>
             <div class="s-card-sub" id="s-sub"></div>
             <div class="s-card-synopsis" id="s-synopsis"></div>
           </div>
           <div class="s-card-btns">
-            <button class="btn-primary" style="font-size:12px;padding:9px 18px" id="s-modal-btn"><i class="fa-solid fa-circle-info" style="font-size:11px"></i> Details</button>
-            <button class="btn-secondary" style="font-size:12px;padding:9px 14px" id="s-add-btn"><i class="fa-solid fa-plus" style="font-size:11px"></i> Watchlist</button>
+            <button class="btn-primary u-font-size-12px-padding-9px-57" id="s-modal-btn"><i class="fa-solid fa-circle-info text-sm"></i> Details</button>
+            <button class="btn-secondary u-font-size-12px-padding-9px-26" id="s-add-btn"><i class="fa-solid fa-plus text-sm"></i> Watchlist</button>
           </div>
         </div>
       </div>
@@ -550,8 +550,8 @@
   </section>
 
   <!-- ═══ WATCHLIST + ROULETTE ═══ -->
-  <section id="watchlist-section" class="reveal" style="padding:56px 0 0">
-    <div class="sec-head" style="margin-bottom:20px">
+  <section id="watchlist-section" class="reveal u-padding-56px-0-69">
+    <div class="sec-head u-margin-bottom-20px-25">
       <div>
         <div class="sec-title">My Watchlist
         </div>
@@ -580,11 +580,11 @@
         <button class="pick-roll-btn" id="pick-roll-btn" onclick="rollPickMovie()">
           <i class="fa-solid fa-dice"></i> Spin It!
         </button>
-        <div class="pick-empty-msg" id="pick-empty-msg" style="display:none">
-          <i class="fa-regular fa-bookmark" style="font-size:28px;color:var(--t3)"></i>
+        <div class="pick-empty-msg" id="pick-empty-msg" class="hidden">
+          <i class="fa-regular fa-bookmark u-font-size-28px-color-var--t3-51"></i>
           <p>Add some movies to your watchlist first!</p>
         </div>
-        <div class="pick-locked-state" id="pick-locked-state" style="display:none">
+        <div class="pick-locked-state" id="pick-locked-state" class="hidden">
           <div class="lock-icon-wrap">
             <i class="fa-solid fa-lock"></i>
           </div>
@@ -595,12 +595,12 @@
           <div class="pick-result-inner">
             <img class="pick-result-poster" id="pick-result-poster" src="" alt=""/>
             <div class="pick-result-info">
-              <div class="pick-result-tag"><i class="fa-solid fa-sparkles" style="font-size:9px"></i> Tonight's Pick</div>
+              <div class="pick-result-tag"><i class="fa-solid fa-sparkles text-xxs"></i> Tonight's Pick</div>
               <h3 class="pick-result-title" id="pick-result-title"></h3>
               <p class="pick-result-meta" id="pick-result-meta"></p>
               <div class="pick-result-btns">
-                <button class="btn-primary pick-watch-btn" id="pick-watch-btn"><i class="fa-solid fa-play" style="font-size:10px"></i> Watch Now</button>
-                <button class="btn-secondary pick-again-btn" onclick="rollPickMovie()"><i class="fa-solid fa-rotate" style="font-size:10px"></i> Spin Again</button>
+                <button class="btn-primary pick-watch-btn" id="pick-watch-btn"><i class="fa-solid fa-play text-xs"></i> Watch Now</button>
+                <button class="btn-secondary pick-again-btn" onclick="rollPickMovie()"><i class="fa-solid fa-rotate text-xs"></i> Spin Again</button>
               </div>
             </div>
           </div>
@@ -615,11 +615,11 @@
 
 <!-- ═══ SETTINGS MODAL ═══ -->
 <div id="settings-overlay" onclick="handleSettingsOverlay(event)">
-  <div id="settings-modal" style="padding: 24px;">
+  <div id="settings-modal" class="u-padding--24px-40">
     <button class="m-close" onclick="closeSettingsModal()"><i class="fa-solid fa-xmark"></i></button>
     
-    <h2 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:18px;letter-spacing:-.4px">
-      <i class="fa-solid fa-gear" style="color:var(--y);margin-right:8px"></i>CineMatch Settings
+    <h2 class="u-syne-header">
+      <i class="fa-solid fa-gear u-color-var--y-margin-right-8px-48"></i>CineMatch Settings
     </h2>
     
     <!-- Tab Navigation -->
@@ -637,8 +637,8 @@
     
     <!-- Tab 1: User Preferences -->
     <div class="settings-tab-content active" id="tab-user-preferences">
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Favorite Genres (Match Score Boost)</label>
+      <div class="mb-16">
+        <label class="sub-label-2">Favorite Genres (Match Score Boost)</label>
         <div class="genre-pills-container">
           <div class="genre-pill" data-genre="Action" onclick="toggleGenrePill(event)">Action</div>
           <div class="genre-pill" data-genre="Adventure" onclick="toggleGenrePill(event)">Adventure</div>
@@ -655,43 +655,43 @@
         </div>
       </div>
 
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Preferred Providers</label>
+      <div class="mb-16">
+        <label class="sub-label-2">Preferred Providers</label>
         <div class="providers-grid">
-          <div class="provider-checkbox-label" data-provider-id="netflix" onclick="toggleProviderCheckbox(event)" style="--bg-color:#e50914;--border-color:#e50914">
+          <div class="provider-checkbox-label" data-provider-id="netflix" onclick="toggleProviderCheckbox(event)" class="u---bg-color-e50914---border-color-e50914-54">
             <input type="checkbox"/>
             <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
-            <div class="provider-logo-mini" style="background:#e50914"><i class="fa-solid fa-n"></i></div>
+            <div class="provider-logo-mini u-background-e50914-61"><i class="fa-solid fa-n"></i></div>
             <span>Netflix</span>
           </div>
-          <div class="provider-checkbox-label" data-provider-id="prime" onclick="toggleProviderCheckbox(event)" style="--bg-color:#00a8e0;--border-color:#00a8e0">
+          <div class="provider-checkbox-label" data-provider-id="prime" onclick="toggleProviderCheckbox(event)" class="u---bg-color-00a8e0---border-color-00a8e0-21">
             <input type="checkbox"/>
             <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
-            <div class="provider-logo-mini" style="background:#00a8e0"><i class="fa-brands fa-amazon"></i></div>
+            <div class="provider-logo-mini u-background-00a8e0-37"><i class="fa-brands fa-amazon"></i></div>
             <span>Prime Video</span>
           </div>
-          <div class="provider-checkbox-label" data-provider-id="appletv" onclick="toggleProviderCheckbox(event)" style="--bg-color:#a2aaad;--border-color:#a2aaad">
+          <div class="provider-checkbox-label" data-provider-id="appletv" onclick="toggleProviderCheckbox(event)" class="u---bg-color-a2aaad---border-color-a2aaad-73">
             <input type="checkbox"/>
             <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
-            <div class="provider-logo-mini" style="background:#444"><i class="fa-brands fa-apple"></i></div>
+            <div class="provider-logo-mini u-background-444-32"><i class="fa-brands fa-apple"></i></div>
             <span>Apple TV+</span>
           </div>
-          <div class="provider-checkbox-label" data-provider-id="disney" onclick="toggleProviderCheckbox(event)" style="--bg-color:#113ccf;--border-color:#113ccf">
+          <div class="provider-checkbox-label" data-provider-id="disney" onclick="toggleProviderCheckbox(event)" class="u---bg-color-113ccf---border-color-113ccf-45">
             <input type="checkbox"/>
             <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
-            <div class="provider-logo-mini" style="background:#113ccf"><i class="fa-solid fa-star"></i></div>
+            <div class="provider-logo-mini u-background-113ccf-9"><i class="fa-solid fa-star"></i></div>
             <span>Disney+</span>
           </div>
-          <div class="provider-checkbox-label" data-provider-id="max" onclick="toggleProviderCheckbox(event)" style="--bg-color:#002be0;--border-color:#002be0">
+          <div class="provider-checkbox-label" data-provider-id="max" onclick="toggleProviderCheckbox(event)" class="u---bg-color-002be0---border-color-002be0-33">
             <input type="checkbox"/>
             <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
-            <div class="provider-logo-mini" style="background:#002be0"><i class="fa-solid fa-m"></i></div>
+            <div class="provider-logo-mini u-background-002be0-12"><i class="fa-solid fa-m"></i></div>
             <span>Max</span>
           </div>
-          <div class="provider-checkbox-label" data-provider-id="hulu" onclick="toggleProviderCheckbox(event)" style="--bg-color:#1ce783;--border-color:#1ce783">
+          <div class="provider-checkbox-label" data-provider-id="hulu" onclick="toggleProviderCheckbox(event)" class="u---bg-color-1ce783---border-color-1ce783-24">
             <input type="checkbox"/>
             <div class="provider-check-box"><i class="fa-solid fa-check"></i></div>
-            <div class="provider-logo-mini" style="background:#1ce783;color:#000"><i class="fa-solid fa-h"></i></div>
+            <div class="provider-logo-mini u-background-1ce783-color-000-35"><i class="fa-solid fa-h"></i></div>
             <span>Hulu</span>
           </div>
         </div>
@@ -701,10 +701,10 @@
     <!-- Tab 3: Roulette Tuning -->
     <div class="settings-tab-content" id="tab-roulette-tuning">
       <!-- Confetti Switch -->
-      <div class="settings-control-group" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--b3);border-radius:10px;border:1px solid rgba(255,255,255,.05);margin-bottom:16px">
+      <div class="settings-control-group u-flex-6">
         <div>
-          <h4 style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">Victory Confetti</h4>
-          <p style="font-size:10px;color:var(--t3)">Launch particles on selection match</p>
+          <h4 class="title-sm">Victory Confetti</h4>
+          <p class="text-muted-sm">Launch particles on selection match</p>
         </div>
         <label class="switch-control">
           <input type="checkbox" id="confetti-toggle"/>
@@ -713,13 +713,13 @@
       </div>
       
       <!-- Bend Intensity Slider -->
-      <div class="settings-control-group" style="padding:14px;background:var(--b3);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
+      <div class="settings-control-group card-box">
         <div class="settings-control-label-row">
           <div>
-            <h4 style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:2px">Bend Curvature Intensity</h4>
-            <p style="font-size:10px;color:var(--t3)">WebGL circular gallery radius scale</p>
+            <h4 class="title-sm">Bend Curvature Intensity</h4>
+            <p class="text-muted-sm">WebGL circular gallery radius scale</p>
           </div>
-          <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--y)" id="bend-intensity-val">3.0</span>
+          <span class="u-syne-header" id="bend-intensity-val">3.0</span>
         </div>
         <input type="range" id="bend-intensity-slider" min="0.0" max="5.0" step="0.5" class="slider-control" oninput="document.getElementById('bend-intensity-val').textContent = parseFloat(this.value).toFixed(1)"/>
       </div>
@@ -727,17 +727,17 @@
     
     <!-- Tab 3: Change Preference -->
     <div class="settings-tab-content" id="tab-change-preference">
-      <div class="settings-control-group" style="padding:14px;background:var(--b3);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
-        <div style="margin-bottom:12px">
-          <h4 style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:4px">Rebuild Recommendations</h4>
-          <p style="font-size:11px;color:var(--t3);line-height:1.4">Start over with the Taste Selection flow to pick new favorite genres, actors, and languages.</p>
+      <div class="settings-control-group card-box">
+        <div class="u-margin-bottom-12px-15">
+          <h4 class="u-font-size-12px-font-weight-700-11">Rebuild Recommendations</h4>
+          <p class="u-font-size-11px-color-var--t3-27">Start over with the Taste Selection flow to pick new favorite genres, actors, and languages.</p>
         </div>
-        <button class="btn-primary" style="width:100%;justify-content:center;background:#e74c3c;color:#fff" onclick="resetContentPreferences()">Reset Content Preferences</button>
+        <button class="btn-primary u-width-100-justify-content-center-5" onclick="resetContentPreferences()">Reset Content Preferences</button>
       </div>
     </div>
 
-    <div style="margin-top:24px">
-      <button class="btn-primary" style="width:100%;justify-content:center" onclick="saveSettings()">Save Changes</button>
+    <div class="u-margin-top-24px-2">
+      <button class="btn-primary u-width-100-justify-content-center-68" onclick="saveSettings()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -749,14 +749,14 @@
   <div class="popup-img-wrap"><img class="popup-img" id="pp-img" src="" alt=""/></div>
   <div class="popup-body">
     <div class="popup-actions">
-      <button class="pa-btn pa-play" id="pp-play" title="Watch Now"><i class="fa-solid fa-play" style="margin-left:2px;font-size:10px"></i></button>
-      <button class="pa-btn pa-add" id="pp-add" title="Add to Watchlist"><i class="fa-solid fa-plus" style="font-size:10px"></i></button>
-      <button class="pa-btn pa-thumb" title="Like"><i class="fa-solid fa-thumbs-up" style="font-size:10px"></i></button>
-      <button class="pa-btn pa-info" id="pp-info" title="More Info"><i class="fa-solid fa-chevron-down" style="font-size:10px"></i></button>
+      <button class="pa-btn pa-play" id="pp-play" title="Watch Now"><i class="fa-solid fa-play u-margin-left-2px-font-size-10px-64"></i></button>
+      <button class="pa-btn pa-add" id="pp-add" title="Add to Watchlist"><i class="fa-solid fa-plus text-xs"></i></button>
+      <button class="pa-btn pa-thumb" title="Like"><i class="fa-solid fa-thumbs-up text-xs"></i></button>
+      <button class="pa-btn pa-info" id="pp-info" title="More Info"><i class="fa-solid fa-chevron-down text-xs"></i></button>
     </div>
     <div class="popup-meta-row">
       <span class="pm-match" id="pp-match"></span>
-      <span class="pm-rating"><i class="fa-solid fa-star" style="font-size:9px"></i><span id="pp-rating"></span></span>
+      <span class="pm-rating"><i class="fa-solid fa-star text-xxs"></i><span id="pp-rating"></span></span>
       <span class="pm-badge" id="pp-cert"></span>
     </div>
     <div class="popup-title" id="pp-title"></div>
@@ -769,18 +769,19 @@
   <div id="modal">
     <div class="m-hero">
       <img id="m-backdrop" src="" alt=""/>
-      <img id="m-poster" src="" alt="" style="display:none;"/>
+      <img id="m-poster" src="" alt="" class="hidden"/>
       <div class="m-hero-fade"></div><div class="m-hero-side"></div>
       <button class="m-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
       <div class="m-head">
-        <div class="match-chip" id="m-chip" style="margin-bottom:10px"></div>
-        <div style="font-size:27px;font-weight:900;letter-spacing:-.6px;font-family:'Syne',sans-serif" id="m-title"></div>
-        <div style="font-size:12px;color:var(--t2);margin-top:5px" id="m-year"></div>
+        <div class="match-chip" id="m-chip" class="u-margin-bottom-10px-62"></div>
+        <div class="u-syne-header" id="m-title"></div>
+        <div class="u-font-size-12px-color-var--t2-38" id="m-year"></div>
       </div>
     </div>
     <div class="m-body">
       <div class="m-grid">
-        <div class="m-stat"><p>Rating</p><p id="m-rating" style="color:var(--y)"></p></div>
+        <div class="m-stat"><p>Rating</p><p id="m-rating" class="text-yellow"></p></div>
+        <div class="m-stat"><p>Rated</p><p id="m-cert"></p></div>
         <div class="m-stat"><p>Runtime</p><p id="m-runtime"></p></div>
         <div class="m-stat"><p>Genre</p><p id="m-genre"></p></div>
         <div class="m-stat"><p>Streaming</p><div class="m-platforms" id="m-platforms"></div></div>
@@ -789,7 +790,7 @@
       <!-- User Rating Stars Box -->
       <div class="user-rating-box" id="urb-root">
         <!-- Initial state: centered "Watched?" pill -->
-        <div class="urb-inner" style="position: relative;">
+        <div class="urb-inner u-position--relative-49">
           <button class="urb-watched-pill" id="m-watched-pill" onclick="window._toggleModalWatched && window._toggleModalWatched()">
             <span class="urb-icon-wrap">
               <!-- Question mark shown before click, eye shown after -->
@@ -797,10 +798,6 @@
               <i class="urb-icon-eye fa-regular fa-eye"></i>
             </span>
             <span class="urb-watched-label">Watched?</span>
-          </button>
-          
-          <button class="btn-primary" id="m-play-btn" style="position:absolute; left:50%; transform:translateX(-50%); font-size:13px; padding:10px 22px; display:none; gap:8px; align-items:center; cursor:pointer;">
-            <i class="fa-solid fa-play" style="font-size:11px"></i> Play Trailer
           </button>
 
           <!-- Rating side — hidden until watched -->
@@ -828,26 +825,29 @@
       </div>
 
       <!-- YouTube Embed Trailer Container -->
-      <div id="m-video-container" style="display: none; margin-bottom: 22px; border-radius: 10px; overflow: hidden; position: relative; padding-bottom: 56.25%; height: 0">
-        <iframe id="m-video-iframe" src="" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      <div id="m-video-container" class="u-display--none-29">
+        <iframe id="m-video-iframe" src="" class="u-position--absolute-23" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
       <p class="m-synopsis" id="m-synopsis"></p>
       <div class="ai-box">
         <div class="ai-box-head"><i class="fa-solid fa-brain"></i> Why ATLASS picked this</div>
         <div class="ai-pills" id="m-reasons"></div>
       </div>
-      <div class="m-crew-container" style="display: flex; gap: 32px; margin-bottom: 20px;">
+      <div class="m-crew-container u-display--flex-63">
         <div class="m-director-sec">
-          <p style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:13px">Director</p>
-          <div class="m-director-row" id="m-director" style="display: flex; gap: 14px;"></div>
+          <p class="label-uppercase">Director</p>
+          <div class="m-director-row" id="m-director" class="u-display--flex-50"></div>
         </div>
-        <div class="m-cast-sec" style="flex: 1;">
-          <p style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:13px">Cast</p>
+        <div class="m-cast-sec u-flex--1-75">
+          <p class="label-uppercase">Cast</p>
           <div class="m-cast-row" id="m-cast"></div>
         </div>
       </div>
-      <div style="display: flex; justify-content: center; margin-top: 20px;">
-        <button id="m-letterboxd-btn" class="btn-secondary" style="font-size:12px; padding:9px 16px; border-radius:12px; cursor:pointer;"><i class="fa-solid fa-star" style="color:#00E054; margin-right:4px;"></i> Wanna rate on Letterboxd?</button>
+      <div class="u-display--flex-41">
+        <button class="btn-primary" id="m-play-btn" class="u-font-size-13px-padding-10px-43">
+          <i class="fa-solid fa-play text-sm"></i> Play Trailer
+        </button>
+        <button id="m-letterboxd-btn" class="btn-secondary u-font-size-12px-padding-9px-7"><i class="fa-solid fa-star u-color-00E054-margin-right-4px-72"></i> Wanna rate on Letterboxd?</button>
       </div>
       </div>
     </div>
@@ -859,7 +859,7 @@
 <!-- ═══ GENRE POPOVER ═══ -->
 <div id="genre-popover" class="genre-popover">
   <div class="gp-header">
-    <h3 class="gp-title"><i class="fa-solid fa-tags" style="color:var(--y)"></i> Explore by Genre</h3>
+    <h3 class="gp-title"><i class="fa-solid fa-tags text-yellow"></i> Explore by Genre</h3>
     <button class="gp-close-btn" id="gp-close-btn"><i class="fa-solid fa-xmark"></i></button>
   </div>
   <div class="gp-pills-container" id="gp-pills-container">
@@ -870,25 +870,25 @@
 <!-- ═══ BOTTOM NAV ═══ -->
 <!-- ═══ TIKTOK-NAV INLINE SEARCH PANEL ═══ -->
 <!-- Appears in center of screen with blurred overlay when Search tab is tapped. Hidden by default. -->
-<div id="tt-search-overlay" class="tt-search-overlay" style="display:none;"></div>
-<div id="tt-search-panel" class="tt-search-panel" style="display:none;">
+<div id="tt-search-overlay" class="tt-search-overlay hidden"></div>
+<div id="tt-search-panel" class="tt-search-panel hidden">
   <div class="tt-search-panel-inner">
     <div class="tt-search-wrapper">
       <i class="fa-solid fa-magnifying-glass tt-search-icon"></i>
       <input type="text" id="search-input" placeholder="Search movies, shows, people…"
              autocomplete="off" class="tt-search-input"
              onkeydown="if(event.key==='Enter'){window.commitSearch&&window.commitSearch()}"/>
-      <button class="tt-search-clear" id="tt-search-clear" style="display:none;" onclick="window.clearSearchPanel&&window.clearSearchPanel()">
+      <button class="tt-search-clear" id="tt-search-clear" class="hidden" onclick="window.clearSearchPanel&&window.clearSearchPanel()">
         <i class="fa-solid fa-xmark"></i>
       </button>
-      <div id="search-suggestions" class="search-suggestions-dropdown" style="display:none;"></div>
+      <div id="search-suggestions" class="search-suggestions-dropdown hidden"></div>
     </div>
     <button class="tt-search-panel-close" onclick="window.closeSearchPanel&&window.closeSearchPanel()">
       <i class="fa-solid fa-xmark"></i>
     </button>
   </div>
   <!-- Taste Tuner Drawer -->
-  <div id="taste-tuner-drawer" class="taste-tuner-drawer" style="display:none;">
+  <div id="taste-tuner-drawer" class="taste-tuner-drawer hidden">
     <div class="tuner-title">Tweak Recommendations Weight</div>
     <div class="tuner-sliders">
       <div class="tuner-item"><label>Action & Thriller</label><input type="range" min="0" max="100" value="50" class="tuner-slider" id="tuner-action" oninput="updateTastePreference('Action',this.value)"/><span class="tuner-val" id="val-Action">50%</span></div>
@@ -916,7 +916,7 @@
   <a href="#watchlist-section" class="tt-item" data-tab="watchlist-section" onclick="setActiveTab(this)">
     <div class="tt-icon-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-      <div class="tt-badge" id="tt-wl-badge" style="display:none"></div>
+      <div class="tt-badge" id="tt-wl-badge" class="hidden"></div>
     </div>
     <span class="tt-label">Watchlist</span>
   </a>
@@ -963,59 +963,59 @@
 <script type="module" src="app.js?v=33"></script>
 
 <!-- ═══ USER ONBOARDING OVERLAY ═══ -->
-<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;background:var(--b0);z-index:99999;overflow-y:auto;padding:40px 20px;">
+<div id="onboarding-overlay" class="u-hidden-31">
   
   <!-- Step 1: Taste Profile Setup -->
-  <div id="onboarding-setup-view" style="max-width:600px;margin:40px auto;text-align:center;">
-    <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:32px;letter-spacing:-1px;color:var(--t1);margin-bottom:8px">Welcome to ATLASS 🎬</h2>
-    <p style="color:var(--t2);font-size:15px;margin-bottom:32px">Let's customize your movie feed in 2 quick steps</p>
+  <div id="onboarding-setup-view" class="u-max-width-600px-margin-40px-39">
+    <h2 class="u-syne-header">Welcome to ATLASS 🎬</h2>
+    <p class="u-color-var--t2-font-size-15px-17">Let's customize your movie feed in 2 quick steps</p>
 
     <!-- Genre Selector -->
-    <div style="text-align:left;margin-bottom:28px">
-      <label style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:10px">Select Your Favorite Genres</label>
-      <div id="onboarding-genre-pills" style="display:flex;flex-wrap:wrap;gap:8px">
+    <div class="text-left mb-28">
+      <label class="sub-label-1">Select Your Favorite Genres</label>
+      <div id="onboarding-genre-pills" class="flex-wrap-8">
         <!-- Dyn pills -->
       </div>
     </div>
 
     <!-- Language Selector -->
-    <div style="text-align:left;margin-bottom:28px">
-      <label style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:10px">Preferred Languages</label>
-      <div id="onboarding-lang-pills" style="display:flex;flex-wrap:wrap;gap:8px">
+    <div class="text-left mb-28">
+      <label class="sub-label-1">Preferred Languages</label>
+      <div id="onboarding-lang-pills" class="flex-wrap-8">
         <!-- Dyn pills -->
       </div>
     </div>
 
     <!-- Talent Tag Input -->
-    <div style="text-align:left;margin-bottom:36px">
-      <label style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:10px">Favorite Directors, Actors, & Actresses</label>
+    <div class="u-text-align-left-margin-bottom-36px-18">
+      <label class="sub-label-1">Favorite Directors, Actors, & Actresses</label>
       <div class="actor-select-wrapper">
         <input type="text" id="onboarding-talent-input" class="swipe-input" placeholder="Type name (e.g. Christopher Nolan, Brad Pitt)..." autocomplete="off"/>
-        <div id="onboarding-talent-suggestions" class="actor-suggestions" style="display:none"></div>
+        <div id="onboarding-talent-suggestions" class="actor-suggestions hidden"></div>
       </div>
-      <div id="onboarding-talent-tags" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+      <div id="onboarding-talent-tags" class="u-flex-1">
         <!-- Added pills -->
       </div>
     </div>
 
-    <button class="btn-primary" style="padding:14px 28px;font-weight:700;font-size:15px;width:100%;border-radius:12px;" onclick="window.submitOnboardingPreferences && window.submitOnboardingPreferences()">
+    <button class="btn-primary u-padding-14px-28px-66" onclick="window.submitOnboardingPreferences && window.submitOnboardingPreferences()">
       Next: Find Your Matches ➔
     </button>
   </div>
 
   <!-- Step 2: Onboarding Swiper Deck -->
-  <div id="onboarding-swipe-view" style="display:none;max-width:400px;margin:20px auto;text-align:center;">
-    <h3 style="font-family:'Syne',sans-serif;font-weight:800;font-size:24px;color:var(--t1);margin-bottom:4px">Swipe Match 🔥</h3>
-    <p style="color:var(--t2);font-size:13px;margin-bottom:20px">Swipe right on 10 movies you want to see or love</p>
+  <div id="onboarding-swipe-view" class="u-hidden-60">
+    <h3 class="u-syne-header">Swipe Match 🔥</h3>
+    <p class="u-color-var--t2-font-size-13px-78">Swipe right on 10 movies you want to see or love</p>
     
     <div class="swipe-game-header">
       <span id="onboarding-progress-text">Likes: 0 / 10</span>
       <div class="swipe-progress-bar-wrap">
-        <div id="onboarding-progress-bar" class="swipe-progress-bar" style="width:0%"></div>
+        <div id="onboarding-progress-bar" class="swipe-progress-bar u-width-0-34"></div>
       </div>
     </div>
     
-    <div class="swipe-deck-container" style="height:440px">
+    <div class="swipe-deck-container u-height-440px-19">
       <div class="swipe-card-stack" id="onboarding-card-stack">
         <!-- Stacked Cards -->
       </div>
@@ -1026,7 +1026,7 @@
         <i class="fa-solid fa-xmark"></i>
       </button>
       <button class="swipe-control-btn skip" onclick="window.triggerSwipeAnimation && window.triggerSwipeAnimation('skip')" title="Don't Know (Skip)">
-        <i class="fa-regular fa-circle" style="font-size: 20px; font-weight: 700;"></i>
+        <i class="fa-regular fa-circle u-font-size--20px-20"></i>
       </button>
       <button class="swipe-control-btn like" onclick="window.triggerSwipeAnimation && window.triggerSwipeAnimation('right')" title="Like (Swipe Right)">
         <i class="fa-solid fa-heart"></i>
@@ -1035,10 +1035,10 @@
   </div>
 
   <!-- Step 3: Generating/Personalizing Feed Loader -->
-  <div id="onboarding-loading-view" style="display:none;max-width:400px;margin:100px auto;text-align:center;">
-    <div class="spinner-neon" style="width:60px;height:60px;border:4px solid rgba(245,197,24,0.15);border-top-color:var(--y);border-radius:50%;margin:0 auto 24px;animation:spin 1.2s linear infinite;"></div>
-    <h3 style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--t1)">Customizing Your Feed...</h3>
-    <p style="color:var(--t2);font-size:13px;margin-top:8px" id="onboarding-loading-status">Applying AI taste profile...</p>
+  <div id="onboarding-loading-view" class="u-hidden-56">
+    <div class="spinner-neon u-width-60px-height-60px-42"></div>
+    <h3 class="u-syne-header">Customizing Your Feed...</h3>
+    <p class="u-color-var--t2-font-size-13px-55" id="onboarding-loading-status">Applying AI taste profile...</p>
   </div>
 
 </div>

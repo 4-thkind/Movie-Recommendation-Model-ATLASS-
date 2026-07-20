@@ -230,17 +230,33 @@ export async function fetchTMDBDetails(movieId) {
   }
   
   try {
-    const res = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos,release_dates`);
+    const res = await fetch(`https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos,release_dates,content_ratings`);
     if (!res.ok) throw new Error("TMDB network error");
     const data = await res.json();
     
-    let cert = 'PG-13';
-    if (data.release_dates && data.release_dates.results) {
+    let cert = '';
+    if (type === 'tv' && data.content_ratings && data.content_ratings.results) {
+      const usRating = data.content_ratings.results.find(r => r.iso_3166_1 === 'US');
+      if (usRating && usRating.rating) cert = usRating.rating;
+    } else if (data.release_dates && data.release_dates.results) {
       const usRelease = data.release_dates.results.find(r => r.iso_3166_1 === 'US');
-      if (usRelease && usRelease.release_dates.length > 0 && usRelease.release_dates[0].certification) {
-        cert = usRelease.release_dates[0].certification;
+      if (usRelease && usRelease.release_dates) {
+        const validRelease = usRelease.release_dates.find(r => r.certification);
+        if (validRelease) cert = validRelease.certification;
+      }
+      if (!cert) {
+        for (const country of data.release_dates.results) {
+          if (country.release_dates) {
+            const valid = country.release_dates.find(r => r.certification);
+            if (valid) {
+              cert = valid.certification;
+              break;
+            }
+          }
+        }
       }
     }
+    if (!cert) cert = type === 'tv' ? 'TV-14' : 'NR';
     
     const mapped = {
       id: movieId,
@@ -250,6 +266,7 @@ export async function fetchTMDBDetails(movieId) {
         : (data.release_date ? data.release_date.split('-')[0] : year),
       match: calculateMatchScore(isVirtual ? tmdbId : movieId),
       rating: data.vote_average ? data.vote_average.toFixed(1) : '7.0',
+      cert: cert,
       runtime: type === 'tv'
         ? (data.episode_run_time && data.episode_run_time.length > 0 ? `${data.episode_run_time[0]}m` : 'N/A')
         : (data.runtime ? `${Math.floor(data.runtime/60)}h ${data.runtime%60}m` : 'N/A'),
@@ -611,7 +628,7 @@ export function buildCard(movieId, initialData = null) {
 
   wrap.innerHTML = `
     <div class="card-thumb">
-      <img class="lazy-poster" src="${poster}" alt="${cleanTitle}" style="opacity:${initialData || TMDB_API_KEY ? '1' : '0.35'};transition:opacity 0.5s var(--smooth)"/>
+      <img class="lazy-poster" src="${poster}" alt="${cleanTitle}" style="opacity:${initialData || TMDB_API_KEY ? '1' : '0.35'};transition:opacity .25s var(--smooth)"/>
       <div class="m-badge"><span class="m-stars-inline">${starsStr}</span> ${match}%</div>
       ${personBadgeHtml}
       <button class="card-quick-add${alreadyIn ? ' added' : ''}" data-id="${movieId}" title="${alreadyIn ? 'In Watchlist' : 'Add to Watchlist'}">
@@ -792,7 +809,7 @@ export function renderRows() {
 
   const fetchPopular = () => {
     if (rw2Title) rw2Title.textContent = "Trending Movies";
-    if (rw2Sub) rw2Sub.style.display = 'none';
+    if (rw2Sub) rw2Sub.classList.add('hidden');
     if (TMDB_API_KEY) {
       const randomPage = Math.floor(Math.random() * 5) + 1;
       fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_API_KEY}&page=${randomPage}`)
@@ -849,7 +866,7 @@ export function renderRows() {
         if (rw2Title && details.title) {
           rw2Title.textContent = details.title;
           if (rw2Sub && details.genres) {
-            rw2Sub.style.display = 'block';
+            rw2Sub.classList.remove('hidden');
             rw2Sub.textContent = "Matched on: " + details.genres.slice(0,3).map(g => g.name).join(' · ');
           }
         }
@@ -934,12 +951,12 @@ export function renderRows() {
       if (rw2Title && movieData) {
         rw2Title.textContent = movieData.title;
         if (rw2Sub && movieData.genres) {
-          rw2Sub.style.display = 'block';
+          rw2Sub.classList.remove('hidden');
           rw2Sub.textContent = "Matched on: " + movieData.genres.split('|').slice(0,3).join(' · ');
         }
       } else if (rw2Title) {
         rw2Title.textContent = "Your Favorites";
-        if (rw2Sub) rw2Sub.style.display = 'none';
+        if (rw2Sub) rw2Sub.classList.add('hidden');
       }
       fetchPopular();
     }
@@ -1882,10 +1899,10 @@ window.loadMorePlatform = async function(platId) {
         row.appendChild(card);
       });
       if (data.page >= data.total_pages) {
-         btn.parentElement.style.display = 'none';
+         btn.parentElement.classList.add('hidden');
       }
     } else {
-       btn.parentElement.style.display = 'none';
+       btn.parentElement.classList.add('hidden');
     }
   } catch(e) {
     console.error(e);
@@ -2022,13 +2039,13 @@ export function syncWatchlistButtons() {
   if (prompt && countEl) {
     countEl.textContent = count;
     if (count >= 2) {
-      prompt.style.display = 'block';
+      prompt.classList.remove('hidden');
       setTimeout(() => prompt.style.opacity = '1', 50);
       setTimeout(() => prompt.style.transform = 'translateY(0)', 50);
     } else {
       prompt.style.opacity = '0';
       prompt.style.transform = 'translateY(14px)';
-      setTimeout(() => prompt.style.display = 'none', 450);
+      setTimeout(() => prompt.classList.add('hidden'), 450);
     }
   }
 }
@@ -2055,9 +2072,9 @@ export function updateWatchlistUI() {
   container.querySelectorAll('.movie-card, .wl-item').forEach(el => el.remove());
   
   if (state.watchlist.length === 0) {
-    empty.style.display = 'flex';
+    empty.classList.remove('hidden');
   } else {
-    empty.style.display = 'none';
+    empty.classList.add('hidden');
     state.watchlist.forEach(movie => {
       const card = buildCard(movie.id, movie);
       container.appendChild(card);
@@ -2117,32 +2134,32 @@ export function initPickGallery() {
     container.innerHTML = '';
     if (result) {
       result.classList.remove('show');
-      result.style.display = 'none';
+      result.classList.add('hidden');
     }
 
     const N = state.watchlist.length;
 
     if (N === 0) {
-      if (galleryWrap) galleryWrap.style.display = 'none';
-      if (emptyMsg) emptyMsg.style.display = 'flex';
-      if (rollBtn) rollBtn.style.display = 'none';
-      if (lockMsg) lockMsg.style.display = 'none';
+      if (galleryWrap) galleryWrap.classList.add('hidden');
+      if (emptyMsg) emptyMsg.classList.remove('hidden');
+      if (rollBtn) rollBtn.classList.add('hidden');
+      if (lockMsg) lockMsg.classList.add('hidden');
       return;
     }
 
     if (N === 1) {
-      if (galleryWrap) galleryWrap.style.display = 'none';
-      if (emptyMsg) emptyMsg.style.display = 'none';
-      if (rollBtn) rollBtn.style.display = 'none';
-      if (lockMsg) lockMsg.style.display = 'flex';
+      if (galleryWrap) galleryWrap.classList.add('hidden');
+      if (emptyMsg) emptyMsg.classList.add('hidden');
+      if (rollBtn) rollBtn.classList.add('hidden');
+      if (lockMsg) lockMsg.classList.remove('hidden');
       return;
     }
 
     // If 2 or more movies, unlock!
-    if (emptyMsg) emptyMsg.style.display = 'none';
-    if (lockMsg) lockMsg.style.display = 'none';
-    if (galleryWrap) galleryWrap.style.display = 'block';
-    if (rollBtn) rollBtn.style.display = 'inline-flex';
+    if (emptyMsg) emptyMsg.classList.add('hidden');
+    if (lockMsg) lockMsg.classList.add('hidden');
+    if (galleryWrap) galleryWrap.classList.remove('hidden');
+    if (rollBtn) rollBtn.classList.remove('hidden');
 
     // Map watchlist to gallery items and wrap with a CORS proxy so WebGL can load textures without CORS blocks
     const items = state.watchlist.map(m => {
@@ -2187,7 +2204,7 @@ export function rollPickMovie() {
   const btn = document.getElementById('pick-roll-btn');
   const result = document.getElementById('pick-result');
   if (btn) btn.classList.add('spinning');
-  if (result) { result.classList.remove('show'); result.style.display = 'none'; }
+  if (result) { result.classList.remove('show'); result.classList.add('hidden'); }
 
   const app = pickGalleryApp;
   
@@ -2258,7 +2275,7 @@ function showPickResult(movie) {
   if (meta) meta.textContent = `${movie.year || 'N/A'} · ${movie.genre || ''} · ★ ${movie.rating || '—'}`;
   if (watchBtn) watchBtn.onclick = () => openModal(movie);
 
-  result.style.display = 'block';
+  result.classList.remove('hidden');
   // Re-trigger animation
   result.classList.remove('show');
   void result.offsetWidth;
@@ -2288,7 +2305,7 @@ export function surpriseMe() {
   }
 
   // Fade out and collapse current result card if it's already shown
-  if (result && result.style.display !== 'none') {
+  if (result && !result.classList.contains('hidden')) {
     gsap.to(result, {
       opacity: 0,
       scale: 0.9,
@@ -2297,7 +2314,7 @@ export function surpriseMe() {
       duration: 0.25,
       ease: 'power2.inOut',
       onComplete: () => {
-        result.style.display = 'none';
+        result.classList.add('hidden');
       }
     });
   }
@@ -2400,7 +2417,7 @@ function revealSurpriseResult(movie) {
   const timeline = gsap.timeline();
 
   // Collapse label if visible
-  if (label && label.style.display !== 'none' && parseFloat(gsap.getProperty(label, 'opacity') ?? 1) > 0) {
+  if (label && !label.classList.contains('hidden') && parseFloat(gsap.getProperty(label, 'opacity') ?? 1) > 0) {
     timeline.to(label, {
       opacity: 0,
       height: 0,
@@ -2410,14 +2427,14 @@ function revealSurpriseResult(movie) {
       duration: 0.35,
       ease: 'power2.inOut',
       onComplete: () => {
-        label.style.display = 'none';
+        label.classList.add('hidden');
       }
     });
   }
 
   // Expand and animate card result
   if (result) {
-    result.style.display = 'block';
+    result.classList.remove('hidden');
     timeline.fromTo(result,
       { opacity: 0, scale: 0.9, y: 15, height: 0 },
       {
@@ -2503,14 +2520,14 @@ function openModalContent(movie) {
     backdropEl.src = movie.backdrop;
     backdropEl.style.filter = 'none';
     backdropEl.style.transform = 'none';
-    if (posterEl) posterEl.style.display = 'none';
+    if (posterEl) posterEl.classList.add('hidden');
   } else {
     backdropEl.src = movie.poster;
     backdropEl.style.filter = 'blur(15px) brightness(0.4)';
     backdropEl.style.transform = 'scale(1.1)';
     if (posterEl) {
       posterEl.src = movie.poster;
-      posterEl.style.display = 'block';
+      posterEl.classList.remove('hidden');
       posterEl.style.position = 'absolute';
       posterEl.style.top = '20px';
       posterEl.style.right = '40px';
@@ -2585,9 +2602,11 @@ function openModalContent(movie) {
     document.getElementById('m-title').textContent = movie.title;
     document.getElementById('m-year').textContent = `${movie.year}`;
     document.getElementById('m-rating').textContent = `★ ${movie.rating}`;
+    if (document.getElementById('m-cert')) document.getElementById('m-cert').textContent = movie.cert || "N/A";
     document.getElementById('m-runtime').textContent = "Series";
     document.getElementById('m-genre').textContent = movie.genre;
-    document.getElementById('m-synopsis').textContent = movie.synopsis || `${movie.title} is a hit series in the ${movie.genre} genre. Watch all seasons now! Rated ${movie.rating}/10.`;
+    const certText = movie.cert ? `[${movie.cert}] ` : '';
+    document.getElementById('m-synopsis').textContent = certText + (movie.synopsis || `${movie.title} is a hit series in the ${movie.genre} genre. Watch all seasons now! Rated ${movie.rating}/10.`);
     
     document.getElementById('m-reasons').innerHTML = `<span class="ai-pill"><i class="fa-solid fa-bolt" style="font-size:9px"></i>Trending</span>`;
     
@@ -2617,25 +2636,27 @@ function openModalContent(movie) {
     
     // Hide stars rating and trailer
     const ratingBox = document.querySelector('.user-rating-box');
-    if (ratingBox) ratingBox.style.display = 'none';
+    if (ratingBox) ratingBox.classList.add('hidden');
     
     const videoContainer = document.getElementById('m-video-container');
-    if (videoContainer) videoContainer.style.display = 'none';
+    if (videoContainer) videoContainer.classList.add('hidden');
     
     const playBtn = document.getElementById('m-play-btn');
-    if (playBtn) playBtn.style.display = 'none';
+    if (playBtn) playBtn.classList.add('hidden');
     
   } else {
     const ratingBox = document.querySelector('.user-rating-box');
-    if (ratingBox) ratingBox.style.display = 'flex';
+    if (ratingBox) ratingBox.classList.remove('hidden');
     
     document.getElementById('m-chip').innerHTML = `<i class="fa-solid fa-circle-check" style="font-size:10px"></i> ${movie.match}% Match`;
     document.getElementById('m-title').textContent = movie.title;
-    document.getElementById('m-year').textContent = `${movie.year} · ${movie.runtime}`;
+    document.getElementById('m-year').textContent = movie.cert ? `${movie.year} · ${movie.cert} · ${movie.runtime}` : `${movie.year} · ${movie.runtime}`;
     document.getElementById('m-rating').textContent = `★ ${movie.rating}`;
+    if (document.getElementById('m-cert')) document.getElementById('m-cert').textContent = movie.cert || "N/A";
     document.getElementById('m-runtime').textContent = movie.runtime;
     document.getElementById('m-genre').textContent = movie.genre;
-    document.getElementById('m-synopsis').textContent = movie.synopsis;
+    const certText = movie.cert ? `[${movie.cert}] ` : '';
+    document.getElementById('m-synopsis').textContent = certText + movie.synopsis;
 
 
     document.getElementById('m-reasons').innerHTML = movie.reasons.map(r =>
@@ -2786,11 +2807,11 @@ function openModalContent(movie) {
     const videoContainer = document.getElementById('m-video-container');
     const videoIframe = document.getElementById('m-video-iframe');
     
-    if (videoContainer) videoContainer.style.display = 'none';
+    if (videoContainer) videoContainer.classList.add('hidden');
     if (videoIframe) videoIframe.src = '';
     
     if (playBtn) {
-      playBtn.style.display = 'inline-flex';
+      playBtn.classList.remove('hidden');
       playBtn.onclick = () => {
         if (movie.trailerKey) {
           window.open(`https://www.youtube.com/watch?v=${movie.trailerKey}`, '_blank');
@@ -3332,11 +3353,11 @@ export function clearSearch(skipHashUpdate = false) {
   const suggestionsDiv = document.getElementById('search-suggestions');
   if (suggestionsDiv) {
     suggestionsDiv.innerHTML = '';
-    suggestionsDiv.style.display = 'none';
+    suggestionsDiv.classList.add('hidden');
   }
   const searchSec = document.getElementById('search-section');
   if (searchSec) {
-    searchSec.style.display = 'none';
+    searchSec.classList.add('hidden');
     const titleEl = document.getElementById('search-section-title');
     if (titleEl) {
       titleEl.innerHTML = `Search Results <span class="sec-tag tag-violet" id="search-count" style="display:none"></span>`;
@@ -3353,12 +3374,12 @@ export function clearSearch(skipHashUpdate = false) {
   const srResults   = document.getElementById('search-results');
   const srLmWrap    = document.getElementById('search-load-more-wrap');
   const srLmBtn     = document.getElementById('search-load-more-btn');
-  if (gridWrap)   { gridWrap.style.display = 'none'; }
-  if (rowWrap)    { rowWrap.style.display = 'block'; }
+  if (gridWrap)   { gridWrap.classList.add('hidden'); }
+  if (rowWrap)    { rowWrap.classList.remove('hidden'); }
   if (grid)       { grid.innerHTML = ''; }
-  if (lmWrap)     { lmWrap.style.display = 'none'; }
+  if (lmWrap)     { lmWrap.classList.add('hidden'); }
   if (srResults)  { srResults.innerHTML = ''; }
-  if (srLmWrap)   { srLmWrap.style.display = 'none'; }
+  if (srLmWrap)   { srLmWrap.classList.add('hidden'); }
   if (srLmBtn)    { srLmBtn.disabled = false; srLmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results'; }
 
   // Reset search pagination state
@@ -3399,8 +3420,8 @@ export function handleSearchInput(e) {
   // Text search always uses the grid, not the genre grid
   const gridWrap = document.getElementById('genre-grid-wrap');
   const rowWrap  = document.getElementById('search-row-wrap');
-  if (gridWrap) gridWrap.style.display = 'none';
-  if (rowWrap)  rowWrap.style.display  = 'block';
+  if (gridWrap) gridWrap.classList.add('hidden');
+  if (rowWrap)  rowWrap.classList.remove('hidden');
 
   const q = e.target.value.trim().toLowerCase();
   const searchSec     = document.getElementById('search-section');
@@ -3410,9 +3431,9 @@ export function handleSearchInput(e) {
   const divider       = document.getElementById('search-results-divider');
 
   if (!q) {
-    if (searchSec)    searchSec.style.display = 'none';
-    if (quickResults) { quickResults.innerHTML = ''; quickResults.style.display = 'none'; }
-    if (divider)      divider.style.display = 'none';
+    if (searchSec)    searchSec.classList.add('hidden');
+    if (quickResults) { quickResults.innerHTML = ''; quickResults.classList.add('hidden'); }
+    if (divider)      divider.classList.add('hidden');
     document.body.classList.remove('search-active');
     closeSuggestionsDropdown();
     if (typeof activeViewState !== 'undefined' && activeViewState === 'watchlist') {
@@ -3444,12 +3465,12 @@ export function handleSearchInput(e) {
     };
 
     searchResults.innerHTML = '';
-    if (quickResults) { quickResults.innerHTML = ''; quickResults.style.display = 'none'; }
-    if (divider)      divider.style.display = 'none';
+    if (quickResults) { quickResults.innerHTML = ''; quickResults.classList.add('hidden'); }
+    if (divider)      divider.classList.add('hidden');
 
     const lmWrap = document.getElementById('search-load-more-wrap');
     const lmBtn  = document.getElementById('search-load-more-btn');
-    if (lmWrap) lmWrap.style.display = 'none';
+    if (lmWrap) lmWrap.classList.add('hidden');
 
     if (TMDB_API_KEY) {
       if (countEl) countEl.textContent = 'Searching…';
@@ -3527,8 +3548,8 @@ export function handleSearchInput(e) {
       // Quick top-5 above the grid
       if (quickResults && firstBatch.length > 0) {
         renderQuickResults(firstBatch.slice(0, 5), quickResults);
-        quickResults.style.display = 'block';
-        if (divider && firstBatch.length > 5) divider.style.display = 'block';
+        quickResults.classList.remove('hidden');
+        if (divider && firstBatch.length > 5) divider.classList.remove('hidden');
       }
 
       if (firstBatch.length === 0) {
@@ -3542,7 +3563,7 @@ export function handleSearchInput(e) {
                              _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
         if (countEl) countEl.textContent = hasMorePages ? `${actualCount}+ results` : `${actualCount} found`;
       }
-      if (searchSec) { searchSec.style.removeProperty('display'); searchSec.style.display = 'block'; }
+      if (searchSec) { searchSec.style.removeProperty('display'); searchSec.classList.remove('hidden'); }
 
       const hasMore = _searchState.tmdbMoviePage < _searchState.tmdbMovieTotalPages ||
                       _searchState.tmdbTvPage    < _searchState.tmdbTvTotalPages;
@@ -3594,8 +3615,8 @@ export function handleSearchInput(e) {
           return {id:item.id||item.movieId,title:item.title||'',year:item.year||'',poster:item.poster||'',vote_average:parseFloat(item.rating||7),mediaType:'movie'};
         });
         renderQuickResults(topFive, quickResults);
-        quickResults.style.display = 'block';
-        if (divider && rawMatches.length > 5) divider.style.display = 'block';
+        quickResults.classList.remove('hidden');
+        if (divider && rawMatches.length > 5) divider.classList.remove('hidden');
       }
 
       if (rawMatches.length === 0) {
@@ -3604,7 +3625,7 @@ export function handleSearchInput(e) {
         _appendOfflineCards(rawMatches.slice(0, SEARCH_PAGE_SIZE), searchResults);
         _searchState.offlineOffset = SEARCH_PAGE_SIZE;
       }
-      if (searchSec) searchSec.style.display = 'block';
+      if (searchSec) searchSec.classList.remove('hidden');
 
       // Load more for offline
       const hasMore = _searchState.offlineOffset < rawMatches.length;
@@ -3881,7 +3902,7 @@ async function _loadMoreSearchResults(q, container, countEl, lmWrap, lmBtn) {
 
   if (allNew.length === 0) {
     _searchState.loading = false;
-    if (lmWrap) lmWrap.style.display = 'none';
+    if (lmWrap) lmWrap.classList.add('hidden');
     if (lmBtn) { lmBtn.disabled = false; lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results'; }
     return;
   }
@@ -4348,8 +4369,8 @@ window.openSearchPanel = function() {
   const overlay = document.getElementById('tt-search-overlay');
   if (!panel) return;
   _searchCommitted = false;
-  if (overlay) overlay.style.display = 'block';
-  panel.style.display = 'flex';
+  if (overlay) overlay.classList.remove('hidden');
+  panel.classList.remove('hidden');
   // Mark Search tab active in tiktok-nav
   document.querySelectorAll('.tiktok-nav .tt-item').forEach(el => el.classList.remove('active'));
   const searchTabEl = document.querySelector('.tiktok-nav .tt-item[onclick*="openSearchTab"]');
@@ -4363,8 +4384,8 @@ window.openSearchPanel = function() {
 window.closeSearchPanel = function() {
   const panel = document.getElementById('tt-search-panel');
   const overlay = document.getElementById('tt-search-overlay');
-  if (panel) panel.style.display = 'none';
-  if (overlay) overlay.style.display = 'none';
+  if (panel) panel.classList.add('hidden');
+  if (overlay) overlay.classList.add('hidden');
   closeSuggestionsDropdown();
 };
 
@@ -4380,7 +4401,7 @@ window.clearSearchPanel = function() {
 /** Close the autocomplete dropdown only — never touches the results grid */
 function closeSuggestionsDropdown() {
   const sd = document.getElementById('search-suggestions');
-  if (sd) { sd.style.display = 'none'; sd.innerHTML = ''; }
+  if (sd) { sd.classList.add('hidden'); sd.innerHTML = ''; }
   if (typeof suggestionsDebounce !== 'undefined') clearTimeout(suggestionsDebounce);
 }
 
@@ -4405,8 +4426,8 @@ window.commitSearch = function() {
   state.isShowingGenre = false;
   const gridWrap = document.getElementById('genre-grid-wrap');
   const rowWrap  = document.getElementById('search-row-wrap');
-  if (gridWrap) gridWrap.style.display = 'none';
-  if (rowWrap)  rowWrap.style.display  = 'block';
+  if (gridWrap) gridWrap.classList.add('hidden');
+  if (rowWrap)  rowWrap.classList.remove('hidden');
 
   clearTimeout(searchDebounce);
 
@@ -4426,13 +4447,13 @@ window.commitSearch = function() {
     document.body.classList.add('search-active');
     // Remove any !important display:none set by showHomePage before revealing
     searchSec.style.removeProperty('display');
-    searchSec.style.display = 'block';
+    searchSec.classList.remove('hidden');
     if (countEl) {
       countEl.style.display = '';
       const total = (_autocompleteCache.tmdbMovieTotalResults || 0) + (_autocompleteCache.tmdbTvTotalResults || 0);
       countEl.textContent = total > 0 ? `${total}+ results` : `${results.length} found`;
     }
-    if (lmWrap) lmWrap.style.display = 'none';
+    if (lmWrap) lmWrap.classList.add('hidden');
 
     // Render only the first page of results — Load More handles the rest
     const firstPage = results.slice(0, SEARCH_INITIAL_SIZE);
@@ -4479,7 +4500,7 @@ window.commitSearch = function() {
   if (countEl) { countEl.style.display = ''; countEl.textContent = 'Searching…'; }
   document.body.classList.add('search-active');
   searchSec.style.removeProperty('display');
-  searchSec.style.display = 'block';
+  searchSec.classList.remove('hidden');
   searchResults.innerHTML = '';
 
   if (TMDB_API_KEY) {
@@ -4935,7 +4956,7 @@ export function showWatchlistPage() {
   gsap.killTweensOf(homeElements);
   gsap.killTweensOf(watchlistSection);
 
-  const isHomeVisible = homeElements.some(el => el.style.display !== 'none' && parseFloat(el.style.opacity || "1") > 0);
+  const isHomeVisible = homeElements.some(el => !el.classList.contains('hidden') && parseFloat(el.style.opacity || "1") > 0);
   
   if (isHomeVisible) {
     gsap.to(homeElements, {
@@ -5060,13 +5081,13 @@ function _renderWatchedGrid(sortMode = 'recent') {
 
   if (entries.length === 0) {
     watchedGrid.innerHTML = '';
-    if (emptyMsg)     emptyMsg.style.display = 'flex';
-    if (sectionBadge) sectionBadge.style.display = 'none';
+    if (emptyMsg)     emptyMsg.classList.remove('hidden');
+    if (sectionBadge) sectionBadge.classList.add('hidden');
     if (subEl)        subEl.textContent = 'No rated movies yet — open any movie and give it stars';
     return;
   }
 
-  if (emptyMsg)     emptyMsg.style.display = 'none';
+  if (emptyMsg)     emptyMsg.classList.add('hidden');
   if (sectionBadge) { sectionBadge.textContent = `${entries.length} rated`; sectionBadge.style.display = ''; }
   if (subEl)        subEl.textContent = `${entries.length} movie${entries.length !== 1 ? 's' : ''} you've rated — your personal scores`;
 
@@ -5180,10 +5201,10 @@ window._toggleModalWatched = function() {
 
     // If the Already Watched page is open, remove this card immediately
     const watchedSection = document.getElementById('watched-section');
-    if (watchedSection && watchedSection.style.display !== 'none' && !watchedSection.style.getPropertyValue('display').includes('none')) {
+    if (watchedSection && !watchedSection.classList.contains('hidden') && !watchedSection.style.getPropertyValue('display').includes('none')) {
       const card = watchedSection.querySelector(`.movie-card[data-id="${movie.id}"]`);
       if (card) {
-        card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        card.style.transition = 'opacity .15s ease, transform .15s ease';
         card.style.opacity = '0';
         card.style.transform = 'scale(0.92)';
         setTimeout(() => { if (card.parentNode) card.parentNode.removeChild(card); _renderWatchedGrid(); }, 320);
@@ -5313,7 +5334,7 @@ export function showHomePage() {
   gsap.killTweensOf(homeElements);
   gsap.killTweensOf(watchlistSection);
 
-  const isWatchlistVisible = watchlistSection.style.display !== 'none' && parseFloat(gsap.getProperty(watchlistSection, "opacity")) > 0;
+  const isWatchlistVisible = !watchlistSection.classList.contains('hidden') && parseFloat(gsap.getProperty(watchlistSection, "opacity")) > 0;
 
   if (isWatchlistVisible) {
     gsap.to(watchlistSection, {
@@ -5385,14 +5406,14 @@ function showAuthError(message) {
   const errorEl = document.getElementById('auth-error');
   if (errorEl) {
     errorEl.textContent = message;
-    errorEl.style.display = 'block';
+    errorEl.classList.remove('hidden');
   }
 }
 
 function clearAuthError() {
   const errorEl = document.getElementById('auth-error');
   if (errorEl) {
-    errorEl.style.display = 'none';
+    errorEl.classList.add('hidden');
   }
 }
 
@@ -5424,7 +5445,7 @@ window.switchLoginTab = function(tab) {
     emailLabel.textContent = 'Email or Username';
     emailInput.placeholder = 'name@example.com or username';
     emailInput.type = 'text';
-    usernameGroup.style.display = 'none';
+    usernameGroup.classList.add('hidden');
     usernameInput.removeAttribute('required');
     emailInput.value = '';
     usernameInput.value = '';
@@ -5436,7 +5457,7 @@ window.switchLoginTab = function(tab) {
     emailLabel.textContent = 'Email';
     emailInput.placeholder = 'name@example.com';
     emailInput.type = 'email';
-    usernameGroup.style.display = 'block';
+    usernameGroup.classList.remove('hidden');
     usernameInput.setAttribute('required', 'required');
     emailInput.value = '';
     usernameInput.value = '';
@@ -5814,8 +5835,8 @@ export function showGenreMovies(genreId, genreName) {
   document.body.classList.add('search-active');
 
   // Switch to grid mode
-  if (gridWrap) gridWrap.style.display = 'block';
-  if (rowWrap)  rowWrap.style.display  = 'none';
+  if (gridWrap) gridWrap.classList.remove('hidden');
+  if (rowWrap)  rowWrap.classList.add('hidden');
 
   // Highlight dock Genre button
   const genreBtn = document.getElementById('dock-genre-btn');
@@ -5831,9 +5852,9 @@ export function showGenreMovies(genreId, genreName) {
   if (subEl) subEl.textContent = `Top rated and popular titles in ${genreName}`;
 
   grid.innerHTML = '';
-  if (lmWrap) lmWrap.style.display = 'none';
+  if (lmWrap) lmWrap.classList.add('hidden');
   searchSec.style.removeProperty('display');
-  searchSec.style.display = 'block';
+  searchSec.classList.remove('hidden');
 
   // Show loading skeletons immediately so there's no black screen while TMDB fetches
   const SKELETON_COUNT = 20;
@@ -5886,7 +5907,7 @@ export function showGenreMovies(genreId, genreName) {
     if (countTag) countTag.textContent = `${rendered} of ${allItems.length}+`;
     if (!lmWrap || !lmBtn) return;
     // Show Load More if there are more items buffered OR more TMDb pages
-    lmWrap.style.display = 'block';
+    lmWrap.classList.remove('hidden');
     lmBtn.disabled = fetching;
     lmBtn.innerHTML = fetching
       ? '<i class="fa-solid fa-spinner fa-spin"></i> Loading…'
@@ -5976,7 +5997,7 @@ export function showGenreMovies(genreId, genreName) {
 
       if (pool.length === 0) {
         grid.innerHTML = '<div style="padding:24px;color:var(--t3);font-size:13px;">No movies found in this genre.</div>';
-        if (lmWrap) lmWrap.style.display = 'none';
+        if (lmWrap) lmWrap.classList.add('hidden');
         return;
       }
 
@@ -6158,7 +6179,7 @@ export function updateSearchSuggestions(q) {
 
   if (!q) {
     suggestionsDiv.innerHTML = '';
-    suggestionsDiv.style.display = 'none';
+    suggestionsDiv.classList.add('hidden');
     return;
   }
 
@@ -6247,7 +6268,7 @@ export function updateSearchSuggestions(q) {
         // Show top 5 in dropdown
         renderSuggestionsList(sorted.slice(0, 5), suggestionsDiv);
       }).catch(() => {
-        suggestionsDiv.style.display = 'none';
+        suggestionsDiv.classList.add('hidden');
       });
     } else {
       // Offline mode suggestions
@@ -6319,7 +6340,7 @@ export function updateSearchSuggestions(q) {
 function renderSuggestionsList(items, container) {
   if (!items || items.length === 0) {
     container.innerHTML = '<div style="padding: 12px 16px; font-size: 13px; color: var(--t3)">No suggestions found</div>';
-    container.style.display = 'block';
+    container.classList.remove('hidden');
     return;
   }
 
@@ -6386,7 +6407,7 @@ function renderSuggestionsList(items, container) {
 
     container.appendChild(div);
   });
-  container.style.display = 'block';
+  container.classList.remove('hidden');
 }
 
 /* ─── SURPRISE ME CANVAS SPARKLES ─── */
@@ -6585,8 +6606,8 @@ window.toggleTasteTuner = function() {
   const btn = document.getElementById('tuner-toggle-btn');
   if (!drawer) return;
 
-  if (drawer.style.display === 'none') {
-    drawer.style.display = 'block';
+  if (drawer.classList.contains('hidden')) {
+    drawer.classList.remove('hidden');
     if (btn) {
       btn.style.background = 'var(--y)';
       btn.style.color = '#000';
@@ -6604,7 +6625,7 @@ window.toggleTasteTuner = function() {
       if (valLabel) valLabel.textContent = `${val}%`;
     }
   } else {
-    drawer.style.display = 'none';
+    drawer.classList.add('hidden');
     if (btn) {
       btn.style.background = '';
       btn.style.color = '';
@@ -6665,15 +6686,15 @@ async function _runPersonSearch(name) {
   searchSec.style.removeProperty('display');
 
   // Switch to list/search mode (not genre-grid mode)
-  if (gridWrap) gridWrap.style.display = 'none';
-  if (rowWrap)  rowWrap.style.display  = 'block';
+  if (gridWrap) gridWrap.classList.add('hidden');
+  if (rowWrap)  rowWrap.classList.remove('hidden');
 
   document.body.classList.add('search-active');
-  searchSec.style.display = 'block';
+  searchSec.classList.remove('hidden');
   searchResults.innerHTML = '';
-  if (quickResults) { quickResults.innerHTML = ''; quickResults.style.display = 'none'; }
-  if (divider)      divider.style.display = 'none';
-  if (lmWrap)       lmWrap.style.display  = 'none';
+  if (quickResults) { quickResults.innerHTML = ''; quickResults.classList.add('hidden'); }
+  if (divider)      divider.classList.add('hidden');
+  if (lmWrap)       lmWrap.classList.add('hidden');
 
   if (titleEl) {
     titleEl.innerHTML = `<i class="fa-solid fa-user" style="color:var(--vl);font-size:15px"></i> ${name} <span class="sec-tag tag-violet" id="search-count">Loading…</span>`;
