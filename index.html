@@ -574,12 +574,12 @@
       <div class="pick-glass-card">
         <h2 class="pick-heading">Can't Decide? Let Us Pick For You 🎬</h2>
         <p class="pick-sub">Spin the gallery and let fate choose your next watch</p>
-        <button class="pick-roll-btn" id="pick-roll-btn" onclick="rollPickMovie()">
-          <i class="fa-solid fa-dice"></i> Spin It!
-        </button>
         <div class="pick-gallery-wrap" id="pick-gallery-wrap">
           <div class="pick-gallery-container" id="pick-gallery-container"></div>
         </div>
+        <button class="pick-roll-btn" id="pick-roll-btn" onclick="rollPickMovie()">
+          <i class="fa-solid fa-dice"></i> Spin It!
+        </button>
         <div class="pick-empty-msg" id="pick-empty-msg" style="display:none">
           <i class="fa-regular fa-bookmark" style="font-size:28px;color:var(--t3)"></i>
           <p>Add some movies to your watchlist first!</p>
@@ -789,7 +789,7 @@
       <!-- User Rating Stars Box -->
       <div class="user-rating-box" id="urb-root">
         <!-- Initial state: centered "Watched?" pill -->
-        <div class="urb-inner">
+        <div class="urb-inner" style="position: relative;">
           <button class="urb-watched-pill" id="m-watched-pill" onclick="window._toggleModalWatched && window._toggleModalWatched()">
             <span class="urb-icon-wrap">
               <!-- Question mark shown before click, eye shown after -->
@@ -798,6 +798,11 @@
             </span>
             <span class="urb-watched-label">Watched?</span>
           </button>
+          
+          <button class="btn-primary" id="m-play-btn" style="position:absolute; left:50%; transform:translateX(-50%); font-size:13px; padding:10px 22px; display:none; gap:8px; align-items:center; cursor:pointer;">
+            <i class="fa-solid fa-play" style="font-size:11px"></i> Play Trailer
+          </button>
+
           <!-- Rating side — hidden until watched -->
           <div class="urb-rating-side" id="urb-rating-side">
             <div class="urb-divider"></div>
@@ -841,7 +846,9 @@
           <div class="m-cast-row" id="m-cast"></div>
         </div>
       </div>
-        <button class="danger-btn" onclick="closeModal()"><i class="fa-solid fa-ban" style="font-size:11px"></i> Don't Show Again</button>
+      <div style="display: flex; justify-content: center; margin-top: 20px;">
+        <button id="m-letterboxd-btn" class="btn-secondary" style="font-size:12px; padding:9px 16px; border-radius:12px; cursor:pointer;"><i class="fa-solid fa-star" style="color:#00E054; margin-right:4px;"></i> Wanna rate on Letterboxd?</button>
+      </div>
       </div>
     </div>
   </div>
