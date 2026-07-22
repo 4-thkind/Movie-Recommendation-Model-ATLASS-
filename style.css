@@ -47,6 +47,11 @@ body::before{
 #nav.nav-hidden{
   transform:translateY(-100%);
 }
+body.hero-video-active #nav {
+  transform: translateY(-100%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 #nav.solid, #nav.scrolled{
   background:rgba(5,5,8,.75);
   backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
@@ -525,6 +530,75 @@ body.light-theme .pd-item:hover {
   background:linear-gradient(to bottom,rgba(5,5,8,.1) 0%,rgba(5,5,8,.0) 30%,rgba(5,5,8,.65) 68%,var(--b0) 100%);
 }
 .hero-side{position:absolute;inset:0;background:linear-gradient(to right,rgba(5,5,8,.88) 0%,rgba(5,5,8,.25) 55%,transparent 100%)}
+
+/* Hero Inline Video Player */
+.hero-video-container {
+  position: absolute;
+  inset: 0;
+  z-index: 2000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hero-video-container.hidden {
+  display: none !important;
+}
+.hero-video-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.video-top-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  z-index: 45;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: auto;
+}
+.hero-video-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2010;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 15, 25, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+}
+.hero-video-container:hover .video-top-overlay,
+.hero-video-container:hover .hero-video-close,
+.m-hero:hover .video-top-overlay,
+.m-hero:hover .m-close,
+.video-top-overlay:hover,
+.video-top-overlay:hover ~ .hero-video-close,
+.video-top-overlay:hover ~ .m-close {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+.hero-video-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+  color: var(--y);
+}
+
 .hero-content{position:absolute;bottom:90px;left:64px;right:64px;animation:hfade .9s var(--expo) both;}
 @keyframes hfade{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
 .match-chip {
@@ -1275,10 +1349,47 @@ body.watchlist-active #watchlist-section{
 .m-hero img{width:100%;height:100%;object-fit:cover}
 .m-hero-fade{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 15%,var(--b2) 100%)}
 .m-hero-side{position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,.7),transparent 60%)}
-.m-close{position:absolute;top:14px;right:14px;width:33px;height:33px;border-radius:50%;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t2);font-size:13px;transition:all .22s;z-index:50;}
-.m-close:hover{background:var(--y2);border-color:rgba(245,197,24,.5);color:var(--y)}
+.m-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.72);
+  border: 1px solid rgba(255,255,255,.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--t2);
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, background .22s, border-color .22s, color .22s, transform .22s;
+  z-index: 50;
+}
+#modal:hover .m-close,
+.m-hero:hover .m-close {
+  opacity: 1;
+  pointer-events: auto;
+}
+.m-close:hover {
+  background: var(--y2);
+  border-color: rgba(245,197,24,.5);
+  color: var(--y);
+}
 .m-head{position:absolute;bottom:20px;left:26px;right:26px}
 .m-body{padding:26px}
+.m-body-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  color: var(--t1);
+  margin-bottom: 20px;
+  line-height: 1.25;
+}
 .m-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
 .m-stat p:first-child{font-size:12px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
 .m-stat p:last-child{font-size:14px;font-weight:600;color:var(--t1)}
