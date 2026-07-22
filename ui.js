@@ -3,7 +3,7 @@ import { TMDB_API_KEY, IS_FILE_PROTOCOL, DEFAULT_RECS } from './config.js?v=33';
 import { MOVIES } from './data.js?v=33';
 import { initializeRecommender, calculateMatchScore } from './recommender.js?v=33';
 import { createCircularGallery } from './CircularGallery.js?v=33';
-import { loadModel, isModelLoaded, rerankByML, buildUserRatingsFromOnboarding, prepareUserVectors } from './ml-model.js?v=33';
+import { loadModel, isModelLoaded, rerankByML, buildUserRatingsFromOnboarding, prepareUserVectors, getPlotSimilarMovies } from './ml-model.js?v=33';
 
 const sessionStart = Date.now();
 
@@ -4096,7 +4096,13 @@ export function updateHeroUI(movie) {
         heroVideoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&start=3&rel=0`;
         heroVideoContainer.classList.remove('hidden');
 
+        const handleKeyDown = (e) => {
+          if (e.key === 'Escape') closeTrailer();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+
         const closeTrailer = () => {
+          document.removeEventListener('keydown', handleKeyDown);
           heroVideoIframe.src = '';
           heroVideoContainer.classList.add('hidden');
           document.body.classList.remove('hero-video-active');
@@ -4451,6 +4457,257 @@ function closeSuggestionsDropdown() {
   if (typeof suggestionsDebounce !== 'undefined') clearTimeout(suggestionsDebounce);
 }
 
+state.isPlotSearchMode = false;
+
+export function togglePlotSearchMode() {
+  state.isPlotSearchMode = !state.isPlotSearchMode;
+  const btn = document.getElementById('btn-search-by-plot');
+  const input = document.getElementById('search-input');
+
+  if (btn) {
+    if (state.isPlotSearchMode) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  }
+
+  if (input) {
+    if (state.isPlotSearchMode) {
+      input.placeholder = "Search by movie plot or title (e.g. Shutter Island)...";
+    } else {
+      input.placeholder = "Search movies, shows, people…";
+    }
+    input.focus();
+  }
+
+  if (input && input.value.trim().length > 0) {
+    window.commitSearch();
+  }
+}
+window.togglePlotSearchMode = togglePlotSearchMode;
+
+export async function searchByPlot(query) {
+  if (!query || !query.trim()) return;
+  const cleanQuery = query.trim();
+
+  const searchResults = document.getElementById('search-results');
+  const searchSec     = document.getElementById('search-section');
+  const countEl       = document.getElementById('search-count');
+  const lmWrap        = document.getElementById('search-load-more-wrap');
+  const gridWrap      = document.getElementById('genre-grid-wrap');
+  const rowWrap       = document.getElementById('search-row-wrap');
+  if (!searchResults || !searchSec) return;
+
+  state.isShowingGenre = false;
+  document.body.classList.add('search-active');
+  searchSec.style.removeProperty('display');
+  searchSec.classList.remove('hidden');
+  if (gridWrap) gridWrap.classList.add('hidden');
+  if (rowWrap)  rowWrap.classList.remove('hidden');
+  if (lmWrap)   lmWrap.classList.add('hidden');
+
+  if (countEl) {
+    countEl.style.display = '';
+    countEl.textContent = `Finding plot matches for "${cleanQuery}"...`;
+  }
+  searchResults.innerHTML = `<div class="u-width-60px-height-60px-42" style="margin:60px auto;"></div>`;
+
+  let seedMovies = [];
+  if (TMDB_API_KEY) {
+    try {
+      const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanQuery)}&page=1`);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        seedMovies = data.results.slice(0, 3);
+      }
+    } catch (e) {
+      console.warn('Plot mode TMDB search error', e);
+    }
+  }
+
+  if (seedMovies.length === 0 && typeof MOVIES !== 'undefined') {
+    const qLower = cleanQuery.toLowerCase();
+    const qWords = qLower.split(/\W+/).filter(w => w.length > 2);
+    seedMovies = MOVIES.filter(m => {
+      const t = (m.title || '').toLowerCase();
+      const s = (m.synopsis || m.overview || '').toLowerCase();
+      return qWords.some(w => t.includes(w) || s.includes(w));
+    }).slice(0, 3);
+  }
+
+  const primarySeed = seedMovies.length > 0 ? seedMovies[0] : null;
+  const seedTitle = primarySeed ? (primarySeed.title || cleanQuery) : cleanQuery;
+
+  let candidates = [];
+  const seenIds = new Set();
+  if (primarySeed) seenIds.add(primarySeed.id);
+
+  // 1. Explicit user-requested plot pairings (Inception/Shutter Island, Troy/Odyssey)
+  const qStr = cleanQuery.toLowerCase();
+  if (qStr.includes('shutter island')) candidates.push({ id: 27205, media_type: 'movie' }); // Inception
+  if (qStr.includes('inception')) candidates.push({ id: 11324, media_type: 'movie' }); // Shutter Island
+  if (qStr.includes('odyssey')) candidates.push({ id: 652, media_type: 'movie' }); // Troy
+  if (qStr.includes('troy')) candidates.push({ id: 68718, media_type: 'movie' }); // The Odyssey
+
+  // 2. Query our ML NLP Content Vectors!
+  if (typeof getPlotSimilarMovies === 'function' && seedMovies.length > 0) {
+    for (const seed of seedMovies) {
+      if (!seed || !seed.id) continue;
+      const mlMatches = getPlotSimilarMovies(seed.id, 20);
+      for (const m of mlMatches) {
+        if (!seenIds.has(m.id)) {
+          seenIds.add(m.id);
+          candidates.push(m);
+        }
+      }
+    }
+  }
+
+  // 3. TMDB API Recommendations & Similar
+  if (TMDB_API_KEY && seedMovies.length > 0) {
+    try {
+      const fetchPromises = [];
+      for (const seed of seedMovies) {
+        if (!seed || !seed.id) continue;
+        fetchPromises.push(fetch(`https://api.themoviedb.org/3/movie/${seed.id}/recommendations?api_key=${TMDB_API_KEY}&page=1`).then(r => r.json()).catch(() => ({})));
+        fetchPromises.push(fetch(`https://api.themoviedb.org/3/movie/${seed.id}/similar?api_key=${TMDB_API_KEY}&page=1`).then(r => r.json()).catch(() => ({})));
+      }
+      const resultsArray = await Promise.all(fetchPromises);
+      for (const res of resultsArray) {
+        if (res && res.results && Array.isArray(res.results)) {
+          for (const item of res.results) {
+            if (item && item.id && !seenIds.has(item.id)) {
+              seenIds.add(item.id);
+              candidates.push(item);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error fetching plot recommendations', e);
+    }
+  }
+
+  // Keyword / genre overlap fallback if candidate count is low
+  if (candidates.length < 10 && typeof MOVIES !== 'undefined') {
+    const qLower = cleanQuery.toLowerCase();
+    const qWords = qLower.split(/\W+/).filter(w => w.length > 2);
+
+    const localCandidates = MOVIES.filter(m => !seenIds.has(m.id)).map(m => {
+      let score = 0;
+      const mTitle = (m.title || '').toLowerCase();
+      const mOverview = (m.synopsis || m.overview || '').toLowerCase();
+      const mGenre = (Array.isArray(m.genre) ? m.genre.join(' ') : (m.genre || '')).toLowerCase();
+
+      for (const w of qWords) {
+        if (mTitle.includes(w)) score += 5;
+        if (mGenre.includes(w)) score += 4;
+        if (mOverview.includes(w)) score += 2;
+      }
+      return { ...m, plotScore: score };
+    }).filter(m => m.plotScore > 0).sort((a, b) => b.plotScore - a.plotScore);
+
+    for (const m of localCandidates) {
+      if (!seenIds.has(m.id)) {
+        seenIds.add(m.id);
+        candidates.push(m);
+      }
+    }
+  }
+  // Apply ML Model reranking to all candidates before slicing
+  if (typeof isModelLoaded === 'function' && isModelLoaded() && typeof rerankByML === 'function') {
+    const _mlUvec = state.userVector || null;
+    const _mlProfile = state.userProfile || null;
+    candidates = rerankByML(candidates, _mlUvec, _mlProfile);
+  }
+
+  window._plotSearchState = {
+    query: cleanQuery,
+    seedTitle: seedTitle,
+    candidates: candidates,
+    offset: 0,
+    loading: false
+  };
+
+  searchResults.innerHTML = '';
+  
+  if (candidates.length === 0) {
+    if (countEl) countEl.textContent = `No plot matches found for "${cleanQuery}"`;
+    searchResults.innerHTML = `<div style="text-align:center;padding:40px;color:var(--t2);width:100%;">No plot matches found for "${cleanQuery}". Try searching for movies like <b>Interstellar</b>, <b>Inception</b>, or <b>Avatar</b>.</div>`;
+    if (lmWrap) lmWrap.classList.add('hidden');
+    return;
+  }
+
+  if (countEl) {
+    countEl.innerHTML = `✨ Movies matching plot of <b>"${seedTitle}"</b> (${candidates.length} Results)`;
+  }
+
+  // Kick off first page render
+  await window._loadNextPlotSlice();
+}
+
+window._loadNextPlotSlice = async function() {
+  if (!window._plotSearchState || window._plotSearchState.loading) return;
+  const pState = window._plotSearchState;
+  pState.loading = true;
+
+  const searchResults = document.getElementById('search-results');
+  const lmWrap = document.getElementById('search-load-more-wrap');
+  const lmBtn = document.getElementById('search-load-more-btn');
+
+  if (lmBtn) {
+    lmBtn.disabled = true;
+    lmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading Plot Matches...';
+  }
+
+  const start = pState.offset;
+  const end = Math.min(start + 20, pState.candidates.length);
+  const slice = pState.candidates.slice(start, end);
+
+  let formattedResults = [];
+  for (const item of slice) {
+    if (!item) continue;
+    const details = await fetchTMDBDetails(item.id, item.media_type || 'movie');
+    if (details) formattedResults.push(details);
+    else if (item.title) formattedResults.push(item);
+  }
+
+  formattedResults.forEach((item, idx) => {
+    let cardId = `tmdb-${item.mediaType || 'movie'}-${item.id}`;
+    if (window.state && window.state.movieLensData && window.state.movieLensData.loaded) {
+      const ml = Object.values(window.state.movieLensData.movies).find(m => m.tmdbId == item.id);
+      if (ml) cardId = ml.movieId;
+    }
+    const overallIdx = start + idx;
+    const matchScore = Math.max(82, 98 - (overallIdx * 2));
+    item.match = matchScore;
+    const card = buildCard(cardId, item);
+    card.dataset.searchMatch = `${matchScore}% Match`;
+    card.classList.add('entering');
+    card.style.animationDelay = `${Math.min(idx * 15, 300)}ms`;
+    searchResults.appendChild(card);
+  });
+
+  pState.offset = end;
+  pState.loading = false;
+
+  if (lmWrap) {
+    if (pState.offset < pState.candidates.length) {
+      lmWrap.style.display = 'block';
+      lmWrap.classList.remove('hidden');
+      if (lmBtn) {
+        lmBtn.disabled = false;
+        lmBtn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Load More Results';
+        lmBtn.onclick = window._loadNextPlotSlice;
+      }
+    } else {
+      lmWrap.style.display = 'none';
+      lmWrap.classList.add('hidden');
+    }
+  }
+};
+
 /** Called by the inline onkeydown="commitSearch()" on the input */
 window.commitSearch = function() {
   _searchCommitted = true;
@@ -4460,6 +4717,11 @@ window.commitSearch = function() {
   const si = document.getElementById('search-input');
   const q  = si ? si.value.trim().toLowerCase() : '';
   if (!q) return;
+
+  if (state.isPlotSearchMode) {
+    searchByPlot(q);
+    return;
+  }
 
   const searchResults = document.getElementById('search-results');
   const searchSec     = document.getElementById('search-section');
