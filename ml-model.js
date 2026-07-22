@@ -343,3 +343,39 @@ export function getMappingStats() {
     modelLoaded:  !!(svdModel && contentModel)
   };
 }
+
+/* ── Get Plot Similar Movies using NLP Content Vectors ────────────────────── */
+export function getPlotSimilarMovies(tmdbId, topN = 30) {
+  if (!contentModel || !tmdbToMl) return [];
+  const seedMlId = tmdbToMl.get(Number(tmdbId));
+  if (seedMlId === undefined) return [];
+  
+  const seedVec = contentModel.vectors[String(seedMlId)];
+  if (!seedVec) return [];
+
+  const scores = [];
+  for (let i = 0; i < contentModel.movieIds.length; i++) {
+    const mid = contentModel.movieIds[i];
+    if (mid === seedMlId) continue;
+    const vec = contentModel.vectors[String(mid)];
+    if (!vec) continue;
+    
+    let dotProd = 0;
+    let magA = 0;
+    let magB = 0;
+    for (let d = 0; d < contentModel.dim; d++) {
+      dotProd += seedVec[d] * vec[d];
+      magA += seedVec[d] * seedVec[d];
+      magB += vec[d] * vec[d];
+    }
+    const cosSim = (magA && magB) ? (dotProd / (Math.sqrt(magA) * Math.sqrt(magB))) : 0;
+    
+    if (cosSim > 0.1) {
+      const candTmdbId = mlToTmdb.get(mid);
+      if (candTmdbId) scores.push({ tmdbId: candTmdbId, score: cosSim });
+    }
+  }
+
+  scores.sort((a, b) => b.score - a.score);
+  return scores.slice(0, topN).map(s => ({ id: s.tmdbId, media_type: 'movie', plotScore: s.score }));
+}
