@@ -2821,7 +2821,7 @@ function openModalContent(movie) {
       playBtn.classList.remove('hidden');
       playBtn.onclick = () => {
         if (movie.trailerKey) {
-          if (videoIframe) videoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&start=30`;
+          if (videoIframe) videoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&start=5`;
           if (videoContainer) videoContainer.classList.remove('hidden');
           playBtn.classList.add('hidden');
           const mHead = document.querySelector('.m-head');
