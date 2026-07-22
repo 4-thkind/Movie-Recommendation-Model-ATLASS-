@@ -1245,6 +1245,9 @@ main{background:var(--b0);padding:0 48px 100px;position:relative;z-index:2}
   transform:scale(.9) translateY(15px);
   overflow:hidden;
 }
+#surprise-result:not(.hidden){
+  display:block;
+}
 .s-card{
   background:rgba(22, 22, 38, 0.65);
   backdrop-filter:blur(20px);
