@@ -52,6 +52,14 @@ body.hero-video-active #nav {
   opacity: 0 !important;
   pointer-events: none !important;
 }
+body.hero-video-active .tiktok-nav {
+  transform: translateY(200%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+body.hero-video-active {
+  overflow: hidden !important;
+}
 #nav.solid, #nav.scrolled{
   background:rgba(5,5,8,.75);
   backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
@@ -321,6 +329,37 @@ body.light-theme .pd-item:hover {
   padding: 8px 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.05);
 }
+.btn-by-plot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--t2);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s var(--smooth);
+}
+.btn-by-plot:hover {
+  background: rgba(124, 58, 237, 0.2);
+  border-color: rgba(124, 58, 237, 0.4);
+  color: var(--vl);
+}
+.btn-by-plot.active {
+  background: linear-gradient(135deg, var(--v) 0%, #a855f7 100%);
+  border-color: rgba(168, 85, 247, 0.6);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.4);
+}
+.btn-by-plot i {
+  font-size: 11px;
+}
 /* The search wrapper inside the panel fills remaining space */
 .tt-search-panel .tt-search-wrapper {
   flex: 1;
@@ -533,9 +572,9 @@ body.light-theme .pd-item:hover {
 
 /* Hero Inline Video Player */
 .hero-video-container {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: 99999;
   background: #000;
   display: flex;
   align-items: center;
