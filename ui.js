@@ -2828,7 +2828,7 @@ function openModalContent(movie) {
       playBtn.classList.remove('hidden');
       playBtn.onclick = () => {
         if (movie.trailerKey) {
-          if (videoIframe) videoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&start=5`;
+          if (videoIframe) videoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&start=3&rel=0`;
           if (videoContainer) videoContainer.classList.remove('hidden');
           playBtn.classList.add('hidden');
           const mHead = document.querySelector('.m-head');
@@ -4032,6 +4032,15 @@ export function updateHeroUI(movie) {
   const heroSection = document.getElementById('hero');
   if (!heroSection) return;
 
+  // Stop and hide video container if currently playing trailer
+  const activeVideoContainer = document.getElementById('hero-video-container');
+  const activeVideoIframe = document.getElementById('hero-video-iframe');
+  if (activeVideoContainer && !activeVideoContainer.classList.contains('hidden')) {
+    if (activeVideoIframe) activeVideoIframe.src = '';
+    activeVideoContainer.classList.add('hidden');
+    document.body.classList.remove('hero-video-active');
+  }
+
   // Fade out the hero content, swap data, then fade back in
   const heroContent = heroSection.querySelector('.hero-content');
   const heroImg = heroSection.querySelector('.hero-img');
@@ -4080,8 +4089,27 @@ export function updateHeroUI(movie) {
   const playBtn = document.getElementById('hero-play-btn');
   if (playBtn) {
     playBtn.onclick = () => {
-      if (movie.trailerKey) {
-        window.open(`https://www.youtube.com/watch?v=${movie.trailerKey}`, '_blank');
+      const heroVideoContainer = document.getElementById('hero-video-container');
+      const heroVideoIframe = document.getElementById('hero-video-iframe');
+      const heroVideoClose = document.getElementById('hero-video-close');
+      const heroDots = document.getElementById('hero-dots');
+
+      if (movie.trailerKey && heroVideoContainer && heroVideoIframe) {
+        stopHeroRotation();
+        document.body.classList.add('hero-video-active');
+        heroVideoIframe.src = `https://www.youtube.com/embed/${movie.trailerKey}?autoplay=1&start=3&rel=0`;
+        heroVideoContainer.classList.remove('hidden');
+
+        const closeTrailer = () => {
+          heroVideoIframe.src = '';
+          heroVideoContainer.classList.add('hidden');
+          document.body.classList.remove('hero-video-active');
+          startHeroRotation();
+        };
+
+        if (heroVideoClose) {
+          heroVideoClose.onclick = closeTrailer;
+        }
       } else {
         window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title + ' trailer')}`, '_blank');
       }
@@ -4472,14 +4500,12 @@ window.commitSearch = function() {
     searchSec.classList.remove('hidden');
     if (countEl) {
       countEl.style.display = '';
-      const total = (_autocompleteCache.tmdbMovieTotalResults || 0) + (_autocompleteCache.tmdbTvTotalResults || 0);
-      countEl.textContent = total > 0 ? `${total}+ results` : `${results.length} found`;
+      countEl.textContent = `${results.length} Results`;
     }
     if (lmWrap) lmWrap.classList.add('hidden');
 
-    // Render only the first page of results — Load More handles the rest
-    const firstPage = results.slice(0, SEARCH_INITIAL_SIZE);
-    firstPage.forEach((item, idx) => {
+    // Render all search results at once
+    results.forEach((item, idx) => {
       const key = `${item.mediaType||'movie'}-${item.id}`;
       if (_searchState.rendered.has(key)) return;
       _searchState.rendered.add(key);
@@ -4494,7 +4520,7 @@ window.commitSearch = function() {
       card.style.animationDelay = `${Math.min(idx * 18, 400)}ms`;
       searchResults.appendChild(card);
     });
-    _searchState.offlineOffset = SEARCH_INITIAL_SIZE; // cursor into allResults buffer
+    _searchState.offlineOffset = results.length; // all rendered
 
     // Show Load More if buffer has more OR TMDb has more pages
     const hasMoreBuffer = _searchState.offlineOffset < results.length;
@@ -4604,7 +4630,7 @@ window.commitSearch = function() {
 };
 
 // Wire listeners once DOM is ready
-window.addEventListener('DOMContentLoaded', () => {
+function initSearchListeners() {
   // Inject Gradual Blurs into static scroll containers
   document.querySelectorAll('.row-wrap, .trend-scroll-wrap').forEach(wrap => {
     injectGradualBlurs(wrap);
@@ -4666,7 +4692,13 @@ window.addEventListener('DOMContentLoaded', () => {
       window.closeSearchPanel();
     });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initSearchListeners);
+} else {
+  initSearchListeners();
+}
 
 // Expose scrollRow, scrollPlat, and modal utilities to window for legacy inline HTML attributes compatibility
 window.clearSearch = clearSearch;
@@ -5071,7 +5103,7 @@ export function showAlreadyWatched() {
       homeElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
       if (watchlistSection) watchlistSection.style.setProperty('display', 'none', 'important');
 
-      watchedSection.style.removeProperty('display');
+      watchedSection.style.setProperty('display', 'block', 'important');
       _renderWatchedGrid('recent');
 
       gsap.fromTo(watchedSection,
@@ -5929,7 +5961,14 @@ export function showGenreMovies(genreId, genreName) {
     if (countTag) countTag.textContent = `${rendered} of ${allItems.length}+`;
     if (!lmWrap || !lmBtn) return;
     // Show Load More if there are more items buffered OR more TMDb pages
-    lmWrap.classList.remove('hidden');
+    const hasMore = (allItems.length > rendered) || (TMDB_API_KEY && typeof tmdbPage !== 'undefined' && tmdbPage <= 500);
+    if (hasMore) {
+      lmWrap.classList.remove('hidden');
+      lmWrap.style.display = 'block';
+    } else {
+      lmWrap.classList.add('hidden');
+      lmWrap.style.display = 'none';
+    }
     lmBtn.disabled = fetching;
     lmBtn.innerHTML = fetching
       ? '<i class="fa-solid fa-spinner fa-spin"></i> Loading…'
@@ -6208,12 +6247,12 @@ export function updateSearchSuggestions(q) {
   clearTimeout(suggestionsDebounce);
   suggestionsDebounce = setTimeout(() => {
     if (TMDB_API_KEY) {
-      // Fetch pages 1–3 of movies and TV concurrently so deep keyword matches are found
-      const movieFetches = [1, 2, 3].map(p =>
+      // Fetch pages 1–5 of movies and 1-4 of TV concurrently so all keyword matches are found
+      const movieFetches = [1, 2, 3, 4, 5].map(p =>
         fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=${p}`)
           .then(r => r.json()).catch(() => ({ results: [], total_pages: 1, total_results: 0 }))
       );
-      const tvFetches = [1, 2].map(p =>
+      const tvFetches = [1, 2, 3, 4].map(p =>
         fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(q)}&page=${p}`)
           .then(r => r.json()).catch(() => ({ results: [], total_pages: 1, total_results: 0 }))
       );
@@ -6221,9 +6260,9 @@ export function updateSearchSuggestions(q) {
         .then(r => r.json()).catch(() => ({ results: [] }));
 
       Promise.all([...movieFetches, ...tvFetches, personP]).then(async (allData) => {
-        const moviePages  = allData.slice(0, 3);
-        const tvPages     = allData.slice(3, 5);
-        const personData  = allData[5];
+        const moviePages  = allData.slice(0, 5);
+        const tvPages     = allData.slice(5, 9);
+        const personData  = allData[9];
 
         // Deduplicate and merge all movie and TV results
         const movieSeen = new Set();
