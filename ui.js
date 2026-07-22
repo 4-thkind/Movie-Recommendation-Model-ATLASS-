@@ -2298,14 +2298,10 @@ export function surpriseMe() {
     if (icon) {
       icon.className = 'fa-solid fa-circle-notch fa-spin';
     }
-    const rect = orb.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    // Sparkles moved to revealSurpriseResult
   }
 
   // Fade out and collapse current result card if it's already shown
-  if (result && !result.classList.contains('hidden')) {
+  if (result && result.style.display !== 'none' && !result.classList.contains('hidden')) {
     gsap.to(result, {
       opacity: 0,
       scale: 0.9,
@@ -2314,10 +2310,45 @@ export function surpriseMe() {
       duration: 0.25,
       ease: 'power2.inOut',
       onComplete: () => {
+        result.style.display = 'none';
         result.classList.add('hidden');
       }
     });
   }
+
+  const pickFallback = () => {
+    let movieId;
+    if (state.movieLensData && state.movieLensData.loaded && state.movieLensData.movies) {
+      const movieIds = Object.keys(state.movieLensData.movies);
+      let idx;
+      do {
+        idx = Math.floor(Math.random() * movieIds.length);
+        movieId = parseInt(movieIds[idx]);
+      } while (movieId === lastSurprise && movieIds.length > 1);
+      lastSurprise = movieId;
+    } else {
+      let idx;
+      do { idx = Math.floor(Math.random() * MOVIES.length); } while (idx === lastSurprise && MOVIES.length > 1);
+      lastSurprise = idx;
+      movieId = MOVIES[idx].id;
+    }
+
+    fetchTMDBDetails(movieId).then(movie => {
+      if (!movie && typeof MOVIES !== 'undefined' && MOVIES.length > 0) {
+        const local = MOVIES.find(m => String(m.id) === String(movieId)) || MOVIES[0];
+        movie = local;
+      }
+      if (!movie) {
+        if (orb) {
+          orb.classList.remove('loading');
+          if (icon) icon.className = 'fa-solid fa-wand-magic-sparkles';
+        }
+        return;
+      }
+      state.currentSurpriseMovie = movie;
+      revealSurpriseResult(movie);
+    });
+  };
 
   if (TMDB_API_KEY) {
     const page = Math.floor(Math.random() * 50) + 1;
@@ -2328,59 +2359,23 @@ export function surpriseMe() {
           const randomMovie = data.results[Math.floor(Math.random() * data.results.length)];
           fetchTMDBDetails(randomMovie.id).then(movie => {
             if (!movie) {
-              if (orb) {
-                orb.classList.remove('loading');
-                if (icon) icon.className = 'fa-solid fa-wand-magic-sparkles';
-              }
+              pickFallback();
               return;
             }
             state.currentSurpriseMovie = movie;
             revealSurpriseResult(movie);
           });
         } else {
-          if (orb) {
-            orb.classList.remove('loading');
-            if (icon) icon.className = 'fa-solid fa-wand-magic-sparkles';
-          }
+          pickFallback();
         }
       })
       .catch(() => {
-        if (orb) {
-          orb.classList.remove('loading');
-          if (icon) icon.className = 'fa-solid fa-wand-magic-sparkles';
-        }
+        pickFallback();
       });
     return;
   }
 
-  // Offline Mode pick
-  let movieId;
-  if (state.movieLensData.loaded) {
-    const movieIds = Object.keys(state.movieLensData.movies);
-    let idx;
-    do {
-      idx = Math.floor(Math.random() * movieIds.length);
-      movieId = parseInt(movieIds[idx]);
-    } while (movieId === lastSurprise);
-    lastSurprise = movieId;
-  } else {
-    let idx;
-    do { idx = Math.floor(Math.random() * MOVIES.length); } while (idx === lastSurprise);
-    lastSurprise = idx;
-    movieId = MOVIES[idx].id;
-  }
-
-  fetchTMDBDetails(movieId).then(movie => {
-    if (!movie) {
-      if (orb) {
-        orb.classList.remove('loading');
-        if (icon) icon.className = 'fa-solid fa-wand-magic-sparkles';
-      }
-      return;
-    }
-    state.currentSurpriseMovie = movie;
-    revealSurpriseResult(movie);
-  });
+  pickFallback();
 }
 
 function revealSurpriseResult(movie) {
@@ -2399,13 +2394,13 @@ function revealSurpriseResult(movie) {
 
   // Populate data
   const sImg = document.getElementById('s-img');
-  if (sImg) sImg.src = movie.poster;
+  if (sImg) sImg.src = movie.poster || movie.backdrop || '';
   const sTitle = document.getElementById('s-title');
-  if (sTitle) sTitle.textContent = movie.title;
+  if (sTitle) sTitle.textContent = movie.title || 'Surprise Pick';
   const sSub = document.getElementById('s-sub');
-  if (sSub) sSub.textContent = `${movie.year} · ${movie.genre} · ★ ${movie.rating}`;
+  if (sSub) sSub.textContent = `${movie.year || ''} · ${movie.genre || ''} · ★ ${movie.rating || ''}`;
   const sSynopsis = document.getElementById('s-synopsis');
-  if (sSynopsis) sSynopsis.textContent = movie.synopsis.slice(0, 115) + '…';
+  if (sSynopsis) sSynopsis.textContent = (movie.synopsis || movie.overview || 'Enjoy this surprise pick!').slice(0, 115) + '…';
   
   const sModalBtn = document.getElementById('s-modal-btn');
   if (sModalBtn) sModalBtn.onclick = () => openModal(movie);
@@ -2434,6 +2429,7 @@ function revealSurpriseResult(movie) {
 
   // Expand and animate card result
   if (result) {
+    result.style.display = 'block';
     result.classList.remove('hidden');
     timeline.fromTo(result,
       { opacity: 0, scale: 0.9, y: 15, height: 0 },
