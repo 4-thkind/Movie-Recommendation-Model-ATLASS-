@@ -2655,6 +2655,13 @@ function openModalContent(movie) {
     const ratingBox = document.querySelector('.user-rating-box');
     if (ratingBox) ratingBox.classList.remove('hidden');
     
+    const mHead = document.querySelector('.m-head');
+    if (mHead) mHead.classList.remove('hidden');
+    const mFade = document.querySelector('.m-hero-fade');
+    if (mFade) mFade.classList.remove('hidden');
+    const mSide = document.querySelector('.m-hero-side');
+    if (mSide) mSide.classList.remove('hidden');
+    
     document.getElementById('m-chip').innerHTML = `<i class="fa-solid fa-circle-check" style="font-size:10px"></i> ${movie.match}% Match`;
     document.getElementById('m-title').textContent = movie.title;
     document.getElementById('m-year').textContent = movie.cert ? `${movie.year} · ${movie.cert} · ${movie.runtime}` : `${movie.year} · ${movie.runtime}`;
