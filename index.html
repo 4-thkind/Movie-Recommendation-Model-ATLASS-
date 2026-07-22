@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=35">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -105,7 +105,13 @@
 <section id="hero">
   <div class="hero-img"></div>
   <div class="hero-fade"></div>
-  <div class="hero-side"></div>
+  <div id="hero-video-container" class="hero-video-container hidden">
+    <div class="video-top-overlay"></div>
+    <iframe id="hero-video-iframe" src="" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+    <button id="hero-video-close" class="hero-video-close" title="Close Trailer">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
   <div class="hero-content">
     <div class="match-chip"><i class="fa-solid fa-circle-check text-xs"></i> 98% Match For You</div>
     <h1 class="hero-title">Dune<br>Part Two</h1>
@@ -771,13 +777,13 @@
       <img id="m-backdrop" src="" alt=""/>
       <img id="m-poster" src="" alt="" class="hidden"/>
       <div id="m-video-container" class="hidden">
+        <div class="video-top-overlay"></div>
         <iframe id="m-video-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
       <div class="m-hero-fade"></div><div class="m-hero-side"></div>
       <button class="m-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
       <div class="m-head">
         <div class="match-chip" id="m-chip" class="u-margin-bottom-10px-62"></div>
-        <div class="u-syne-header" id="m-title"></div>
         <div class="u-font-size-12px-color-var--t2-38" id="m-year"></div>
       </div>
       <button class="btn-primary hero-play-btn" id="m-play-btn">
@@ -785,6 +791,7 @@
       </button>
     </div>
     <div class="m-body">
+      <h2 class="m-body-title" id="m-title"></h2>
       <div class="m-grid">
         <div class="m-stat"><p>Rating</p><p id="m-rating" class="text-yellow"></p></div>
         <div class="m-stat"><p>Rated</p><p id="m-cert"></p></div>
@@ -938,7 +945,7 @@
   }
   function openSearchTab() {
     const panel = document.getElementById('tt-search-panel');
-    if (panel && panel.style.display !== 'none') {
+    if (panel && !panel.classList.contains('hidden')) {
       // If already open, close it
       if (typeof window.closeSearchPanel === 'function') {
         window.closeSearchPanel();
